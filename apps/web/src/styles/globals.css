@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fa;
+  --color-bg-tertiary: #f1f3f5;
+  --color-bg-elevated: #ffffff;
+
+  --color-surface-default: #ffffff;
+  --color-surface-hover: #f8f9fa;
+  --color-surface-active: #f1f3f5;
+
+  --color-text-primary: #11181c;
+  --color-text-secondary: #687076;
+  --color-text-tertiary: #889096;
+  --color-text-link: #0068d6;
+
+  --color-border-default: #dfe3e6;
+  --color-border-muted: #e9ecef;
+
+  --color-accent: #0068d6;
+
+  --color-success: #18794e;
+  --color-warning: #cc7b16;
+  --color-danger: #dc2828;
+
+  --spacing-sidebar: 260px;
+  --spacing-topbar: 52px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+
+  --animate-fade-in: fade-in 150ms ease-out;
+  --animate-slide-in-up: slide-in-up 200ms ease-out;
+  --animate-scale-in: scale-in 200ms ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border-default);
+  }
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+.dark {
+  --color-bg-primary: #0d0d0d;
+  --color-bg-secondary: #141414;
+  --color-bg-tertiary: #1a1a1a;
+  --color-bg-elevated: #1a1a1a;
+
+  --color-surface-default: #141414;
+  --color-surface-hover: #1a1a1a;
+  --color-surface-active: #242424;
+
+  --color-text-primary: #ededed;
+  --color-text-secondary: #a0a0a0;
+  --color-text-tertiary: #707070;
+  --color-text-link: #5096e9;
+
+  --color-border-default: #2a2a2a;
+  --color-border-muted: #1f1f1f;
+
+  --color-accent: #5096e9;
+
+  --color-success: #3cb179;
+  --color-warning: #e09e3b;
+  --color-danger: #e5484d;
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@bucketdrive/shared": ["../../packages/shared/src"],
+      "@bucketdrive/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["src", "vite-env.d.ts"]
+}

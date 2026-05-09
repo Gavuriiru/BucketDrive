@@ -1,0 +1,58 @@
+import { Hono } from "hono"
+import { cors } from "hono/cors"
+import { securityHeaders } from "./middleware/security-headers"
+import { createAuth } from "./lib/auth"
+import { createD1DB } from "./lib/db"
+import { filesHandler } from "./modules/files/files.handler"
+import { sharesHandler } from "./modules/shares/shares.handler"
+
+interface Env {
+  DB: D1Database
+  GITHUB_CLIENT_ID?: string
+  GITHUB_CLIENT_SECRET?: string
+  GOOGLE_CLIENT_ID?: string
+  GOOGLE_CLIENT_SECRET?: string
+  STORAGE: R2Bucket
+}
+
+const app = new Hono<{ Bindings: Env }>()
+
+app.use("*", securityHeaders)
+app.use("*", cors({
+  origin: (origin) => origin,
+  allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  maxAge: 86400,
+}))
+
+app.use("*", async (c, next) => {
+  createD1DB(c.env.DB)
+  await next()
+})
+
+const authApp = new Hono<{ Bindings: Env }>()
+
+authApp.all("*", (c) => {
+  const auth = createAuth(c.env)
+  return auth.handler(c.req.raw)
+})
+
+app.route("/api/auth", authApp)
+
+app.get("/api/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }))
+
+app.route("/api/workspaces/:workspaceId/files", filesHandler)
+app.route("/api/workspaces/:workspaceId/shares", sharesHandler)
+
+app.notFound((c) => c.json({ code: "NOT_FOUND", message: "Not found" }, 404))
+
+app.onError((err, c) => {
+  console.error("Unhandled error:", err)
+  return c.json({
+    code: "INTERNAL_ERROR",
+    message: "An unexpected error occurred",
+  }, 500)
+})
+
+export default app

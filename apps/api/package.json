@@ -1,0 +1,24 @@
+{
+  "name": "@bucketdrive/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bucketdrive/shared": "workspace:*",
+    "better-auth": "^1.0.0",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250100.0",
+    "wrangler": "^3.100.0",
+    "typescript": "^5.7.0"
+  }
+}

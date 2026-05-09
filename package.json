@@ -24,5 +24,15 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "pnpm": {
+    "supportedArchitectures": {
+      "os": ["linux"],
+      "cpu": ["x64"]
+    }
   }
 }

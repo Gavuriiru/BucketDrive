@@ -1,0 +1,22 @@
+import { z } from "zod"
+
+export const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string(),
+  avatarUrl: z.string().nullable(),
+  createdAt: z.string().datetime(),
+})
+
+export type User = z.infer<typeof UserSchema>
+
+export const SessionInfoSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  expiresAt: z.string().datetime(),
+  ipAddress: z.string().nullable(),
+  userAgent: z.string().nullable(),
+  createdAt: z.string().datetime(),
+})
+
+export type SessionInfo = z.infer<typeof SessionInfoSchema>
