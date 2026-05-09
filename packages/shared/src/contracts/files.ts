@@ -34,6 +34,9 @@ export const InitiateUploadResponse = z.object({
 export const CompleteUploadRequest = z.object({
   uploadId: z.string().uuid(),
   sessionId: z.string().uuid().optional(),
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string(),
+  folderId: z.string().uuid().nullable().optional(),
   parts: z.array(
     z.object({
       partNumber: z.number().int().positive(),
