@@ -17,7 +17,7 @@ verifiable result.
 | 5 | Upload | End-to-end drag-drop upload with progress | ✅ `8f0d0c2` |
 | 6 | Explorer | Grid/list views with breadcrumbs | ✅ |
 | 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ✅ |
-| 8 | Folders | CRUD, folder tree, drag-drop move | ⬜ |
+| 8 | Folders | CRUD, folder tree, drag-drop move | ✅ |
 | 9 | RBAC | Permission engine with can() checks | ⬜ |
 | 10 | Internal shares | File sharing between workspace members | ⬜ |
 | 11 | External shares | Public links with password + rate-limit | ⬜ |
@@ -414,7 +414,21 @@ git commit -m "feat(explorer): keyboard navigation, context menus, multi-selecti
 
 ---
 
-## Day 8 — Folder CRUD & Drag-Drop Move
+## Day 8 — Folder CRUD & Drag-Drop Move ✅
+
+**Goal:** Users can create, rename, move, delete folders. Drag files between folders.
+
+> **Notes from implementation:**
+> - Added `CreateFolderRequest`, `UpdateFolderRequest`, `DeleteFolderResponse` contracts to `packages/shared/src/contracts/folders.ts`
+> - Folder handler (`folders.handler.ts`): `POST /` creates folder with materialized path (`parent.path/name`), `PATCH /:folderId` handles rename + move (combined `UpdateFolderRequest` with `name` + `parentFolderId`, recalculates path), `DELETE /:folderId` does recursive soft-delete (collects all descendant folders iteratively, marks files + folders as `isDeleted=true` in batch)
+> - File handler (`files.handler.ts`): switched `PATCH /:fileId` from `RenameFileRequest` to `UpdateFileRequest` which already had `folderId` — supports rename AND move in one call; audit log differentiates `file.move` vs `file.rename`
+> - Frontend hooks in `api.ts`: `useCreateFolder`, `useUpdateFolder`, `useDeleteFolder`, `useMoveFile` — all invalidate both `["files"]` and `["folders"]` query caches
+> - Fixed pre-existing bug: dashboard `handleRenameItem` and `handleDeleteSelected` now route to correct mutation by item type (file vs folder) instead of always using file mutations
+> - Added "New Folder" button in explorer toolbar (next to Upload), creates folder in current directory via `useCreateFolder`
+> - Wired `onMove` context menu action through FileGrid/FileList → dashboard; prompts for destination folder ID via `window.prompt`
+> - Folder tree sidebar (`folder-tree.tsx`): renders below static nav links in Sidebar, uses `useFolders(wsId, null)` for root ↦ lazy-loads children on expand, chevron collapse/expand, highlights current folder, right-click context menu (New Subfolder, Rename, Delete), "All Files" root navigator
+> - Drag-to-move with `@dnd-kit/core` (already installed): `DndContext` wraps explorer area in dashboard, `useDraggable` on file/folder items, `useDroppable` on folder items (files aren't drop targets), `DragOverlay` shows item name while dragging, dragged items get `opacity-50`, drop targets get `bg-accent/10` highlight, `onDragEnd` parses `folder-{id}` / `file-{id}` IDs and calls `useMoveFile` or `useUpdateFolder`
+> - FileGrid/FileList refactored: extracted `FolderGridCard`/`FileGridCard` and `FolderListRow`/`FileListRow` sub-components with `useDraggable`+`useDroppable` hooks; removed explicit `role`/`tabIndex` that conflicted with `@dnd-kit` attributes
 
 **Goal:** Users can create, rename, move, delete folders. Drag files between folders.
 

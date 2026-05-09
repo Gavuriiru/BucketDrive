@@ -1,6 +1,7 @@
-import { useRef, useMemo, useCallback } from "react"
-import { Upload, LayoutGrid, List, Trash2 } from "lucide-react"
-import { useFiles, useFolders, useBreadcrumbs, useWorkspaces, useRenameFile, useDeleteFile } from "@/lib/api"
+import { useRef, useMemo, useCallback, useState } from "react"
+import { Upload, LayoutGrid, List, Trash2, FolderPlus } from "lucide-react"
+import { useFiles, useFolders, useBreadcrumbs, useWorkspaces, useRenameFile, useDeleteFile, useCreateFolder, useUpdateFolder, useDeleteFolder, api, useMoveFile } from "@/lib/api"
+import { useQueryClient } from "@tanstack/react-query"
 import { useUploadStore } from "@/stores/upload-store"
 import { useExplorerStore } from "@/stores/explorer-store"
 import { UploadDropZone } from "@/components/features/upload-drop-zone"
@@ -9,11 +10,14 @@ import { FileList } from "@/components/features/file-list"
 import { FileGrid } from "@/components/features/file-grid"
 import { Breadcrumbs } from "@/components/features/breadcrumbs"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
+import { DndContext, DragOverlay } from "@dnd-kit/core"
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import type { BreadcrumbItem } from "@/lib/api"
 
 export function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const queryClient = useQueryClient()
   const addFiles = useUploadStore((s) => s.addFiles)
   const {
     viewMode,
@@ -49,7 +53,68 @@ export function DashboardPage() {
   const isLoading = filesLoading || foldersLoading
 
   const renameMutation = useRenameFile(workspaceId)
-  const deleteMutation = useDeleteFile(workspaceId)
+  const deleteFileMutation = useDeleteFile(workspaceId)
+  const createFolderMutation = useCreateFolder(workspaceId)
+  const updateFolderMutation = useUpdateFolder(workspaceId)
+  const deleteFolderMutation = useDeleteFolder(workspaceId)
+  const moveFileMutation = useMoveFile(workspaceId)
+
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+
+  const parseDragId = (dragId: string): { type: "file" | "folder"; id: string } | null => {
+    const sep = dragId.indexOf("-")
+    if (sep === -1) return null
+    const type = dragId.slice(0, sep)
+    const id = dragId.slice(sep + 1)
+    if (type !== "file" && type !== "folder") return null
+    return { type, id }
+  }
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const current = event.active.id as string
+    setActiveDragId(current)
+  }, [])
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDragId(null)
+      const { active, over } = event
+      if (!over) return
+
+      const source = parseDragId(active.id as string)
+      const target = parseDragId(over.id as string)
+
+      if (!source || !target) return
+      if (source.id === target.id) return
+      if (target.type !== "folder") return
+
+      if (source.type === "file") {
+        moveFileMutation.mutate({ fileId: source.id, folderId: target.id })
+      } else {
+        updateFolderMutation.mutate({ folderId: source.id, parentFolderId: target.id })
+      }
+    },
+    [moveFileMutation, updateFolderMutation],
+  )
+
+  const activeDragItem = useMemo(() => {
+    if (!activeDragId) return null
+    const parsed = parseDragId(activeDragId)
+    if (!parsed) return null
+    if (parsed.type === "file") {
+      const file = files.find((f) => f.id === parsed.id)
+      return file ? { name: file.originalName, type: "file" as const } : null
+    }
+    const folder = folders.find((f) => f.id === parsed.id)
+    return folder ? { name: folder.name, type: "folder" as const } : null
+  }, [activeDragId, files, folders])
+
+  const handleItemDrop = useCallback(
+    (_sourceId: string, _sourceType: "file" | "folder", _targetFolderId: string) => {
+      // Drag-drop handled by DndContext handleDragEnd
+    },
+    [],
+  )
 
   const items = useMemo(
     () => [
@@ -74,23 +139,26 @@ export function DashboardPage() {
   )
 
   const handleDeleteSelected = useCallback(() => {
-    const allIds = [...selectedFileIds, ...selectedFolderIds]
-    if (allIds.length === 0) return
     const fileCount = selectedFileIds.length
-    if (fileCount === 0) return
-    const count = fileCount
+    const folderCount = selectedFolderIds.length
+    const totalCount = fileCount + folderCount
+    if (totalCount === 0) return
+
     const confirmed = window.confirm(
-      count === 1
-        ? "Delete this file? It will be moved to trash."
-        : `Delete ${count} files? They will be moved to trash.`,
+      totalCount === 1
+        ? "Delete this item? It will be moved to trash."
+        : `Delete ${totalCount} items? They will be moved to trash.`,
     )
     if (confirmed) {
       for (const fileId of selectedFileIds) {
-        deleteMutation.mutate({ fileId })
+        deleteFileMutation.mutate({ fileId })
+      }
+      for (const folderId of selectedFolderIds) {
+        deleteFolderMutation.mutate({ folderId })
       }
       clearSelection()
     }
-  }, [selectedFileIds, deleteMutation, clearSelection])
+  }, [selectedFileIds, selectedFolderIds, deleteFileMutation, deleteFolderMutation, clearSelection])
 
   const handleNavigateParent = useCallback(() => {
     if (currentFolderId && breadcrumbsData && breadcrumbsData.length > 1) {
@@ -109,10 +177,14 @@ export function DashboardPage() {
       const currentName = item ? ("originalName" in item ? item.originalName : item.name) : ""
       const newName = window.prompt("Rename to:", currentName)
       if (newName && newName.trim() && newName !== currentName) {
-        renameMutation.mutate({ fileId: id, name: newName.trim() })
+        if (type === "file") {
+          renameMutation.mutate({ fileId: id, name: newName.trim() })
+        } else {
+          updateFolderMutation.mutate({ folderId: id, name: newName.trim() })
+        }
       }
     },
-    [files, folders, renameMutation],
+    [files, folders, renameMutation, updateFolderMutation],
   )
 
   const handleContextDownload = useCallback(
@@ -144,6 +216,35 @@ export function DashboardPage() {
   const handleFileSelect = () => {
     fileInputRef.current?.click()
   }
+
+  const handleCreateFolder = () => {
+    const name = window.prompt("Folder name:")
+    if (name && name.trim()) {
+      createFolderMutation.mutate({
+        name: name.trim(),
+        parentFolderId: currentFolderId,
+      })
+    }
+  }
+
+  const handleContextMove = useCallback(
+    (id: string, type: "file" | "folder") => {
+      const destFolderId = window.prompt("Enter destination folder ID (or leave blank for root):")
+      if (destFolderId === null) return
+      const targetId = destFolderId.trim() || null
+      if (type === "file") {
+        void api.patch(`/api/workspaces/${workspaceId}/files/${id}`, { folderId: targetId })
+          .then(() => {
+            void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+            void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+          })
+          .catch(console.error)
+      } else {
+        updateFolderMutation.mutate({ folderId: id, parentFolderId: targetId })
+      }
+    },
+    [workspaceId, updateFolderMutation],
+  )
 
   const handleFilesChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -241,6 +342,13 @@ export function DashboardPage() {
             </button>
           </div>
           <button
+            onClick={handleCreateFolder}
+            className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+          >
+            <FolderPlus className="h-4 w-4" />
+            New Folder
+          </button>
+          <button
             onClick={handleFileSelect}
             className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
           >
@@ -281,43 +389,69 @@ export function DashboardPage() {
 
       <div className="flex-1 space-y-4" ref={containerRef}>
         <UploadDropZone onFilesDrop={handleFilesDrop} className="bg-surface-default" />
-        {viewMode === "grid" ? (
-          <FileGrid
-            folders={folders}
-            files={files}
-            isLoading={isLoading}
-            onFolderClick={handleFolderClick}
-            onItemClick={handleItemClick}
-            onContextOpen={handleOpenItem}
-            onContextDownload={handleContextDownload}
-            onContextRename={handleRenameItem}
-            onContextDelete={(id) => {
-              deleteMutation.mutate({ fileId: id })
-              clearSelection()
-            }}
-            onContextFavorite={(id) => {
-              console.warn("Favorites coming in Day 15", id)
-            }}
-          />
-        ) : (
-          <FileList
-            folders={folders}
-            files={files}
-            isLoading={isLoading}
-            onFolderClick={handleFolderClick}
-            onItemClick={handleItemClick}
-            onContextOpen={handleOpenItem}
-            onContextDownload={handleContextDownload}
-            onContextRename={handleRenameItem}
-            onContextDelete={(id) => {
-              deleteMutation.mutate({ fileId: id })
-              clearSelection()
-            }}
-            onContextFavorite={(id) => {
-              console.warn("Favorites coming in Day 15", id)
-            }}
-          />
-        )}
+        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          {viewMode === "grid" ? (
+            <FileGrid
+              folders={folders}
+              files={files}
+              isLoading={isLoading}
+              onFolderClick={handleFolderClick}
+              onItemClick={handleItemClick}
+              onContextOpen={handleOpenItem}
+              onContextDownload={handleContextDownload}
+              onContextRename={handleRenameItem}
+              onContextDelete={(id, type) => {
+                if (type === "folder") {
+                  deleteFolderMutation.mutate({ folderId: id })
+                } else {
+                  deleteFileMutation.mutate({ fileId: id })
+                }
+                clearSelection()
+              }}
+              onContextFavorite={(id) => {
+                console.warn("Favorites coming in Day 15", id)
+              }}
+              onContextMove={handleContextMove}
+              onItemDrop={handleItemDrop}
+            />
+          ) : (
+            <FileList
+              folders={folders}
+              files={files}
+              isLoading={isLoading}
+              onFolderClick={handleFolderClick}
+              onItemClick={handleItemClick}
+              onContextOpen={handleOpenItem}
+              onContextDownload={handleContextDownload}
+              onContextRename={handleRenameItem}
+              onContextDelete={(id, type) => {
+                if (type === "folder") {
+                  deleteFolderMutation.mutate({ folderId: id })
+                } else {
+                  deleteFileMutation.mutate({ fileId: id })
+                }
+                clearSelection()
+              }}
+              onContextFavorite={(id) => {
+                console.warn("Favorites coming in Day 15", id)
+              }}
+              onContextMove={handleContextMove}
+              onItemDrop={handleItemDrop}
+            />
+          )}
+          <DragOverlay dropAnimation={null}>
+            {activeDragItem ? (
+              <div className="flex items-center gap-2 rounded-lg border border-accent bg-surface-default px-3 py-2 shadow-lg">
+                {activeDragItem.type === "folder" ? (
+                  <FolderPlus className="h-4 w-4 text-text-tertiary" />
+                ) : (
+                  <Upload className="h-4 w-4 text-text-tertiary" />
+                )}
+                <span className="text-sm font-medium text-text-primary">{activeDragItem.name}</span>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       {workspaceId && <UploadQueue workspaceId={workspaceId} />}

@@ -275,6 +275,101 @@ export function useDeleteFile(workspaceId: string | null) {
   })
 }
 
+interface FolderResponse {
+  id: string
+  workspaceId: string
+  parentFolderId: string | null
+  name: string
+  path: string
+  createdBy: string
+  isDeleted: boolean
+  deletedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+interface DeleteFolderResponse {
+  success: true
+  folderId: string
+}
+
+export function useCreateFolder(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ name, parentFolderId }: { name: string; parentFolderId?: string | null }) =>
+      api.post<FolderResponse>(
+        `/api/workspaces/${workspaceId}/folders`,
+        { name, parentFolderId: parentFolderId ?? null },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+    },
+  })
+}
+
+export function useUpdateFolder(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      folderId,
+      name,
+      parentFolderId,
+    }: {
+      folderId: string
+      name?: string
+      parentFolderId?: string | null
+    }) =>
+      api.patch<FolderResponse>(
+        `/api/workspaces/${workspaceId}/folders/${folderId}`,
+        { name, parentFolderId },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+    },
+  })
+}
+
+export function useDeleteFolder(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ folderId }: { folderId: string }) =>
+      api.delete<DeleteFolderResponse>(
+        `/api/workspaces/${workspaceId}/folders/${folderId}`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+    },
+  })
+}
+
+interface UpdateFileResponse {
+  id: string
+  originalName: string
+  extension: string | null
+  folderId: string | null
+  updatedAt: string
+}
+
+export function useMoveFile(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ fileId, folderId }: { fileId: string; folderId: string | null }) =>
+      api.patch<UpdateFileResponse>(
+        `/api/workspaces/${workspaceId}/files/${fileId}`,
+        { folderId },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+    },
+  })
+}
+
 export type {
   FileObject,
   Folder,

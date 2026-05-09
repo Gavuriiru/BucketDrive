@@ -2,9 +2,14 @@ import { Hono } from "hono"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
-import { folder, workspace } from "@bucketdrive/shared/db/schema"
-import { eq, and, isNull } from "drizzle-orm"
-import { ListFoldersRequest, BreadcrumbItemSchema } from "@bucketdrive/shared"
+import { folder, workspace, fileObject, auditLog } from "@bucketdrive/shared/db/schema"
+import { eq, and, isNull, inArray } from "drizzle-orm"
+import {
+  ListFoldersRequest,
+  BreadcrumbItemSchema,
+  CreateFolderRequest,
+  UpdateFolderRequest,
+} from "@bucketdrive/shared"
 
 interface FoldersEnv {
   DB: D1Database
@@ -101,6 +106,271 @@ folders.get("/:folderId/breadcrumbs", requirePermission("files.read"), async (c)
   const result = segments.map((item) => BreadcrumbItemSchema.parse(item))
 
   return c.json(result)
+})
+
+folders.post("/", requirePermission("folders.create"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const body = CreateFolderRequest.parse(await c.req.json())
+  const db = getDB()
+  const now = new Date().toISOString()
+  const newFolderId = crypto.randomUUID()
+
+  let folderPath: string
+
+  if (body.parentFolderId) {
+    const parent = await db
+      .select()
+      .from(folder)
+      .where(and(eq(folder.id, body.parentFolderId), eq(folder.workspaceId, workspaceId)))
+      .get()
+
+    if (!parent || parent.isDeleted) {
+      return c.json({ code: "PARENT_NOT_FOUND", message: "Parent folder not found" }, 404)
+    }
+
+    folderPath = `${parent.path}/${body.name}`
+  } else {
+    folderPath = `/${body.name}`
+  }
+
+  await db
+    .insert(folder)
+    .values({
+      id: newFolderId,
+      workspaceId,
+      parentFolderId: body.parentFolderId ?? null,
+      name: body.name,
+      path: folderPath,
+      createdBy: user.id,
+      isDeleted: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .run()
+
+  const created = await db
+    .select()
+    .from(folder)
+    .where(eq(folder.id, newFolderId))
+    .get()
+
+  await db
+    .insert(auditLog)
+    .values({
+      id: crypto.randomUUID(),
+      workspaceId,
+      actorId: user.id,
+      action: "folder.create",
+      resourceType: "folder",
+      resourceId: newFolderId,
+      metadata: JSON.stringify({ folderName: body.name, parentFolderId: body.parentFolderId }),
+      createdAt: now,
+    })
+    .run()
+
+  return c.json(created, 201)
+})
+
+folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const folderId = c.req.param("folderId")
+
+  if (!workspaceId || !folderId) {
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and folderId are required" },
+      400,
+    )
+  }
+
+  const user = c.get("user")
+  const body = UpdateFolderRequest.parse(await c.req.json())
+  const db = getDB()
+  const now = new Date().toISOString()
+
+  const target = await db
+    .select()
+    .from(folder)
+    .where(and(eq(folder.id, folderId), eq(folder.workspaceId, workspaceId)))
+    .get()
+
+  if (!target || target.isDeleted) {
+    return c.json({ code: "FOLDER_NOT_FOUND", message: "Folder not found" }, 404)
+  }
+
+  const updateSet: Record<string, unknown> = { updatedAt: now }
+
+  if (body.name !== undefined && body.name !== target.name) {
+    updateSet.name = body.name
+  }
+
+  if (body.parentFolderId !== undefined && body.parentFolderId !== target.parentFolderId) {
+    if (body.parentFolderId !== null) {
+      const parent = await db
+        .select()
+        .from(folder)
+        .where(
+          and(eq(folder.id, body.parentFolderId), eq(folder.workspaceId, workspaceId)),
+        )
+        .get()
+
+      if (!parent || parent.isDeleted) {
+        return c.json({ code: "PARENT_NOT_FOUND", message: "Parent folder not found" }, 404)
+      }
+    }
+
+    updateSet.parentFolderId = body.parentFolderId
+
+    const newName = body.name ?? target.name
+    const newParentPath = body.parentFolderId
+      ? (await db.select().from(folder).where(eq(folder.id, body.parentFolderId)).get())?.path ?? ""
+      : ""
+
+    const newPath = body.parentFolderId ? `${newParentPath}/${newName}` : `/${newName}`
+    updateSet.path = newPath
+  } else if (body.name !== undefined && body.name !== target.name) {
+    const parentPath = target.parentFolderId
+      ? (await db.select().from(folder).where(eq(folder.id, target.parentFolderId)).get())?.path ?? ""
+      : ""
+
+    const newPath = target.parentFolderId ? `${parentPath}/${body.name}` : `/${body.name}`
+    updateSet.path = newPath
+  }
+
+  await db
+    .update(folder)
+    .set(updateSet)
+    .where(eq(folder.id, folderId))
+    .run()
+
+  const updated = await db
+    .select()
+    .from(folder)
+    .where(eq(folder.id, folderId))
+    .get()
+
+  const isRename = body.name !== undefined && body.name !== target.name
+  const isMove = body.parentFolderId !== undefined && body.parentFolderId !== target.parentFolderId
+
+  if (isRename || isMove) {
+    const auditAction = isMove ? "folder.move" : "folder.rename"
+    const auditMetadata: Record<string, unknown> = {}
+    if (isRename) {
+      auditMetadata.previousName = target.name
+      auditMetadata.newName = body.name
+    }
+    if (isMove) {
+      auditMetadata.previousParentId = target.parentFolderId
+      auditMetadata.newParentId = body.parentFolderId
+    }
+
+    await db
+      .insert(auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId,
+        actorId: user.id,
+        action: auditAction,
+        resourceType: "folder",
+        resourceId: folderId,
+        metadata: JSON.stringify(auditMetadata),
+        createdAt: now,
+      })
+      .run()
+  }
+
+  return c.json(updated)
+})
+
+folders.delete("/:folderId", requirePermission("folders.delete"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const folderId = c.req.param("folderId")
+
+  if (!workspaceId || !folderId) {
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and folderId are required" },
+      400,
+    )
+  }
+
+  const user = c.get("user")
+  const db = getDB()
+  const now = new Date().toISOString()
+
+  const target = await db
+    .select()
+    .from(folder)
+    .where(and(eq(folder.id, folderId), eq(folder.workspaceId, workspaceId)))
+    .get()
+
+  if (!target) {
+    return c.json({ code: "FOLDER_NOT_FOUND", message: "Folder not found" }, 404)
+  }
+
+  if (target.isDeleted) {
+    return c.json({ code: "FOLDER_NOT_FOUND", message: "Folder is already deleted" }, 404)
+  }
+
+  const descendantIds: string[] = []
+  let toVisit = [folderId]
+
+  while (toVisit.length > 0) {
+    const currentIds = [...toVisit]
+    toVisit = []
+
+    for (const currentId of currentIds) {
+      descendantIds.push(currentId)
+      const children = await db
+        .select({ id: folder.id })
+        .from(folder)
+        .where(and(eq(folder.parentFolderId, currentId), eq(folder.isDeleted, false)))
+        .all()
+
+      toVisit.push(...children.map((c) => c.id))
+    }
+  }
+
+  if (descendantIds.length > 0) {
+    await db
+      .update(fileObject)
+      .set({ isDeleted: true, deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(fileObject.workspaceId, workspaceId),
+          inArray(fileObject.folderId, descendantIds),
+          eq(fileObject.isDeleted, false),
+        ),
+      )
+      .run()
+  }
+
+  await db
+    .update(folder)
+    .set({ isDeleted: true, deletedAt: now, updatedAt: now })
+    .where(and(inArray(folder.id, descendantIds), eq(folder.isDeleted, false)))
+    .run()
+
+  for (const id of descendantIds) {
+    await db
+      .insert(auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId,
+        actorId: user.id,
+        action: "folder.delete",
+        resourceType: "folder",
+        resourceId: id,
+        metadata: JSON.stringify({ deletedByParent: id !== folderId }),
+        createdAt: now,
+      })
+      .run()
+  }
+
+  return c.json({ success: true as const, folderId })
 })
 
 export const foldersHandler = folders

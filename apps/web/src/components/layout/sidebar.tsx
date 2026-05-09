@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { Files, Share2, Trash2, Settings, HardDrive } from "lucide-react"
+import { FolderTree } from "@/components/features/folder-tree"
 
 const navItems = [
   { to: "/dashboard", icon: Files, label: "Files" },
@@ -23,6 +24,8 @@ export function Sidebar() {
             {item.label}
           </Link>
         ))}
+        <div className="my-1 h-px bg-border-muted" />
+        <FolderTree />
       </div>
       <div className="border-t border-border-muted p-3">
         <div className="rounded-lg bg-surface-hover p-3 text-xs text-text-secondary">

@@ -10,7 +10,7 @@ import {
   InitiateUploadRequest,
   CompleteUploadRequest,
   ListFilesRequest,
-  RenameFileRequest,
+  UpdateFileRequest,
 } from "@bucketdrive/shared"
 
 interface FilesEnv {
@@ -207,7 +207,7 @@ files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
   }
 
   const user = c.get("user")
-  const body = RenameFileRequest.parse(await c.req.json())
+  const body = UpdateFileRequest.parse(await c.req.json())
   const db = getDB()
   const now = new Date().toISOString()
 
@@ -221,41 +221,63 @@ files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
     return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
   }
 
-  const newExt = body.name.includes(".")
-    ? (body.name.split(".").pop()?.toLowerCase() ?? null)
-    : null
+  const updateSet: Record<string, unknown> = { updatedAt: now }
+
+  if (body.name !== undefined) {
+    const newExt = body.name.includes(".")
+      ? (body.name.split(".").pop()?.toLowerCase() ?? null)
+      : null
+    updateSet.originalName = body.name
+    updateSet.extension = newExt
+  }
+
+  if (body.folderId !== undefined) {
+    updateSet.folderId = body.folderId
+  }
 
   await db
     .update(fileObject)
-    .set({
-      originalName: body.name,
-      extension: newExt,
-      updatedAt: now,
-    })
+    .set(updateSet)
     .where(eq(fileObject.id, fileId))
     .run()
 
-  const renamed = await db
+  const updated = await db
     .select()
     .from(fileObject)
     .where(eq(fileObject.id, fileId))
     .get()
 
-  await db
-    .insert(auditLog)
-    .values({
-      id: crypto.randomUUID(),
-      workspaceId,
-      actorId: user.id,
-      action: "file.rename",
-      resourceType: "file",
-      resourceId: fileId,
-      metadata: JSON.stringify({ previousName: file.originalName, newName: body.name }),
-      createdAt: now,
-    })
-    .run()
+  const isMove = body.folderId !== undefined && body.folderId !== file.folderId
+  const isRename = body.name !== undefined && body.name !== file.originalName
 
-  return c.json(renamed)
+  if (isRename || isMove) {
+    const action = isMove ? "file.move" : "file.rename"
+    const metadata: Record<string, unknown> = {}
+    if (isRename) {
+      metadata.previousName = file.originalName
+      metadata.newName = body.name
+    }
+    if (isMove) {
+      metadata.previousFolderId = file.folderId
+      metadata.newFolderId = body.folderId
+    }
+
+    await db
+      .insert(auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId,
+        actorId: user.id,
+        action,
+        resourceType: "file",
+        resourceId: fileId,
+        metadata: JSON.stringify(metadata),
+        createdAt: now,
+      })
+      .run()
+  }
+
+  return c.json(updated)
 })
 
 files.delete("/:fileId", requirePermission("files.delete"), async (c) => {
