@@ -3,9 +3,45 @@
 Step-by-step guide organized by daily sessions. Each step is self-contained and ends with a
 verifiable result.
 
+> **Status tracking:** This file is updated after each day's implementation. Completed days
+> are marked with ✅ and the section is updated with notes on actual changes made.
+
+## Status Overview
+
+| Day | Topic | Core Deliverable | Status |
+|---|---|---|---|
+| 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |
+| 2 | Auth backend | GitHub OAuth working via Better Auth | ⬜ |
+| 3 | Auth frontend | Login page, session guard, user context | ⬜ |
+| 4 | Storage | R2 provider with signed URLs | ⬜ |
+| 5 | Upload | End-to-end drag-drop upload with progress | ⬜ |
+| 6 | Explorer | Grid/list views with breadcrumbs | ⬜ |
+| 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ⬜ |
+| 8 | Folders | CRUD, folder tree, drag-drop move | ⬜ |
+| 9 | RBAC | Permission engine with can() checks | ⬜ |
+| 10 | Internal shares | File sharing between workspace members | ⬜ |
+| 11 | External shares | Public links with password + rate-limit | ⬜ |
+| 12 | Share management | User dashboard + admin oversight | ⬜ |
+| 13 | Trash | Soft delete, restore, auto-cleanup | ⬜ |
+| 14 | Search | FTS5 full-text with filters | ⬜ |
+| 15 | Tags & favorites | Color-coded tags, star favorites | ⬜ |
+| 16 | Command palette | Ctrl+K with search + commands | ⬜ |
+| 17 | Preview | Space to preview files inline | ⬜ |
+| 18 | Dark mode | Theme toggle, system detection | ⬜ |
+| 19 | Dashboard | Admin analytics + settings | ⬜ |
+| 20 | Testing | Contracts, units, a11y, staging deploy | ⬜ |
+
 ---
 
-## Day 1 — Database Foundation & Migration
+## Day 1 — Database Foundation & Migration ✅ (`59d3ea2`)
+
+> **Notes from implementation:**
+> - Fixed FK bug in `tags.ts`: `fileObjectId` referenced `workspace.id` instead of `fileObject.id`
+> - Replaced `better-sqlite3` with `sql.js` in scripts (WSL2 platform compatibility)
+> - Added `tsx`, `sql.js`, `uuid` as root devDependencies
+> - Updated `turbo.json` `pipeline` → `tasks` for Turbo v2 compat
+> - `db:studio` requires `@libsql/client` which is ESM-only (not critical)
+
 
 **Goal:** Database schema generated, migrated, and working locally.
 
@@ -868,25 +904,4 @@ git commit -m "test: contract tests, unit tests, a11y fixes, staging deploy"
 
 # Quick Reference
 
-| Day | Topic | Core Deliverable |
-|---|---|---|
-| 1 | Database | Schema migrated, seed data |
-| 2 | Auth backend | GitHub OAuth working via Better Auth |
-| 3 | Auth frontend | Login page, session guard, user context |
-| 4 | Storage | R2 provider with signed URLs |
-| 5 | Upload | End-to-end drag-drop upload with progress |
-| 6 | Explorer | Grid/list views with breadcrumbs |
-| 7 | Interactions | Context menus, keyboard shortcuts, multi-select |
-| 8 | Folders | CRUD, folder tree, drag-drop move |
-| 9 | RBAC | Permission engine with can() checks |
-| 10 | Internal shares | File sharing between workspace members |
-| 11 | External shares | Public links with password + rate-limit |
-| 12 | Share management | User dashboard + admin oversight |
-| 13 | Trash | Soft delete, restore, auto-cleanup |
-| 14 | Search | FTS5 full-text with filters |
-| 15 | Tags & favorites | Color-coded tags, star favorites |
-| 16 | Command palette | Ctrl+K with search + commands |
-| 17 | Preview | Space to preview files inline |
-| 18 | Dark mode | Theme toggle, system detection |
-| 19 | Dashboard | Admin analytics + settings |
-| 20 | Testing | Contracts, units, a11y, staging deploy |
+See [Status Overview](#status-overview) at the top of this file for the latest status of each day.

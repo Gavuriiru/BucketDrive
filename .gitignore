@@ -7,6 +7,11 @@ dist/
 .next/
 .output/
 
+# Build caches (worktree)
+.turbo/
+.temp/
+.cache/
+
 # Environment files
 .env
 .env.local
