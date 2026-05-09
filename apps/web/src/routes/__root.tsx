@@ -2,17 +2,25 @@ import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@t
 import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
 import { LoginPage } from "./login"
+import { DashboardPage } from "./app/dashboard"
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
 })
 
+async function checkAuth(): Promise<{ user: Record<string, unknown> } | null> {
+  const res = await fetch("/api/auth/get-session", { credentials: "include" })
+  if (!res.ok) return null
+  const data = await res.json()
+  return data as { user: Record<string, unknown> } | null
+}
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   beforeLoad: async () => {
-    const res = await fetch("/api/auth/session", { credentials: "include" })
-    if (res.ok) {
+    const session = await checkAuth()
+    if (session?.user) {
       // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw redirect({ to: "/dashboard" })
     }
@@ -24,8 +32,8 @@ const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app",
   beforeLoad: async () => {
-    const res = await fetch("/api/auth/session", { credentials: "include" })
-    if (!res.ok) {
+    const session = await checkAuth()
+    if (!session?.user) {
       // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw redirect({ to: "/login" })
     }
@@ -46,7 +54,7 @@ const homeRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard",
-  component: () => <div className="p-6">Dashboard</div>,
+  component: DashboardPage,
 })
 
 const routeTree = rootRoute.addChildren([

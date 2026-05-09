@@ -19,7 +19,7 @@ interface SessionResponse {
 }
 
 async function fetchSession(): Promise<SessionResponse | null> {
-  const res = await fetch("/api/auth/session", { credentials: "include" })
+  const res = await fetch("/api/auth/get-session", { credentials: "include" })
   if (!res.ok) return null
   const data = (await res.json()) as SessionResponse | null
   if (!data?.user) return null
@@ -41,6 +41,7 @@ export async function signOut() {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
+    body: "{}",
   })
   if (!res.ok) {
     throw new Error("Sign out failed")
