@@ -26,8 +26,11 @@
     "clean": "turbo clean"
   },
   "devDependencies": {
+    "sql.js": "^1.14.1",
+    "tsx": "^4.19.0",
     "turbo": "^2.3.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "uuid": "^10.0.0"
   },
   "pnpm": {
     "supportedArchitectures": {

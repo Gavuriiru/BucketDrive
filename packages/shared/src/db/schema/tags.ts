@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
 import { sql } from "drizzle-orm"
-import { workspace } from "./workspace"
+import { workspace, fileObject } from "./workspace"
 
 export const fileTag = sqliteTable("file_tag", {
   id: text("id").primaryKey(),
@@ -18,7 +18,7 @@ export const fileObjectTag = sqliteTable("file_object_tag", {
   id: text("id").primaryKey(),
   fileObjectId: text("file_object_id")
     .notNull()
-    .references(() => workspace.id),
+    .references(() => fileObject.id),
   tagId: text("tag_id")
     .notNull()
     .references(() => fileTag.id, { onDelete: "cascade" }),

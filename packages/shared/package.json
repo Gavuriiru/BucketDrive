@@ -21,6 +21,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@libsql/client": "^0.17.3",
     "drizzle-kit": "^0.30.0",
     "drizzle-orm": "^0.45.2",
     "typescript": "^5.7.0"

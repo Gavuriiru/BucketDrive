@@ -1,16 +1,26 @@
-import Database from "better-sqlite3"
-import { drizzle } from "drizzle-orm/better-sqlite3"
+import initSqlJs from "sql.js"
+import { drizzle } from "drizzle-orm/sql-js"
 import * as schema from "@bucketdrive/shared/db/schema"
 import { v4 as uuid } from "uuid"
+import { readFileSync, writeFileSync, existsSync } from "fs"
 import { resolve } from "path"
 
 const DB_PATH = resolve(__dirname, "../apps/api/.db/local.sqlite")
 
-function main() {
+async function main() {
   console.log("Seeding database...")
 
-  const sqlite = new Database(DB_PATH)
-  sqlite.pragma("foreign_keys = ON")
+  const SQL = await initSqlJs()
+
+  if (!existsSync(DB_PATH)) {
+    console.error("Database file not found. Run pnpm db:migrate:dev first.")
+    process.exit(1)
+  }
+
+  const dbBuffer = readFileSync(DB_PATH)
+  const sqlite = new SQL.Database(dbBuffer)
+
+  sqlite.run("PRAGMA foreign_keys = ON")
 
   const db = drizzle(sqlite, { schema })
 
@@ -18,7 +28,6 @@ function main() {
   const ownerId = uuid()
   const bucketId = uuid()
 
-  // Create workspace
   db.insert(schema.workspace).values({
     id: wsId,
     name: "Development Workspace",
@@ -29,7 +38,6 @@ function main() {
     updatedAt: new Date().toISOString(),
   }).run()
 
-  // Create workspace settings
   db.insert(schema.workspaceSettings).values({
     id: uuid(),
     workspaceId: wsId,
@@ -37,7 +45,6 @@ function main() {
     updatedAt: new Date().toISOString(),
   }).run()
 
-  // Create bucket
   db.insert(schema.bucket).values({
     id: bucketId,
     workspaceId: wsId,
@@ -46,7 +53,6 @@ function main() {
     createdAt: new Date().toISOString(),
   }).run()
 
-  // Create sample folders
   const rootFolderId = uuid()
 
   db.insert(schema.folder).values({
@@ -60,7 +66,6 @@ function main() {
     updatedAt: new Date().toISOString(),
   }).run()
 
-  // Create sample files
   const sampleFiles = [
     { name: "project-proposal.pdf", mime: "application/pdf", ext: ".pdf", size: 245000 },
     { name: "budget-2025.xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ext: ".xlsx", size: 89000 },
@@ -86,7 +91,6 @@ function main() {
     }).run()
   }
 
-  // Create sample tags
   const tagColors = ["#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"]
   const tagNames = ["Important", "Draft", "Final", "Archived", "Review"]
 
@@ -100,6 +104,9 @@ function main() {
     }).run()
   }
 
+  const data = sqlite.export()
+  writeFileSync(DB_PATH, Buffer.from(data))
+
   console.log(`Seeded workspace: ${wsId}`)
   console.log(`  Owner ID: ${ownerId}`)
   console.log(`  Files: ${sampleFiles.length}`)
@@ -108,4 +115,4 @@ function main() {
   sqlite.close()
 }
 
-main()
+main().catch(console.error)
