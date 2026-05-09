@@ -2,9 +2,10 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "../..",
+    "rootDir": ".",
     "types": ["@cloudflare/workers-types"],
     "noEmit": true
   },
-  "include": ["src", "../../packages/shared/src"]
+  "include": ["src"],
+  "references": [{ "path": "../../packages/shared" }]
 }

@@ -3,12 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": ".",
-    "baseUrl": ".",
     "jsx": "react-jsx",
+    "types": ["vite/client"],
     "paths": {
-      "@/*": ["./src/*"],
-      "@bucketdrive/shared": ["../../packages/shared/src"],
-      "@bucketdrive/shared/*": ["../../packages/shared/src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src", "vite-env.d.ts"]
