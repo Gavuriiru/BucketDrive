@@ -4,6 +4,7 @@ import { securityHeaders } from "./middleware/security-headers"
 import { createAuth } from "./lib/auth"
 import { createD1DB } from "./lib/db"
 import { filesHandler } from "./modules/files/files.handler"
+import { foldersHandler } from "./modules/folders/folders.handler"
 import { sharesHandler } from "./modules/shares/shares.handler"
 import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 
@@ -45,6 +46,7 @@ app.all("/api/auth/*", (c) => {
 app.get("/api/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }))
 
 app.route("/api/workspaces/:workspaceId/files", filesHandler)
+app.route("/api/workspaces/:workspaceId/folders", foldersHandler)
 app.route("/api/workspaces/:workspaceId/shares", sharesHandler)
 app.route("/api/workspaces", workspacesHandler)
 

@@ -15,7 +15,7 @@ verifiable result.
 | 3 | Auth frontend | Login page, session guard, user context | ✅ `4b78970` |
 | 4 | Storage | R2 provider with signed URLs | ✅ `101668b` |
 | 5 | Upload | End-to-end drag-drop upload with progress | ✅ `8f0d0c2` |
-| 6 | Explorer | Grid/list views with breadcrumbs | ⬜ |
+| 6 | Explorer | Grid/list views with breadcrumbs | ✅ |
 | 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ⬜ |
 | 8 | Folders | CRUD, folder tree, drag-drop move | ⬜ |
 | 9 | RBAC | Permission engine with can() checks | ⬜ |
@@ -299,7 +299,18 @@ git commit -m "feat: end-to-end file upload with progress"
 
 ## Day 6 — File Explorer (Grid & List Views)
 
-**Goal:** Files are displayed in a file explorer with grid/list toggle.
+> **Notes from implementation:**
+> - Created `packages/shared/src/contracts/folders.ts` with `ListFoldersRequest`, `ListFoldersResponse`, `BreadcrumbItemSchema`, `BreadcrumbResponse`
+> - Created `apps/api/src/modules/folders/folders.handler.ts` with `GET /` (list folders by parentFolderId) and `GET /:folderId/breadcrumbs` (walk parent chain to root)
+> - Registered folders route at `apps/api/src/index.ts` → `/api/workspaces/:workspaceId/folders`
+> - Updated seed to add 2 root-level files (welcome.txt, getting-started.pdf) alongside 5 in Documents folder (7 total)
+> - Created `explorer-store.ts` (Zustand): viewMode (grid/list), currentFolderId, sort, order, navigateTo/ToRoot actions
+> - Updated `useFiles` hook to accept sort/order/page/limit params; added `useFolders` and `useBreadcrumbs` hooks
+> - Created `file-grid.tsx` — responsive card grid (2-6 columns) showing folders (FolderOpen icon) first, then files (emoji icons)
+> - Created `breadcrumbs.tsx` — Home icon + workspace name + folder segments, clickable navigation
+> - Updated `file-list.tsx` to accept folders array, show folders first (clickable), maintain FileObject rows below
+> - Updated `dashboard.tsx` with breadcrumbs bar, grid/list toggle, folder navigation, combined files + folders display
+> - `ListFoldersRequest` supports `parentFolderId` param; `parentFolderId=null` filters root-level folders
 
 ### Step 6.1 — Implement list files handler
 

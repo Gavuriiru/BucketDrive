@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query"
-import type { FileObject } from "@bucketdrive/shared"
+import type { FileObject, Folder } from "@bucketdrive/shared"
 
 interface ApiError {
   code: string
@@ -101,21 +101,75 @@ interface DownloadUrlResponse {
   fileName: string
 }
 
+interface ListFoldersResponse {
+  data: Folder[]
+  meta: { page: number; limit: number; total: number; totalPages: number }
+}
+
+interface BreadcrumbItem {
+  id: string | null
+  name: string
+}
+
+export interface UseFilesOptions {
+  folderId?: string | null
+  sort?: "name" | "created_at" | "size" | "type"
+  order?: "asc" | "desc"
+  page?: number
+  limit?: number
+}
+
 export function useFiles(
   workspaceId: string | null,
-  options?: { folderId?: string | null },
+  options?: UseFilesOptions,
 ): UseQueryResult<ListFilesResponse> {
   return useQuery<ListFilesResponse>({
-    queryKey: ["files", workspaceId, options?.folderId],
+    queryKey: ["files", workspaceId, options],
     queryFn: () => {
       const params = new URLSearchParams()
       if (options?.folderId) params.set("folderId", options.folderId)
+      if (options?.sort) params.set("sort", options.sort)
+      if (options?.order) params.set("order", options.order)
+      if (options?.page) params.set("page", String(options.page))
+      if (options?.limit) params.set("limit", String(options.limit))
       const qs = params.toString()
       return api.get<ListFilesResponse>(
         `/api/workspaces/${workspaceId}/files${qs ? `?${qs}` : ""}`,
       )
     },
     enabled: !!workspaceId,
+  })
+}
+
+export function useFolders(
+  workspaceId: string | null,
+  parentFolderId?: string | null,
+): UseQueryResult<ListFoldersResponse> {
+  return useQuery<ListFoldersResponse>({
+    queryKey: ["folders", workspaceId, parentFolderId],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (parentFolderId) params.set("parentFolderId", parentFolderId)
+      const qs = params.toString()
+      return api.get<ListFoldersResponse>(
+        `/api/workspaces/${workspaceId}/folders${qs ? `?${qs}` : ""}`,
+      )
+    },
+    enabled: !!workspaceId,
+  })
+}
+
+export function useBreadcrumbs(
+  workspaceId: string | null,
+  folderId: string | null,
+) {
+  return useQuery<BreadcrumbItem[]>({
+    queryKey: ["breadcrumbs", workspaceId, folderId],
+    queryFn: () =>
+      api.get<BreadcrumbItem[]>(
+        `/api/workspaces/${workspaceId}/folders/${folderId}/breadcrumbs`,
+      ),
+    enabled: !!workspaceId && !!folderId,
   })
 }
 
@@ -182,7 +236,10 @@ export function useWorkspaces() {
 
 export type {
   FileObject,
+  Folder,
   ListFilesResponse,
+  ListFoldersResponse,
+  BreadcrumbItem,
   InitiateUploadRequest,
   InitiateUploadResponse,
   CompleteUploadRequest as CompleteUploadPayload,

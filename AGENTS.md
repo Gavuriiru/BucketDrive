@@ -99,6 +99,8 @@ Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `style`, `ci`
 
 Branch pattern: `feat/description`, `fix/description`, `docs/description`, etc.
 
+**After every implementation day:** update `docs/architecture/implementation-roadmap.md` with completed status and implementation notes, then commit all changes.
+
 ## Testing
 
 - Unit tests: co-located `*.test.ts` files, Vitest

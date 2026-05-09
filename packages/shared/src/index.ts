@@ -7,6 +7,7 @@ export * from "./schemas/user"
 export * from "./schemas/tag"
 
 export * from "./contracts/files"
+export * from "./contracts/folders"
 export * as ShareContracts from "./contracts/shares"
 export * as SearchContracts from "./contracts/search"
 

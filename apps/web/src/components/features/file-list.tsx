@@ -1,5 +1,5 @@
-import { File, Folder, MoreVertical } from "lucide-react"
-import type { FileObject } from "@bucketdrive/shared"
+import { Folder, MoreVertical, FolderOpen } from "lucide-react"
+import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 
 function formatSize(bytes: number): string {
   if (bytes === 0) return "0 B"
@@ -32,11 +32,13 @@ function getFileIcon(mimeType: string) {
 }
 
 interface FileListProps {
+  folders: FolderType[]
   files: FileObject[]
   isLoading: boolean
+  onFolderClick: (folderId: string) => void
 }
 
-export function FileList({ files, isLoading }: FileListProps) {
+export function FileList({ folders, files, isLoading, onFolderClick }: FileListProps) {
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -55,7 +57,7 @@ export function FileList({ files, isLoading }: FileListProps) {
     )
   }
 
-  if (files.length === 0) {
+  if (folders.length === 0 && files.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-16">
         <Folder className="h-12 w-12 text-text-tertiary" />
@@ -82,6 +84,35 @@ export function FileList({ files, isLoading }: FileListProps) {
           </tr>
         </thead>
         <tbody>
+          {folders.map((folder) => (
+            <tr
+              key={folder.id}
+              className="cursor-pointer border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover"
+              onClick={() => onFolderClick(folder.id)}
+            >
+              <td className="px-4 py-2.5">
+                <div className="flex items-center gap-3">
+                  <FolderOpen className="h-5 w-5 text-text-tertiary" />
+                  <span className="truncate text-sm font-medium text-text-primary">{folder.name}</span>
+                </div>
+              </td>
+              <td className="hidden px-4 py-2.5 text-sm text-text-tertiary md:table-cell">
+                —
+              </td>
+              <td className="hidden px-4 py-2.5 text-sm text-text-tertiary sm:table-cell">
+                {formatDate(folder.updatedAt)}
+              </td>
+              <td className="px-4 py-2.5">
+                <button
+                  className="rounded p-1 text-text-tertiary transition-colors hover:bg-surface-default hover:text-text-primary"
+                  aria-label="More options"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </td>
+            </tr>
+          ))}
           {files.map((file) => (
             <tr
               key={file.id}

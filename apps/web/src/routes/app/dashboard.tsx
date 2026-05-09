@@ -1,18 +1,45 @@
 import { useRef } from "react"
-import { Upload } from "lucide-react"
-import { useFiles, useWorkspaces } from "@/lib/api"
+import { Upload, LayoutGrid, List } from "lucide-react"
+import { useFiles, useFolders, useBreadcrumbs, useWorkspaces } from "@/lib/api"
 import { useUploadStore } from "@/stores/upload-store"
+import { useExplorerStore } from "@/stores/explorer-store"
 import { UploadDropZone } from "@/components/features/upload-drop-zone"
 import { UploadQueue } from "@/components/features/upload-queue"
 import { FileList } from "@/components/features/file-list"
+import { FileGrid } from "@/components/features/file-grid"
+import { Breadcrumbs } from "@/components/features/breadcrumbs"
+import type { BreadcrumbItem } from "@/lib/api"
 
 export function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const addFiles = useUploadStore((s) => s.addFiles)
+  const {
+    viewMode,
+    currentFolderId,
+    sort,
+    order,
+    setViewMode,
+    navigateTo,
+    navigateToRoot,
+  } = useExplorerStore()
+
   const { data: workspacesData, isLoading: wsLoading } = useWorkspaces()
 
   const workspaceId = workspacesData?.data?.[0]?.id ?? null
-  const { data: filesData, isLoading: filesLoading } = useFiles(workspaceId)
+  const workspaceName = workspacesData?.data?.[0]?.name ?? "Workspace"
+
+  const { data: filesData, isLoading: filesLoading } = useFiles(workspaceId, {
+    folderId: currentFolderId,
+    sort,
+    order,
+    page: 1,
+    limit: 100,
+  })
+
+  const { data: foldersData, isLoading: foldersLoading } = useFolders(workspaceId, currentFolderId)
+  const { data: breadcrumbsData } = useBreadcrumbs(workspaceId, currentFolderId)
+
+  const isLoading = filesLoading || foldersLoading
 
   const handleFileSelect = () => {
     fileInputRef.current?.click()
@@ -31,6 +58,21 @@ export function DashboardPage() {
   const handleFilesDrop = (files: File[]) => {
     addFiles(files)
   }
+
+  const handleFolderClick = (folderId: string) => {
+    navigateTo(folderId)
+  }
+
+  const handleBreadcrumbNavigate = (id: string | null) => {
+    if (id === null) {
+      navigateToRoot()
+    } else {
+      navigateTo(id)
+    }
+  }
+
+  const rootBreadcrumb: BreadcrumbItem[] = [{ id: null, name: workspaceName }]
+  const displayBreadcrumbs = currentFolderId && breadcrumbsData ? breadcrumbsData : rootBreadcrumb
 
   if (wsLoading) {
     return (
@@ -55,32 +97,81 @@ export function DashboardPage() {
 
   return (
     <div className="flex h-full flex-col p-6">
+      <div className="mb-4">
+        <Breadcrumbs
+          items={displayBreadcrumbs}
+          onNavigate={handleBreadcrumbNavigate}
+          currentFolderId={currentFolderId}
+        />
+      </div>
+
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">Files</h1>
           <p className="text-xs text-text-tertiary">
-            {workspacesData?.data?.[0]?.name ?? "Workspace"}
+            {filesData?.meta?.total ?? 0} files
+            {foldersData?.data?.length ? ` · ${foldersData.data.length} folders` : ""}
           </p>
         </div>
-        <button
-          onClick={handleFileSelect}
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
-        >
-          <Upload className="h-4 w-4" />
-          Upload
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          onChange={handleFilesChosen}
-          className="hidden"
-        />
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-border-muted bg-surface-default p-0.5">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`rounded-md p-1.5 transition-colors ${
+                viewMode === "grid"
+                  ? "bg-surface-active text-text-primary"
+                  : "text-text-tertiary hover:text-text-secondary"
+              }`}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`rounded-md p-1.5 transition-colors ${
+                viewMode === "list"
+                  ? "bg-surface-active text-text-primary"
+                  : "text-text-tertiary hover:text-text-secondary"
+              }`}
+              aria-label="List view"
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+          <button
+            onClick={handleFileSelect}
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+          >
+            <Upload className="h-4 w-4" />
+            Upload
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={handleFilesChosen}
+            className="hidden"
+          />
+        </div>
       </div>
 
       <div className="flex-1 space-y-4">
         <UploadDropZone onFilesDrop={handleFilesDrop} className="bg-surface-default" />
-        <FileList files={filesData?.data ?? []} isLoading={filesLoading} />
+        {viewMode === "grid" ? (
+          <FileGrid
+            folders={foldersData?.data ?? []}
+            files={filesData?.data ?? []}
+            isLoading={isLoading}
+            onFolderClick={handleFolderClick}
+          />
+        ) : (
+          <FileList
+            folders={foldersData?.data ?? []}
+            files={filesData?.data ?? []}
+            isLoading={isLoading}
+            onFolderClick={handleFolderClick}
+          />
+        )}
       </div>
 
       {workspaceId && <UploadQueue workspaceId={workspaceId} />}

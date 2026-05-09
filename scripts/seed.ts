@@ -75,6 +75,28 @@ async function main() {
   }).run()
 
   const sampleFiles = [
+    { name: "welcome.txt", mime: "text/plain", ext: ".txt", size: 1200 },
+    { name: "getting-started.pdf", mime: "application/pdf", ext: ".pdf", size: 560000 },
+  ]
+
+  for (const file of sampleFiles) {
+    db.insert(schema.fileObject).values({
+      id: uuid(),
+      workspaceId: wsId,
+      bucketId,
+      folderId: null,
+      ownerId,
+      storageKey: `workspace/${wsId}/files/${uuid()}`,
+      originalName: file.name,
+      mimeType: file.mime,
+      extension: file.ext,
+      sizeBytes: file.size,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }).run()
+  }
+
+  const folderFiles = [
     { name: "project-proposal.pdf", mime: "application/pdf", ext: ".pdf", size: 245000 },
     { name: "budget-2025.xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ext: ".xlsx", size: 89000 },
     { name: "team-photo.png", mime: "image/png", ext: ".png", size: 3200000 },
@@ -82,7 +104,7 @@ async function main() {
     { name: "presentation.pptx", mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation", ext: ".pptx", size: 5600000 },
   ]
 
-  for (const file of sampleFiles) {
+  for (const file of folderFiles) {
     db.insert(schema.fileObject).values({
       id: uuid(),
       workspaceId: wsId,
@@ -117,7 +139,7 @@ async function main() {
 
   console.log(`Seeded workspace: ${wsId}`)
   console.log(`  Owner ID: ${ownerId}`)
-  console.log(`  Files: ${sampleFiles.length}`)
+  console.log(`  Files: ${sampleFiles.length + folderFiles.length}`)
   console.log(`  Tags: ${tagNames.length}`)
 
   sqlite.close()
