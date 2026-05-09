@@ -11,7 +11,7 @@ verifiable result.
 | Day | Topic | Core Deliverable | Status |
 |---|---|---|---|
 | 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |
-| 2 | Auth backend | GitHub OAuth working via Better Auth | ✅ |
+| 2 | Auth backend | GitHub OAuth working via Better Auth | ✅ `f4f650e` |
 | 3 | Auth frontend | Login page, session guard, user context | ⬜ |
 | 4 | Storage | R2 provider with signed URLs | ⬜ |
 | 5 | Upload | End-to-end drag-drop upload with progress | ⬜ |
