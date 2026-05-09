@@ -1,0 +1,38 @@
+name = "bucketdrive-api"
+main = "apps/api/src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "bucketdrive-db"
+database_id = ""
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "bucketdrive-db-staging"
+database_id = ""
+
+# R2 Buckets
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "bucketdrive-files"
+
+# Environment Variables
+[vars]
+APP_URL = "http://localhost:5173"
+API_URL = "http://localhost:8787"
+
+[env.staging.vars]
+APP_URL = "https://staging.bucketdrive.dev"
+API_URL = "https://staging-api.bucketdrive.dev"
+
+[env.production.vars]
+APP_URL = "https://bucketdrive.app"
+API_URL = "https://api.bucketdrive.app"
+
+# Workers (background jobs)
+[env.production.workers]
+name = "bucketdrive-workers"
+main = "apps/workers/src/index.ts"
