@@ -285,6 +285,52 @@ export class SharesService {
       .run()
   }
 
+  private async checkShareRateLimit(shareId: string, ipAddress?: string): Promise<void> {
+    const db = getDB()
+    const now = Date.now()
+    const fifteenMinAgo = new Date(now - 15 * 60 * 1000).toISOString()
+    const thirtyMinAgo = new Date(now - 30 * 60 * 1000).toISOString()
+
+    if (ipAddress) {
+      const ipFailures = (
+        await db
+          .select({ count: sql<number>`count(*)` })
+          .from(shareAccessAttempt)
+          .where(
+            and(
+              eq(shareAccessAttempt.shareLinkId, shareId),
+              eq(shareAccessAttempt.ipAddress, ipAddress),
+              eq(shareAccessAttempt.success, false),
+              sql`${shareAccessAttempt.attemptedAt} >= ${fifteenMinAgo}`,
+            ),
+          )
+          .get()
+      )?.count ?? 0
+
+      if (ipFailures >= 5) {
+        throw new ShareError("SHARE_PASSWORD_RATE_LIMITED", "Too many failed attempts from this IP. Try again in 15 minutes.")
+      }
+    }
+
+    const totalFailures = (
+      await db
+        .select({ count: sql<number>`count(*)` })
+        .from(shareAccessAttempt)
+        .where(
+          and(
+            eq(shareAccessAttempt.shareLinkId, shareId),
+            eq(shareAccessAttempt.success, false),
+            sql`${shareAccessAttempt.attemptedAt} >= ${thirtyMinAgo}`,
+          ),
+        )
+        .get()
+    )?.count ?? 0
+
+    if (totalFailures >= 10) {
+      throw new ShareError("SHARE_LOCKED", "This share link has been temporarily locked due to too many failed attempts. Try again in 30 minutes.")
+    }
+  }
+
   async accessShare(
     shareId: string,
     storage: StorageProvider,
@@ -308,6 +354,8 @@ export class SharesService {
     }
 
     if (share.passwordHash) {
+      await this.checkShareRateLimit(shareId, options?.ipAddress)
+
       if (!options?.password) {
         throw new ShareError("PASSWORD_REQUIRED", "Password is required")
       }
@@ -438,6 +486,186 @@ export class SharesService {
       .from(folder)
       .where(and(eq(folder.id, resourceId), eq(folder.isDeleted, false)))
       .get()
+  }
+
+  async getShareInfo(shareId: string) {
+    const db = getDB()
+    const share = await db.select().from(shareLink).where(eq(shareLink.id, shareId)).get()
+
+    if (!share) {
+      throw new ShareError("SHARE_NOT_FOUND", "Share link not found")
+    }
+
+    let resourceName: string
+    if (share.resourceType === "file") {
+      const file = await db
+        .select()
+        .from(fileObject)
+        .where(eq(fileObject.id, share.resourceId))
+        .get()
+      resourceName = file?.originalName ?? "Unknown file"
+    } else {
+      const f = await db
+        .select()
+        .from(folder)
+        .where(eq(folder.id, share.resourceId))
+        .get()
+      resourceName = f?.name ?? "Unknown folder"
+    }
+
+    return {
+      id: share.id,
+      resourceType: share.resourceType as "file" | "folder",
+      resourceName,
+      shareType: share.shareType as "internal" | "external_direct" | "external_explorer",
+      hasPassword: share.passwordHash !== null,
+      isActive: share.isActive,
+      expiresAt: share.expiresAt,
+      createdAt: share.createdAt,
+    }
+  }
+
+  async browseShare(
+    shareId: string,
+    folderId: string | null,
+    options?: { password?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const db = getDB()
+    const now = new Date().toISOString()
+
+    const share = await db.select().from(shareLink).where(eq(shareLink.id, shareId)).get()
+
+    if (!share) {
+      throw new ShareError("SHARE_NOT_FOUND", "Share link not found")
+    }
+
+    if (!share.isActive) {
+      throw new ShareError("SHARE_REVOKED", "This share link has been revoked")
+    }
+
+    if (share.expiresAt && share.expiresAt < now) {
+      throw new ShareError("SHARE_EXPIRED", "This share link has expired")
+    }
+
+    if (share.resourceType !== "folder") {
+      throw new ShareError("INVALID_RESOURCE", "Browse is only available for folder shares")
+    }
+
+    if (share.passwordHash) {
+      await this.checkShareRateLimit(shareId, options?.ipAddress)
+
+      if (!options?.password) {
+        throw new ShareError("PASSWORD_REQUIRED", "Password is required")
+      }
+      const valid = await verifyPassword(options.password, share.passwordHash)
+      if (!valid) {
+        if (options?.ipAddress) {
+          await db
+            .insert(shareAccessAttempt)
+            .values({
+              id: crypto.randomUUID(),
+              shareLinkId: shareId,
+              ipAddress: options.ipAddress,
+              userAgent: options.userAgent ?? null,
+              success: false,
+              attemptedAt: now,
+            })
+            .run()
+        }
+        throw new ShareError("INVALID_PASSWORD", "Invalid password")
+      }
+    }
+
+    const targetFolderId = folderId ?? share.resourceId
+    const targetFolder = await db
+      .select()
+      .from(folder)
+      .where(and(eq(folder.id, targetFolderId), eq(folder.isDeleted, false)))
+      .get()
+
+    if (!targetFolder) {
+      throw new ShareError("NOT_FOUND", "Folder not found")
+    }
+
+    let currentId: string | null = targetFolderId
+    const breadcrumbs: Array<{ id: string; name: string }> = []
+
+    while (currentId) {
+      const f = await db
+        .select()
+        .from(folder)
+        .where(and(eq(folder.id, currentId), eq(folder.isDeleted, false)))
+        .get()
+
+      if (!f) break
+      breadcrumbs.unshift({ id: f.id, name: f.name })
+
+      if (currentId === share.resourceId) break
+      currentId = f.parentFolderId ?? null
+    }
+
+    if (breadcrumbs.length === 0 || breadcrumbs[0]?.id !== share.resourceId) {
+      throw new ShareError("NOT_FOUND", "Folder is not within the shared scope")
+    }
+
+    const folderFiles = await db
+      .select()
+      .from(fileObject)
+      .where(
+        and(
+          eq(fileObject.folderId, targetFolderId),
+          eq(fileObject.isDeleted, false),
+        ),
+      )
+      .all()
+
+    const subFolders = await db
+      .select()
+      .from(folder)
+      .where(
+        and(
+          eq(folder.parentFolderId, targetFolderId),
+          eq(folder.isDeleted, false),
+        ),
+      )
+      .all()
+
+    await db
+      .update(shareLink)
+      .set({
+        accessCount: (share.accessCount ?? 0) + 1,
+        lastAccessedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(shareLink.id, shareId))
+      .run()
+
+    if (options?.ipAddress) {
+      await db
+        .insert(shareAccessAttempt)
+        .values({
+          id: crypto.randomUUID(),
+          shareLinkId: shareId,
+          ipAddress: options.ipAddress,
+          userAgent: options.userAgent ?? null,
+          success: true,
+          attemptedAt: now,
+        })
+        .run()
+    }
+
+    return {
+      resourceName: targetFolder.name,
+      currentFolderId: targetFolderId === share.resourceId ? null : targetFolderId,
+      breadcrumbs,
+      files: folderFiles.map((ff) => ({
+        id: ff.id,
+        name: ff.originalName,
+        mimeType: ff.mimeType,
+        sizeBytes: ff.sizeBytes,
+      })),
+      folders: subFolders.map((sf) => ({ id: sf.id, name: sf.name })),
+    }
   }
 }
 

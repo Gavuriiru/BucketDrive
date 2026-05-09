@@ -46,3 +46,43 @@ export const ShareAccessResponse = z.object({
     )
     .optional(),
 })
+
+export const ShareInfoResponse = z.object({
+  id: z.string().uuid(),
+  resourceType: z.enum(["file", "folder"]),
+  resourceName: z.string(),
+  shareType: z.enum(["internal", "external_direct", "external_explorer"]),
+  hasPassword: z.boolean(),
+  isActive: z.boolean(),
+  expiresAt: z.string().datetime().nullable(),
+  createdAt: z.string(),
+})
+
+export const ShareBrowseRequest = z.object({
+  password: z.string().optional(),
+})
+
+export const ShareBrowseResponse = z.object({
+  resourceName: z.string(),
+  currentFolderId: z.string().uuid().nullable(),
+  breadcrumbs: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+    })
+  ),
+  files: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+      mimeType: z.string(),
+      sizeBytes: z.number(),
+    })
+  ),
+  folders: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+    })
+  ),
+})

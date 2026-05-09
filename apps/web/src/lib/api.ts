@@ -462,6 +462,72 @@ export function useDeleteShare(workspaceId: string | null) {
   })
 }
 
+interface ShareInfoData {
+  id: string
+  resourceType: "file" | "folder"
+  resourceName: string
+  shareType: "internal" | "external_direct" | "external_explorer"
+  hasPassword: boolean
+  isActive: boolean
+  expiresAt: string | null
+  createdAt: string
+}
+
+interface ShareAccessResult {
+  resourceType: "file" | "folder"
+  resourceName: string
+  signedUrl?: string
+  files?: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }>
+  folders?: Array<{ id: string; name: string }>
+}
+
+interface ShareBrowseResult {
+  resourceName: string
+  currentFolderId: string | null
+  breadcrumbs: Array<{ id: string; name: string }>
+  files: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }>
+  folders: Array<{ id: string; name: string }>
+}
+
+export function useShareInfo(shareId: string | null): UseQueryResult<ShareInfoData> {
+  return useQuery<ShareInfoData>({
+    queryKey: ["shareInfo", shareId],
+    queryFn: () => api.get<ShareInfoData>(`/api/shares/${shareId}`),
+    enabled: !!shareId,
+    retry: (failureCount, error) => {
+      const status = (error as { status?: number }).status
+      if (status === 404 || status === 410 || status === 423) return false
+      return failureCount < 3
+    },
+  })
+}
+
+export function useAccessShare(shareId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: { password?: string }) =>
+      api.post<ShareAccessResult>(`/api/shares/${shareId}/access`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shareInfo", shareId] })
+    },
+  })
+}
+
+export function useBrowseShare(shareId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: { folderId?: string; password: string }) =>
+      api.get<ShareBrowseResult>(
+        `/api/shares/${shareId}/browse?folderId=${params.folderId ?? ""}&password=${encodeURIComponent(params.password)}`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shareBrowse", shareId] })
+    },
+  })
+}
+
 export type {
   FileObject,
   Folder,
@@ -476,4 +542,7 @@ export type {
   ShareLink,
   CreateShareRequest,
   ListSharesResponse,
+  ShareInfoData,
+  ShareAccessResult,
+  ShareBrowseResult,
 }

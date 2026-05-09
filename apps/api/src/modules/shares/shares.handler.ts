@@ -11,6 +11,8 @@ import {
   UpdateShareRequest,
   ShareAccessRequest,
   ShareAccessResponse,
+  ShareInfoResponse,
+  ShareBrowseResponse,
 } from "@bucketdrive/shared"
 import { SharesService, ShareError } from "./shares.service"
 
@@ -158,6 +160,27 @@ shares.delete("/:shareId", requirePermission("shares.revoke"), async (c) => {
 
 const publicShares = new Hono<{ Bindings: SharesEnv }>()
 
+publicShares.get("/:shareId", async (c) => {
+  const shareId = c.req.param("shareId")
+  if (!shareId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "shareId is required" }, 400 as never)
+  }
+
+  const service = new SharesService()
+  try {
+    const result = await service.getShareInfo(shareId)
+    return c.json(ShareInfoResponse.parse(result))
+  } catch (err) {
+    if (err instanceof ShareError) {
+      const statusMap: Record<string, number> = {
+        SHARE_NOT_FOUND: 404,
+      }
+      return c.json({ code: err.code, message: err.message }, statusMap[err.code] as never ?? 400)
+    }
+    throw err
+  }
+})
+
 publicShares.post("/:shareId/access", async (c) => {
   const shareId = c.req.param("shareId")
   if (!shareId) {
@@ -185,7 +208,47 @@ publicShares.post("/:shareId/access", async (c) => {
         SHARE_EXPIRED: 410,
         PASSWORD_REQUIRED: 401,
         INVALID_PASSWORD: 403,
+        SHARE_LOCKED: 423,
+        SHARE_PASSWORD_RATE_LIMITED: 429,
         NOT_FOUND: 404,
+      }
+      return c.json({ code: err.code, message: err.message }, statusMap[err.code] as never ?? 400)
+    }
+    throw err
+  }
+})
+
+publicShares.get("/:shareId/browse", async (c) => {
+  const shareId = c.req.param("shareId")
+  if (!shareId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "shareId is required" }, 400 as never)
+  }
+
+  const folderId = c.req.query("folderId") ?? null
+  const password = c.req.query("password") ?? undefined
+  const ipAddress = c.req.header("CF-Connecting-IP") ?? c.req.header("X-Forwarded-For") ?? "unknown"
+  const userAgent = c.req.header("User-Agent") ?? undefined
+
+  const service = new SharesService()
+  try {
+    const result = await service.browseShare(shareId, folderId, {
+      password,
+      ipAddress,
+      userAgent,
+    })
+    return c.json(ShareBrowseResponse.parse(result))
+  } catch (err) {
+    if (err instanceof ShareError) {
+      const statusMap: Record<string, number> = {
+        SHARE_NOT_FOUND: 404,
+        SHARE_REVOKED: 410,
+        SHARE_EXPIRED: 410,
+        PASSWORD_REQUIRED: 401,
+        INVALID_PASSWORD: 403,
+        SHARE_LOCKED: 423,
+        SHARE_PASSWORD_RATE_LIMITED: 429,
+        NOT_FOUND: 404,
+        INVALID_RESOURCE: 400,
       }
       return c.json({ code: err.code, message: err.message }, statusMap[err.code] as never ?? 400)
     }

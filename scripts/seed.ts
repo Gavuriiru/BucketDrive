@@ -5,6 +5,7 @@ import * as schema from "@bucketdrive/shared/db/schema"
 import { v4 as uuid } from "uuid"
 import { readFileSync, writeFileSync, existsSync } from "fs"
 import { resolve } from "path"
+import { createHash, randomBytes } from "crypto"
 
 const DB_PATH = resolve(__dirname, "../apps/api/.db/local.sqlite")
 
@@ -199,6 +200,28 @@ async function main() {
     }).run()
 
     console.log(`  Seed share ID: ${shareId} (shared ${firstFile.name})`)
+
+    const externalPassword = "test123"
+    const extSalt = randomBytes(16).toString("hex")
+    const extHash = createHash("sha256").update(externalPassword + extSalt).digest("hex")
+    const extPasswordHash = `${extSalt}:${extHash}`
+
+    const extShareId = uuid()
+    db.insert(schema.shareLink).values({
+      id: extShareId,
+      workspaceId: wsId,
+      resourceType: "file",
+      resourceId: firstFile.id,
+      shareType: "external_direct",
+      createdBy: ownerId,
+      passwordHash: extPasswordHash,
+      isActive: true,
+      accessCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }).run()
+
+    console.log(`  External share ID: ${extShareId} (password: ${externalPassword})`)
   }
 
   const data = sqlite.export()

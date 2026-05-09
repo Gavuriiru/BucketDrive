@@ -9,7 +9,7 @@ verifiable result.
 ## Status Overview
 
 | Day | Topic | Core Deliverable | Status |
-|---|---|---|---|
+|---|---|---|---|---|
 | 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |
 | 2 | Auth backend | GitHub OAuth working via Better Auth | ✅ `f4f650e` |
 | 3 | Auth frontend | Login page, session guard, user context | ✅ `4b78970` |
@@ -20,7 +20,7 @@ verifiable result.
 | 8 | Folders | CRUD, folder tree, drag-drop move | ✅ |
 | 9 | RBAC | Permission engine with can() checks | ✅ |
 | 10 | Internal shares | File sharing between workspace members | ✅ |
-| 11 | External shares | Public links with password + rate-limit | ⬜ |
+| 11 | External shares | Public links with password + rate-limit | ✅ |
 | 12 | Share management | User dashboard + admin oversight | ⬜ |
 | 13 | Trash | Soft delete, restore, auto-cleanup | ⬜ |
 | 14 | Search | FTS5 full-text with filters | ⬜ |
@@ -573,9 +573,18 @@ git commit -m "feat(shares): internal file sharing between workspace members"
 
 ---
 
-## Day 11 — External Sharing
+## Day 11 — External Sharing ✅
 
 **Goal:** Anyone with a link can view/download shared files (optional password).
+
+> **Notes from implementation:**
+> - Rate limiting uses existing `shareAccessAttempt` table — 5 failed attempts per IP in 15 min → `SHARE_PASSWORD_RATE_LIMITED` (429), 10+ total failures in 30 min → `SHARE_LOCKED` (423). No migration needed.
+> - Added `GET /api/shares/:shareId` for public share metadata (no password needed, used by frontend to render) and `GET /api/shares/:shareId/browse?folderId=x&password=y` for navigating shared folders.
+> - Created `ShareInfoResponse`, `ShareBrowseRequest`, `ShareBrowseResponse` Zod contracts in shared package.
+> - Frontend: `routes/share.$shareId.tsx` (standalone, no auth guard) with password prompt, direct download view, and folder browser with breadcrumbs.
+> - Updated `ShareModal` with share type selector (Internal / External Direct / External Explorer), password input, expiration dropdown. Link format differs: `/shared/:id` for internal, `/share/:id` for external.
+> - Added `useShareInfo`, `useAccessShare`, `useBrowseShare` hooks to `lib/api.ts`.
+> - Seed data now includes an external_direct share with password "test123" for testing.
 
 ### Step 11.1 — Implement external share creation
 
