@@ -232,11 +232,47 @@ Avoid:
 Password protection is optional.
 
 Rules:
-- passwords must be hashed
+- passwords must be hashed (bcrypt with salt rounds >= 12)
 - passwords must NEVER be stored in plaintext
-- password attempts should be rate limited
+- password attempts must be rate limited
+- password validation occurs server-side only
 
-Password validation occurs server-side only.
+---
+
+# Password Brute-Force Protection
+
+Password-protected share links are vulnerable to brute-force attacks.
+The system must implement layered protection:
+
+## Rate Limiting Rules
+
+| Attempts | Time Window | Consequence |
+|---|---|---|
+| 5 failed | 15 minutes | IP temporarily blocked from that share link |
+| 10 failed (total) | Lifetime | Share link locked for 30 minutes |
+| 50 failed (global) | 1 hour | IP temporarily banned across all share links for one week |
+
+## Lock Mechanism
+
+When a share link is locked due to brute-force:
+1. All access attempts return `403 Forbidden` with `{"code": "SHARE_LOCKED"}`
+2. The share creator receives a notification (if notifications enabled)
+3. Admin users can see locked shares in the share dashboard
+4. Lock auto-expires after 30 minutes
+
+## Tracking
+
+Failed and successful attempts are recorded in `ShareAccessAttempt`:
+- `ip_address`: hashed for privacy, used for rate-limit windows
+- `success: boolean`: successful password entry resets the failure counter for that IP
+- `attempted_at`: timestamp for sliding window calculations
+
+## Password Reset
+
+Share creators may regenerate the password at any time:
+- Old password is invalidated immediately
+- Active signed URLs remain valid until expiry (they were already authorized)
+- Reset generates an audit log event
 
 ---
 

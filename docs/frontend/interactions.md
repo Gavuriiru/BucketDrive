@@ -136,6 +136,7 @@ Selection states must remain consistent across:
 Enter           → Open
 Delete          → Delete
 Backspace       → Navigate back
+Ctrl/Cmd + Z    → Undo (move, rename, soft delete)
 Ctrl/Cmd + A    → Select all
 Ctrl/Cmd + C    → Copy
 Ctrl/Cmd + X    → Cut
@@ -144,8 +145,10 @@ Ctrl/Cmd + F    → Search
 Ctrl/Cmd + K    → Command palette
 Space            → Preview
 Escape           → Clear selection / close modal
-Arrow keys       → Navigation
-Shift + arrows   → Multi-select
+Arrow keys       → Navigation (grid/list)
+Shift + arrows   → Multi-select range
+Arrow Left/Right → Navigate in preview mode (previous/next file)
+Tab / Shift+Tab  → Move focus between panels
 ```
 
 ---
@@ -248,6 +251,33 @@ Invalid targets must:
 
 ---
 
+# External Drag and Drop (OS to Browser)
+
+Users may drag files and folders from their operating system directly into the browser.
+
+## File Drag from OS
+
+- Dragging files from Finder/Explorer into the explorer area initiates upload
+- Multiple files dragged together create a batch upload
+- Files are uploaded to the currently active folder
+- Upload progress shows in the upload queue immediately
+
+## Folder Drag from OS
+
+- Dragging a folder from the OS must preserve the folder structure
+- The folder and its contents (including subfolders) are recreated as virtual folders
+- Files maintain their relative paths within the uploaded folder
+- Empty folders are also created (not skipped)
+- Max depth: 50 levels (safety limit against path explosion)
+
+## OS Drop Visual Feedback
+
+- Drop zone highlights when files/folders hover over the explorer area
+- Valid drop zone: subtle green border pulse
+- Invalid drop (no write permission): red border flash + toast explaining why
+
+---
+
 # Upload Interactions
 
 Uploads must support:
@@ -317,6 +347,40 @@ Search results must:
 - preserve selection behavior
 - preserve context menus
 - preserve keyboard interactions
+
+---
+
+# Inline Preview (Space)
+
+Pressing Space on a selected file opens an inline preview panel without leaving the explorer.
+
+## Preview Panel Behavior
+
+- Opens as a slide-in panel on the right side (or modal on narrow screens)
+- Displays the file content inline: images, PDFs, video, audio, markdown, code
+- Left/Right arrows navigate to the previous/next file in the current folder
+- Escape closes the preview and returns focus to the selected file in the explorer
+- Preview does NOT change the URL (stays on the same route)
+
+## Supported Preview Types
+
+| Type | Preview |
+|---|---|
+| Images (png, jpg, gif, webp, svg) | Rendered directly with zoom controls |
+| PDF | Embedded viewer (page navigation) |
+| Video (mp4, webm) | HTML5 video player with controls |
+| Audio (mp3, wav, ogg) | Audio player with waveform |
+| Markdown (.md) | Rendered markdown with syntax highlighting |
+| Code (.ts, .js, .json, .py, etc.) | Syntax-highlighted code view |
+| Text (.txt, .csv) | Plain text with line numbers |
+| Unknown types | File metadata card (size, type, date, checksum) |
+
+## Preview Loading
+
+- Previews use temporary signed URLs (short-lived)
+- Image/audio/video previews stream directly from R2
+- Text/code/markdown previews fetch content via Worker (can be cached)
+- Skeleton loader shown while content loads
 
 ---
 

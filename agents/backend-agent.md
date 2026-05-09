@@ -102,8 +102,8 @@ Avoid:
 
 Preferred stack:
 - TypeScript
-- Hono or NestJS
-- PostgreSQL
+- Hono (Cloudflare Workers)
+- D1 / SQLite
 - Drizzle ORM
 - Zod
 

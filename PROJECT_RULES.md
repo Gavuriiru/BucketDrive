@@ -29,6 +29,44 @@ The product experience must feel:
 
 ---
 
+# Technology Stack
+
+## Frontend
+- React 19 + TypeScript + Vite (SPA)
+- TailwindCSS v4 + shadcn/ui
+- TanStack Router (type-safe routing)
+- TanStack Query (server state)
+- Zustand (client state)
+- @dnd-kit (drag and drop)
+- React Hook Form + Zod (forms)
+
+## Backend
+- Cloudflare Workers + Hono (API framework)
+- Better Auth (authentication, runs in Worker)
+- Drizzle ORM (database, typed queries)
+- Zod (runtime validation)
+
+## Database
+- Cloudflare D1 (production)
+- SQLite via better-sqlite3 (local development)
+- Drizzle Kit (migrations)
+
+## Storage
+- Cloudflare R2 (primary, via StorageProvider abstraction)
+- Future: S3, MinIO, Backblaze B2, Wasabi
+
+## Infrastructure
+- Cloudflare Pages (frontend hosting)
+- Cloudflare Workers (API + background jobs)
+- Monorepo: Turborepo + pnpm workspaces
+
+## ADRs
+- [ADR-001](docs/decisions/ADR-001-vite-spa.md): Vite SPA vs Next.js
+- [ADR-002](docs/decisions/ADR-002-better-auth.md): Better Auth as auth provider
+- [ADR-003](docs/decisions/ADR-003-drizzle-d1-sqlite.md): Drizzle Kit migration strategy
+
+---
+
 # Core Principles
 
 ## 1. UX First
@@ -138,12 +176,15 @@ Never trust:
 ## Frontend Rules
 
 Frontend stack:
-- Next.js App Router
+- React 19 + TypeScript + Vite
 - TailwindCSS
 - shadcn/ui
 - Framer Motion
 - TanStack Query
+- TanStack Router
 - Zustand
+- React Hook Form
+- Zod
 
 Required:
 - dark mode
@@ -386,3 +427,59 @@ All important features must include:
 - edge cases
 
 Architecture decisions must be documented using ADRs.
+
+---
+
+## Git Workflow
+
+### Branch Naming
+
+Use descriptive branch names with prefixes:
+
+```txt
+feat/file-explorer-grid-view
+feat/share-password-protection
+fix/upload-progress-bar
+fix/drag-drop-safari
+docs/api-contracts
+docs/adr-auth-provider
+chore/update-dependencies
+refactor/storage-provider-interface
+```
+
+Never use:
+- generic names (`fix`, `update`, `wip`)
+- personal names as branches
+
+### Conventional Commits
+
+All commits must follow Conventional Commits format:
+
+```txt
+<type>(<scope>): <description>
+
+feat(explorer): add grid view with thumbnail previews
+feat(shares): implement password-protected share links
+fix(upload): correct progress bar for multipart uploads
+docs(api): document file endpoints with Zod schemas
+chore(deps): update Drizzle to latest version
+refactor(storage): extract R2 adapter to shared package
+```
+
+Allowed types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `style`, `ci`
+
+### PR Rules
+
+- One feature or fix per PR
+- PR title must follow Conventional Commits format
+- All PRs require a description summarizing the change
+- Reference related issues or ADRs when applicable
+- CI must pass (lint + typecheck) before merge
+- Prefer squash merge for clean history
+
+### Commit Hygiene
+
+- Atomic commits: one logical change per commit
+- No commit should break the build
+- Never commit secrets, .env files, or credentials
+- Large files (>1MB) should use Git LFS or be excluded

@@ -50,8 +50,7 @@ Never sacrifice accessibility for aesthetics.
 # Required Stack
 
 Frontend stack:
-- Next.js App Router
-- TypeScript
+- React 19 + TypeScript + Vite (SPA)
 - TailwindCSS
 - shadcn/ui
 - Framer Motion

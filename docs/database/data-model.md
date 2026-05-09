@@ -80,9 +80,35 @@ id
 name
 slug
 owner_id
+storage_quota_bytes
 created_at
 updated_at
 ```
+
+Quotas are workspace-level limits on total storage usage.
+
+---
+
+# WorkspaceSettings
+
+Represents configurable workspace preferences.
+
+## Fields
+
+```txt
+id
+workspace_id
+default_share_expiration_days
+enable_public_signup
+allowed_mime_types
+max_file_size_bytes
+branding_logo_url
+branding_name
+created_at
+updated_at
+```
+
+Settings control behavioral and security preferences.
 
 ---
 
@@ -307,10 +333,39 @@ share_type
 created_by
 password_hash
 expires_at
+access_count
+last_accessed_at
 is_active
 created_at
 updated_at
 ```
+
+`access_count` tracks the number of times the share link has been accessed.
+`last_accessed_at` records the most recent access timestamp for analytics.
+
+---
+
+# ShareAccessAttempt
+
+Represents password attempts on password-protected share links.
+
+## Fields
+
+```txt
+id
+share_link_id
+ip_address
+user_agent
+success
+attempted_at
+```
+
+Used for rate limiting and brute-force protection on public share links.
+
+Rules:
+- Max 5 failed attempts per IP per 15-minute window
+- After 10 consecutive failures, the share link is temporarily locked for 30 minutes
+- Successful password entry resets the failure counter
 
 ---
 
@@ -427,6 +482,7 @@ Workspace
  ├── Folders
  ├── Files
  ├── Shares
+ ├── Settings
  └── AuditLogs
 ```
 
@@ -462,7 +518,8 @@ User
 
 ```txt
 ShareLink
- └── SharePermissions
+ ├── SharePermissions
+ └── ShareAccessAttempts
 ```
 
 ---

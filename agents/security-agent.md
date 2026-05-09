@@ -82,9 +82,10 @@ Avoid permissive defaults.
 # Authentication Rules
 
 Supported authentication:
-- OAuth
-- session-based auth
-- Cloudflare Zero Trust integration
+- Better Auth (primary, runs in Cloudflare Worker, D1-backed)
+- OAuth (GitHub, Google via Better Auth)
+- Session-based auth (HTTPOnly cookies)
+- MFA compatibility (future)
 
 Authentication systems must support:
 - secure cookies

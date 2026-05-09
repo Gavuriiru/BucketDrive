@@ -58,10 +58,10 @@ Responsibilities:
 - sharing management
 
 Tech stack:
-- Next.js App Router
-- React
+- React 19 + TypeScript + Vite (SPA)
 - TailwindCSS
 - shadcn/ui
+- TanStack Router
 - Zustand
 - TanStack Query
 
@@ -381,16 +381,38 @@ All sensitive operations require:
 
 # Authentication Architecture
 
+Authentication provider: **Better Auth** (runs in Cloudflare Worker, D1-backed)
+
 Supported methods:
-- OAuth
-- Cloudflare Zero Trust
-- session authentication
+- OAuth (GitHub, Google)
+- Email/password credentials
+- Session-based authentication (HTTPOnly cookies)
 
 Authentication responsibilities:
-- identity validation
-- session management
-- secure cookies
-- MFA compatibility
+- Identity validation
+- Session management (creation, refresh, revocation)
+- Multi-workspace membership resolution
+- Secure cookies (HTTPOnly, Secure, SameSite=Strict)
+- MFA compatibility (future)
+
+Better Auth integrates via Hono middleware:
+
+```txt
+Request
+    ↓
+Better Auth middleware (validate session cookie)
+    ↓
+Extract user + workspace context
+    ↓
+RBAC middleware (validate permissions)
+    ↓
+Route handler
+```
+
+When external identity providers are needed, Better Auth supports OAuth2/OIDC with
+GitHub and Google built-in, extensible to any OIDC provider.
+
+For ADR details, see: docs/decisions/ADR-002-better-auth.md
 
 ---
 
@@ -438,7 +460,20 @@ Capabilities:
 - expiration
 - direct download
 
----
+Flow with password protection:
+
+```txt
+External User
+    ↓
+Share Landing Page
+    ↓
+Password Prompt (if protected)
+    ↓
+Brute-Force Validation (max 5 attempts / 15 min)
+    ↓
+Access Granted → Signed Download URL
+Access Denied  → 403 (or lock after 10 failures)
+```
 
 ## External Explorer Sharing
 
