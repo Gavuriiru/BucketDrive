@@ -24,7 +24,7 @@ const folders = new Hono<{ Bindings: FoldersEnv; Variables: FoldersVariables }>(
 
 folders.use("*", authMiddleware)
 
-folders.get("/", requirePermission("files.read"), async (c) => {
+folders.get("/", requirePermission("folders.read"), async (c) => {
   const workspaceId = c.req.param("workspaceId")
   if (!workspaceId) {
     return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
@@ -64,7 +64,7 @@ folders.get("/", requirePermission("files.read"), async (c) => {
   })
 })
 
-folders.get("/:folderId/breadcrumbs", requirePermission("files.read"), async (c) => {
+folders.get("/:folderId/breadcrumbs", requirePermission("folders.read"), async (c) => {
   const workspaceId = c.req.param("workspaceId")
   const folderId = c.req.param("folderId")
 

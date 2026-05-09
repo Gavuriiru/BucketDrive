@@ -18,7 +18,7 @@ verifiable result.
 | 6 | Explorer | Grid/list views with breadcrumbs | ✅ |
 | 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ✅ |
 | 8 | Folders | CRUD, folder tree, drag-drop move | ✅ |
-| 9 | RBAC | Permission engine with can() checks | ⬜ |
+| 9 | RBAC | Permission engine with can() checks | ✅ |
 | 10 | Internal shares | File sharing between workspace members | ⬜ |
 | 11 | External shares | Public links with password + rate-limit | ⬜ |
 | 12 | Share management | User dashboard + admin oversight | ⬜ |
@@ -470,9 +470,20 @@ git commit -m "feat: folder CRUD, folder tree, drag-drop to move"
 
 ---
 
-## Day 9 — RBAC Engine
+## Day 9 — RBAC Engine ✅
 
 **Goal:** Permission system enforces access control.
+
+> **Notes from implementation:**
+> - Created `packages/shared/src/rbac/permissions.ts` with `Permission` Zod enum (30 permissions) and `ROLE_PERMISSIONS` mapping per role
+> - Created `packages/shared/src/rbac/can.ts` with `can(role, permission, resourceOwnerId?, userId?)` — pure function, no DB dependency
+> - Owner: all permissions; Admin: all except workspace.delete/transfer; Editor: read, upload, rename, move, copy, share, tag, favorite + shares management (NOT delete); Viewer: read only
+> - Ownership override: editors can delete/restore their own files/folders even though the role doesn't include those permissions
+> - Updated `apps/api/src/middleware/rbac.ts`: queries `workspaceMember` for the user's role, calls `can()`, returns 403 `FORBIDDEN` if denied, 403 `WORKSPACE_ACCESS_DENIED` if not a member
+> - Fixed `folders.handler.ts`: changed GET / and GET /:folderId/breadcrumbs from `requirePermission("files.read")` to `requirePermission("folders.read")`
+> - 19 unit tests in `packages/shared/src/rbac/__tests__/can.test.ts` — all passing
+> - Seed now creates 4 members (owner, admin, editor, viewer) for multi-role testing
+> - Added `vitest` devDependency and `test:unit` script to shared package
 
 ### Step 9.1 — Implement permission engine
 

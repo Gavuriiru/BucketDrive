@@ -45,11 +45,39 @@ async function main() {
     updatedAt: new Date().toISOString(),
   }).run()
 
+  const adminId = uuid()
+  const editorId = uuid()
+  const viewerId = uuid()
+
   db.insert(schema.workspaceMember).values({
     id: uuid(),
     workspaceId: wsId,
     userId: ownerId,
     role: "owner",
+    createdAt: new Date().toISOString(),
+  }).run()
+
+  db.insert(schema.workspaceMember).values({
+    id: uuid(),
+    workspaceId: wsId,
+    userId: adminId,
+    role: "admin",
+    createdAt: new Date().toISOString(),
+  }).run()
+
+  db.insert(schema.workspaceMember).values({
+    id: uuid(),
+    workspaceId: wsId,
+    userId: editorId,
+    role: "editor",
+    createdAt: new Date().toISOString(),
+  }).run()
+
+  db.insert(schema.workspaceMember).values({
+    id: uuid(),
+    workspaceId: wsId,
+    userId: viewerId,
+    role: "viewer",
     createdAt: new Date().toISOString(),
   }).run()
 
@@ -139,6 +167,9 @@ async function main() {
 
   console.log(`Seeded workspace: ${wsId}`)
   console.log(`  Owner ID: ${ownerId}`)
+  console.log(`  Admin ID: ${adminId}`)
+  console.log(`  Editor ID: ${editorId}`)
+  console.log(`  Viewer ID: ${viewerId}`)
   console.log(`  Files: ${sampleFiles.length + folderFiles.length}`)
   console.log(`  Tags: ${tagNames.length}`)
 

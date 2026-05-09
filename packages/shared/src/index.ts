@@ -11,4 +11,6 @@ export * from "./contracts/folders"
 export * as ShareContracts from "./contracts/shares"
 export * as SearchContracts from "./contracts/search"
 
+export * from "./rbac"
+
 export * from "./db/schema"
