@@ -4,7 +4,7 @@ import { FolderTree } from "@/components/features/folder-tree"
 
 const navItems = [
   { to: "/dashboard", icon: Files, label: "Files" },
-  { to: "/dashboard", icon: Share2, label: "Shared" },
+  { to: "/shared", icon: Share2, label: "Shared" },
   { to: "/dashboard", icon: Trash2, label: "Trash" },
   { to: "/dashboard", icon: HardDrive, label: "Storage" },
   { to: "/dashboard", icon: Settings, label: "Settings" },

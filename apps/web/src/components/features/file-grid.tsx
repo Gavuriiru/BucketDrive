@@ -48,6 +48,7 @@ interface FolderGridCardProps {
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextMove?: (id: string, type: "file" | "folder") => void
+  onContextShare?: (id: string, type: "file" | "folder") => void
   dndEnabled: boolean
 }
 
@@ -62,6 +63,7 @@ function FolderGridCard({
   onContextRename,
   onContextDelete,
   onContextMove,
+  onContextShare,
   dndEnabled,
 }: FolderGridCardProps) {
   const dragId = `folder-${folder.id}`
@@ -85,6 +87,7 @@ function FolderGridCard({
       onRename={() => onContextRename?.(folder.id, "folder")}
       onDelete={() => onContextDelete?.(folder.id, "folder")}
       onMove={() => onContextMove?.(folder.id, "folder")}
+      onShare={() => onContextShare?.(folder.id, "folder")}
       onCopy={() => {
         useExplorerStore.getState().setClipboard({
           action: "copy",
@@ -140,6 +143,7 @@ interface FileGridCardProps {
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextFavorite?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
+  onContextShare?: (id: string, type: "file" | "folder") => void
   dndEnabled: boolean
 }
 
@@ -155,6 +159,7 @@ function FileGridCard({
   onContextDelete,
   onContextFavorite,
   onContextMove,
+  onContextShare,
   dndEnabled,
 }: FileGridCardProps) {
   const dragId = `file-${file.id}`
@@ -174,6 +179,7 @@ function FileGridCard({
       onDelete={() => onContextDelete?.(file.id, "file")}
       onFavorite={() => onContextFavorite?.(file.id)}
       onMove={() => onContextMove?.(file.id, "file")}
+      onShare={() => onContextShare?.(file.id, "file")}
       onCopy={() => {
         useExplorerStore.getState().setClipboard({
           action: "copy",
@@ -228,6 +234,7 @@ interface FileGridProps {
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextFavorite?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
+  onContextShare?: (id: string, type: "file" | "folder") => void
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
 }
 
@@ -243,6 +250,7 @@ export function FileGrid({
   onContextDelete,
   onContextFavorite,
   onContextMove,
+  onContextShare,
   onItemDrop,
 }: FileGridProps) {
   const selectedFileIds = useExplorerStore((s) => s.selectedFileIds)
@@ -291,6 +299,7 @@ export function FileGrid({
           onContextRename={onContextRename}
           onContextDelete={onContextDelete}
           onContextMove={onContextMove}
+          onContextShare={onContextShare}
           dndEnabled={dndEnabled}
         />
       ))}
@@ -310,6 +319,7 @@ export function FileGrid({
             onContextDelete={onContextDelete}
             onContextFavorite={onContextFavorite}
             onContextMove={onContextMove}
+            onContextShare={onContextShare}
             dndEnabled={dndEnabled}
           />
         )

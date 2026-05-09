@@ -9,6 +9,7 @@ import { UploadQueue } from "@/components/features/upload-queue"
 import { FileList } from "@/components/features/file-list"
 import { FileGrid } from "@/components/features/file-grid"
 import { Breadcrumbs } from "@/components/features/breadcrumbs"
+import { ShareModal } from "@/components/features/share-modal"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
 import { DndContext, DragOverlay } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
@@ -60,6 +61,12 @@ export function DashboardPage() {
   const moveFileMutation = useMoveFile(workspaceId)
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [shareModal, setShareModal] = useState<{
+    open: boolean
+    resourceId: string
+    resourceType: "file" | "folder"
+    resourceName: string
+  }>({ open: false, resourceId: "", resourceType: "file", resourceName: "" })
 
   const parseDragId = (dragId: string): { type: "file" | "folder"; id: string } | null => {
     const sep = dragId.indexOf("-")
@@ -246,6 +253,15 @@ export function DashboardPage() {
     [workspaceId, updateFolderMutation],
   )
 
+  const handleContextShare = useCallback(
+    (id: string, type: "file" | "folder") => {
+      const item = type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
+      const name = item ? ("originalName" in item ? item.originalName : item.name) : ""
+      setShareModal({ open: true, resourceId: id, resourceType: type, resourceName: name })
+    },
+    [files, folders],
+  )
+
   const handleFilesChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (files.length > 0) {
@@ -412,6 +428,7 @@ export function DashboardPage() {
                 console.warn("Favorites coming in Day 15", id)
               }}
               onContextMove={handleContextMove}
+              onContextShare={handleContextShare}
               onItemDrop={handleItemDrop}
             />
           ) : (
@@ -436,6 +453,7 @@ export function DashboardPage() {
                 console.warn("Favorites coming in Day 15", id)
               }}
               onContextMove={handleContextMove}
+              onContextShare={handleContextShare}
               onItemDrop={handleItemDrop}
             />
           )}
@@ -455,6 +473,15 @@ export function DashboardPage() {
       </div>
 
       {workspaceId && <UploadQueue workspaceId={workspaceId} />}
+
+      <ShareModal
+        open={shareModal.open}
+        onOpenChange={(open) => setShareModal((prev) => ({ ...prev, open }))}
+        workspaceId={workspaceId ?? ""}
+        resourceId={shareModal.resourceId}
+        resourceType={shareModal.resourceType}
+        resourceName={shareModal.resourceName}
+      />
     </div>
   )
 }

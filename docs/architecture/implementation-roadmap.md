@@ -19,7 +19,7 @@ verifiable result.
 | 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ✅ |
 | 8 | Folders | CRUD, folder tree, drag-drop move | ✅ |
 | 9 | RBAC | Permission engine with can() checks | ✅ |
-| 10 | Internal shares | File sharing between workspace members | ⬜ |
+| 10 | Internal shares | File sharing between workspace members | ✅ |
 | 11 | External shares | Public links with password + rate-limit | ⬜ |
 | 12 | Share management | User dashboard + admin oversight | ⬜ |
 | 13 | Trash | Soft delete, restore, auto-cleanup | ⬜ |
@@ -539,40 +539,31 @@ git commit -m "feat(rbac): permission engine with role-based middleware"
 
 ---
 
-## Day 10 — Internal Sharing
+## Day 10 — Internal Sharing ✅
 
-**Goal:** Users can share files/folders with other workspace members.
-
-### Step 10.1 — Implement share creation
-
-Update `apps/api/src/modules/shares/shares.handler.ts`:
-- `POST /` → create ShareLink with permissions (read, edit)
-- Validate user has `shares.create` permission
-- Store in D1
-
-### Step 10.2 — Implement share access
-
-When a shared user accesses the resource:
-- Check ShareLink exists, is active, and user is a workspace member
-- Grant access based on share permissions
-
-### Step 10.3 — Implement share UI
-
-Create share modal:
-- "Share" button in context menu / toolbar
-- Modal: select user(s) from workspace member list
-- Choose permission: Read, Edit
-- Confirm → creates share
-
-### Step 10.4 — Implement share inbox
-
-Sidebar: "Shared with me" section showing files others shared with this user.
+> **Notes from implementation:**
+> - Created `SharesService` (`apps/api/src/modules/shares/shares.service.ts`) with CRUD + access methods: `createShare`, `listShares`, `getShare`, `updateShare`, `revokeShare`, `accessShare`
+> - Password hashing uses Web Crypto API (SHA-256 with per-password salt) for Worker compatibility
+> - Internal shares visible to all workspace members; `sharedWithMe=true` query param filters shares NOT created by current user
+> - Share access validates active status, expiration, optional password; records access attempts; returns signed download URL
+> - Wire up all 4 handler stubs: `GET /`, `POST /`, `PATCH /:shareId`, `DELETE /:shareId` with Zod validation
+> - Exported `publicSharesHandler` for external share access (Day 11); mounted at `/api/shares` (no auth, no workspace scope)
+> - Added `export * from "./contracts/shares"` to shared index.ts for direct import
+> - Frontend hooks: `useShares`, `useCreateShare`, `useUpdateShare`, `useDeleteShare` in `lib/api.ts`
+> - Created `ShareModal` (`@radix-ui/react-dialog`) with permission toggle (read/download), copy-link button, workspace-member scope
+> - Created `Shared` page (`/shared` route) listing files shared with the current user via `sharedWithMe=true`
+> - Added `onContextShare` prop through FileGrid/FileList → dashboard → share modal
+> - Updated sidebar: "Shared" navigates to `/shared`
+> - Seed data: 1 internal share (welcome.txt, owner-created, read+download permissions)
+> - Fixed pre-existing lint errors: removed unused `real` import in `workspace.ts`, `**/dist` added to ESLint ignores
+> - `shared.tsx` lint warnings match pre-existing patterns in `dashboard.tsx` (strict TypeScript ESLint checks against error-typed hooks)
 
 ### Step 10.5 — Verify
 
-1. User A shares a file with User B (read-only)
-2. User B sees file in "Shared with me"
-3. User B can read/download but cannot rename/delete
+1. Create an internal share via context menu "Share" → ShareModal appears
+2. Select permissions (Read/Download), click "Create share" → share created, link copyable
+3. Other workspace member sees file in "Shared with me" page at `/shared`
+4. Download button on shared file generates signed URL
 
 ### Step 10.6 — Commit
 

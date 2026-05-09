@@ -370,6 +370,98 @@ export function useMoveFile(workspaceId: string | null) {
   })
 }
 
+interface ListSharesResponse {
+  data: ShareLink[]
+  meta: { page: number; limit: number; total: number; totalPages: number }
+}
+
+interface ShareLink {
+  id: string
+  workspaceId: string
+  resourceType: "file" | "folder"
+  resourceId: string
+  shareType: "internal" | "external_direct" | "external_explorer"
+  createdBy: string
+  passwordHash: string | null
+  expiresAt: string | null
+  accessCount: number
+  lastAccessedAt: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface CreateShareRequest {
+  resourceId: string
+  resourceType: "file" | "folder"
+  shareType: "internal" | "external_direct" | "external_explorer"
+  password?: string
+  expiresAt?: string
+  permissions?: ("read" | "download")[]
+}
+
+interface UpdateShareRequest {
+  password?: string | null
+  expiresAt?: string | null
+  isActive?: boolean
+}
+
+export function useShares(
+  workspaceId: string | null,
+  options?: { sharedWithMe?: boolean },
+): UseQueryResult<ListSharesResponse> {
+  return useQuery<ListSharesResponse>({
+    queryKey: ["shares", workspaceId, options],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (options?.sharedWithMe) params.set("sharedWithMe", "true")
+      const qs = params.toString()
+      return api.get<ListSharesResponse>(
+        `/api/workspaces/${workspaceId}/shares${qs ? `?${qs}` : ""}`,
+      )
+    },
+    enabled: !!workspaceId,
+  })
+}
+
+export function useCreateShare(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: CreateShareRequest) =>
+      api.post<ShareLink>(`/api/workspaces/${workspaceId}/shares`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+    },
+  })
+}
+
+export function useUpdateShare(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ shareId, ...body }: UpdateShareRequest & { shareId: string }) =>
+      api.patch<ShareLink>(`/api/workspaces/${workspaceId}/shares/${shareId}`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+    },
+  })
+}
+
+export function useDeleteShare(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ shareId }: { shareId: string }) =>
+      api.delete<{ success: boolean; shareId: string }>(
+        `/api/workspaces/${workspaceId}/shares/${shareId}`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+    },
+  })
+}
+
 export type {
   FileObject,
   Folder,
@@ -381,4 +473,7 @@ export type {
   CompleteUploadRequest as CompleteUploadPayload,
   DownloadUrlResponse,
   WorkspaceData,
+  ShareLink,
+  CreateShareRequest,
+  ListSharesResponse,
 }

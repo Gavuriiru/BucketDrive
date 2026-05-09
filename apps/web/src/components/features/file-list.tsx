@@ -51,6 +51,7 @@ interface FolderListRowProps {
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextMove?: (id: string, type: "file" | "folder") => void
+  onContextShare?: (id: string, type: "file" | "folder") => void
   dndEnabled: boolean
 }
 
@@ -64,6 +65,7 @@ function FolderListRow({
   onContextRename,
   onContextDelete,
   onContextMove,
+  onContextShare,
   dndEnabled,
 }: FolderListRowProps) {
   const dragId = `folder-${folder.id}`
@@ -84,6 +86,7 @@ function FolderListRow({
       onRename={() => onContextRename?.(folder.id, "folder")}
       onDelete={() => onContextDelete?.(folder.id, "folder")}
       onMove={() => onContextMove?.(folder.id, "folder")}
+      onShare={() => onContextShare?.(folder.id, "folder")}
       onCopy={() => {
         useExplorerStore.getState().setClipboard({
           action: "copy",
@@ -146,6 +149,14 @@ function FolderListRow({
                 <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename?.(folder.id, "folder")}>
                   Rename
                 </DropdownMenu.Item>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove?.(folder.id, "folder")}>
+                  Move
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare?.(folder.id, "folder")}>
+                  Share
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
                 <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete?.(folder.id, "folder")}>
                   Delete
                 </DropdownMenu.Item>
@@ -170,6 +181,7 @@ interface FileListRowProps {
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextFavorite?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
+  onContextShare?: (id: string, type: "file" | "folder") => void
   dndEnabled: boolean
 }
 
@@ -185,6 +197,7 @@ function FileListRow({
   onContextDelete,
   onContextFavorite,
   onContextMove,
+  onContextShare,
   dndEnabled,
 }: FileListRowProps) {
   const dragId = `file-${file.id}`
@@ -204,6 +217,7 @@ function FileListRow({
       onDelete={() => onContextDelete?.(file.id, "file")}
       onFavorite={() => onContextFavorite?.(file.id)}
       onMove={() => onContextMove?.(file.id, "file")}
+      onShare={() => onContextShare?.(file.id, "file")}
       onCopy={() => {
         useExplorerStore.getState().setClipboard({
           action: "copy",
@@ -269,6 +283,14 @@ function FileListRow({
                 <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextFavorite?.(file.id)}>
                   Favorite
                 </DropdownMenu.Item>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove?.(file.id, "file")}>
+                  Move
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare?.(file.id, "file")}>
+                  Share
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
                 <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete?.(file.id, "file")}>
                   Delete
                 </DropdownMenu.Item>
@@ -293,6 +315,7 @@ interface FileListProps {
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextFavorite?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
+  onContextShare?: (id: string, type: "file" | "folder") => void
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
 }
 
@@ -308,6 +331,7 @@ export function FileList({
   onContextDelete,
   onContextFavorite,
   onContextMove,
+  onContextShare,
   onItemDrop,
 }: FileListProps) {
   const selectedFileIds = useExplorerStore((s) => s.selectedFileIds)
@@ -372,6 +396,7 @@ export function FileList({
               onContextRename={onContextRename}
               onContextDelete={onContextDelete}
               onContextMove={onContextMove}
+              onContextShare={onContextShare}
               dndEnabled={dndEnabled}
             />
           ))}
@@ -391,6 +416,7 @@ export function FileList({
                 onContextDelete={onContextDelete}
                 onContextFavorite={onContextFavorite}
                 onContextMove={onContextMove}
+                onContextShare={onContextShare}
                 dndEnabled={dndEnabled}
               />
             )

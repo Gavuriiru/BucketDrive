@@ -5,7 +5,7 @@ import { createAuth } from "./lib/auth"
 import { createD1DB } from "./lib/db"
 import { filesHandler } from "./modules/files/files.handler"
 import { foldersHandler } from "./modules/folders/folders.handler"
-import { sharesHandler } from "./modules/shares/shares.handler"
+import { sharesHandler, publicSharesHandler } from "./modules/shares/shares.handler"
 import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 
 interface Env {
@@ -48,6 +48,7 @@ app.get("/api/health", (c) => c.json({ status: "ok", timestamp: new Date().toISO
 app.route("/api/workspaces/:workspaceId/files", filesHandler)
 app.route("/api/workspaces/:workspaceId/folders", foldersHandler)
 app.route("/api/workspaces/:workspaceId/shares", sharesHandler)
+app.route("/api/shares", publicSharesHandler)
 app.route("/api/workspaces", workspacesHandler)
 
 app.notFound((c) => c.json({ code: "NOT_FOUND", message: "Not found" }, 404))

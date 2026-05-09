@@ -1,0 +1,452 @@
+import { eq, and, ne, sql } from "drizzle-orm"
+import { getDB } from "../../lib/db"
+import {
+  shareLink,
+  sharePermission,
+  shareAccessAttempt,
+  fileObject,
+  folder,
+  auditLog,
+} from "@bucketdrive/shared/db/schema"
+import type { StorageProvider } from "../../services/storage"
+import type { ShareLink } from "@bucketdrive/shared"
+
+const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const saltHex = Array.from(salt)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+  const data = encoder.encode(password + saltHex)
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+  return `${saltHex}:${hashHex}`
+}
+
+async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  const [saltHex, hashHex] = storedHash.split(":")
+  if (!saltHex || !hashHex) return false
+  const data = encoder.encode(password + saltHex)
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+  const computedHex = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+  return computedHex === hashHex
+}
+
+export interface CreateShareParams {
+  workspaceId: string
+  userId: string
+  resourceType: "file" | "folder"
+  resourceId: string
+  shareType: "internal" | "external_direct" | "external_explorer"
+  password?: string
+  expiresAt?: string
+  permissions?: ("read" | "download")[]
+}
+
+export interface ListSharesParams {
+  workspaceId: string
+  userId: string
+  role: string
+  page: number
+  limit: number
+  sharedWithMe?: boolean
+}
+
+export interface UpdateShareParams {
+  shareId: string
+  workspaceId: string
+  userId: string
+  password?: string | null
+  expiresAt?: string | null
+  isActive?: boolean
+}
+
+export class SharesService {
+  async createShare(params: CreateShareParams): Promise<ShareLink> {
+    const db = getDB()
+    const now = new Date().toISOString()
+
+    const resource = await this.findResource(params.resourceType, params.resourceId)
+    if (!resource) {
+      throw new ShareError("NOT_FOUND", `${params.resourceType} not found`)
+    }
+
+    const id = crypto.randomUUID()
+    let passwordHash: string | null = null
+    if (params.password) {
+      passwordHash = await hashPassword(params.password)
+    }
+
+    await db
+      .insert(shareLink)
+      .values({
+        id,
+        workspaceId: params.workspaceId,
+        resourceType: params.resourceType,
+        resourceId: params.resourceId,
+        shareType: params.shareType,
+        createdBy: params.userId,
+        passwordHash,
+        expiresAt: params.expiresAt ?? null,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run()
+
+    if (params.permissions && params.permissions.length > 0) {
+      for (const perm of params.permissions) {
+        await db
+          .insert(sharePermission)
+          .values({
+            id: crypto.randomUUID(),
+            shareLinkId: id,
+            permission: perm,
+          })
+          .run()
+      }
+    }
+
+    await db
+      .insert(auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId: params.workspaceId,
+        actorId: params.userId,
+        action: "share.created",
+        resourceType: "share",
+        resourceId: id,
+        metadata: JSON.stringify({
+          shareType: params.shareType,
+          resourceType: params.resourceType,
+          resourceId: params.resourceId,
+        }),
+        createdAt: now,
+      })
+      .run()
+
+    const created = await db.select().from(shareLink).where(eq(shareLink.id, id)).get()
+    if (!created) {
+      throw new ShareError("INTERNAL_ERROR", "Failed to create share")
+    }
+
+    return created as unknown as ShareLink
+  }
+
+  async listShares(params: ListSharesParams) {
+    const db = getDB()
+
+    const conditions: ReturnType<typeof eq>[] = [eq(shareLink.workspaceId, params.workspaceId)]
+
+    if (params.sharedWithMe) {
+      conditions.push(eq(shareLink.shareType, "internal"))
+      conditions.push(ne(shareLink.createdBy, params.userId))
+      conditions.push(eq(shareLink.isActive, true))
+    } else if (params.role !== "admin" && params.role !== "owner") {
+      conditions.push(eq(shareLink.createdBy, params.userId))
+    }
+
+    const total = (
+      await db
+        .select({ count: sql<number>`count(*)` })
+        .from(shareLink)
+        .where(and(...conditions))
+        .get()
+    )?.count ?? 0
+
+    const rows = await db
+      .select()
+      .from(shareLink)
+      .where(and(...conditions))
+      .limit(params.limit)
+      .offset((params.page - 1) * params.limit)
+      .all()
+
+    return {
+      data: rows as unknown as ShareLink[],
+      meta: {
+        page: params.page,
+        limit: params.limit,
+        total,
+        totalPages: Math.ceil(total / params.limit),
+      },
+    }
+  }
+
+  async getShare(shareId: string): Promise<ShareLink | null> {
+    const db = getDB()
+    const row = await db.select().from(shareLink).where(eq(shareLink.id, shareId)).get()
+    return (row as unknown as ShareLink) ?? null
+  }
+
+  async getSharePermissions(shareId: string): Promise<string[]> {
+    const db = getDB()
+    const rows = await db
+      .select({ permission: sharePermission.permission })
+      .from(sharePermission)
+      .where(eq(sharePermission.shareLinkId, shareId))
+      .all()
+    return rows.map((r) => r.permission)
+  }
+
+  async updateShare(params: UpdateShareParams): Promise<ShareLink> {
+    const db = getDB()
+    const now = new Date().toISOString()
+
+    const existing = await db
+      .select()
+      .from(shareLink)
+      .where(and(eq(shareLink.id, params.shareId), eq(shareLink.workspaceId, params.workspaceId)))
+      .get()
+
+    if (!existing) {
+      throw new ShareError("SHARE_NOT_FOUND", "Share not found")
+    }
+
+    const updateSet: Record<string, unknown> = { updatedAt: now }
+
+    if (params.password !== undefined) {
+      if (params.password === null) {
+        updateSet.passwordHash = null
+      } else {
+        updateSet.passwordHash = await hashPassword(params.password)
+      }
+    }
+
+    if (params.expiresAt !== undefined) {
+      updateSet.expiresAt = params.expiresAt
+    }
+
+    if (params.isActive !== undefined) {
+      updateSet.isActive = params.isActive
+    }
+
+    await db.update(shareLink).set(updateSet).where(eq(shareLink.id, params.shareId)).run()
+
+    await db
+      .insert(auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId: params.workspaceId,
+        actorId: params.userId,
+        action: "share.updated",
+        resourceType: "share",
+        resourceId: params.shareId,
+        metadata: JSON.stringify(updateSet),
+        createdAt: now,
+      })
+      .run()
+
+    const updated = await db.select().from(shareLink).where(eq(shareLink.id, params.shareId)).get()
+    if (!updated) {
+      throw new ShareError("SHARE_NOT_FOUND", "Share not found after update")
+    }
+
+    return updated as unknown as ShareLink
+  }
+
+  async revokeShare(shareId: string, workspaceId: string, userId: string): Promise<void> {
+    const db = getDB()
+    const now = new Date().toISOString()
+
+    const existing = await db
+      .select()
+      .from(shareLink)
+      .where(and(eq(shareLink.id, shareId), eq(shareLink.workspaceId, workspaceId)))
+      .get()
+
+    if (!existing) {
+      throw new ShareError("SHARE_NOT_FOUND", "Share not found")
+    }
+
+    await db
+      .update(shareLink)
+      .set({ isActive: false, updatedAt: now })
+      .where(eq(shareLink.id, shareId))
+      .run()
+
+    await db
+      .insert(auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId,
+        actorId: userId,
+        action: "share.revoked",
+        resourceType: "share",
+        resourceId: shareId,
+        createdAt: now,
+      })
+      .run()
+  }
+
+  async accessShare(
+    shareId: string,
+    storage: StorageProvider,
+    options?: { password?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const db = getDB()
+    const now = new Date().toISOString()
+
+    const share = await db.select().from(shareLink).where(eq(shareLink.id, shareId)).get()
+
+    if (!share) {
+      throw new ShareError("SHARE_NOT_FOUND", "Share link not found")
+    }
+
+    if (!share.isActive) {
+      throw new ShareError("SHARE_REVOKED", "This share link has been revoked")
+    }
+
+    if (share.expiresAt && share.expiresAt < now) {
+      throw new ShareError("SHARE_EXPIRED", "This share link has expired")
+    }
+
+    if (share.passwordHash) {
+      if (!options?.password) {
+        throw new ShareError("PASSWORD_REQUIRED", "Password is required")
+      }
+      const valid = await verifyPassword(options.password, share.passwordHash)
+      if (!valid) {
+        if (options?.ipAddress) {
+          await db
+            .insert(shareAccessAttempt)
+            .values({
+              id: crypto.randomUUID(),
+              shareLinkId: shareId,
+              ipAddress: options.ipAddress,
+              userAgent: options.userAgent ?? null,
+              success: false,
+              attemptedAt: now,
+            })
+            .run()
+        }
+        throw new ShareError("INVALID_PASSWORD", "Invalid password")
+      }
+    }
+
+    const resourceType = share.resourceType as "file" | "folder"
+    let resourceName = ""
+    let signedUrl: string | null = null
+    let files: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }> = []
+    let folders: Array<{ id: string; name: string }> = []
+
+    if (resourceType === "file") {
+      const file = await db
+        .select()
+        .from(fileObject)
+        .where(and(eq(fileObject.id, share.resourceId), eq(fileObject.isDeleted, false)))
+        .get()
+
+      if (!file) {
+        throw new ShareError("NOT_FOUND", "Shared file no longer exists")
+      }
+
+      resourceName = file.originalName
+      signedUrl = await storage.generateSignedDownloadUrl(file.storageKey)
+    } else {
+      const f = await db
+        .select()
+        .from(folder)
+        .where(and(eq(folder.id, share.resourceId), eq(folder.isDeleted, false)))
+        .get()
+
+      if (!f) {
+        throw new ShareError("NOT_FOUND", "Shared folder no longer exists")
+      }
+
+      resourceName = f.name
+
+      const folderFiles = await db
+        .select()
+        .from(fileObject)
+        .where(
+          and(
+            eq(fileObject.folderId, share.resourceId),
+            eq(fileObject.isDeleted, false),
+          ),
+        )
+        .all()
+
+      files = folderFiles.map((ff) => ({
+        id: ff.id,
+        name: ff.originalName,
+        mimeType: ff.mimeType,
+        sizeBytes: ff.sizeBytes,
+      }))
+
+      const subFolders = await db
+        .select()
+        .from(folder)
+        .where(
+          and(
+            eq(folder.parentFolderId, share.resourceId),
+            eq(folder.isDeleted, false),
+          ),
+        )
+        .all()
+
+      folders = subFolders.map((sf) => ({ id: sf.id, name: sf.name }))
+    }
+
+    await db
+      .update(shareLink)
+      .set({
+        accessCount: (share.accessCount ?? 0) + 1,
+        lastAccessedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(shareLink.id, shareId))
+      .run()
+
+    if (options?.ipAddress) {
+      await db
+        .insert(shareAccessAttempt)
+        .values({
+          id: crypto.randomUUID(),
+          shareLinkId: shareId,
+          ipAddress: options.ipAddress,
+          userAgent: options.userAgent ?? null,
+          success: true,
+          attemptedAt: now,
+        })
+        .run()
+    }
+
+    return { resourceType, resourceName, signedUrl, files, folders }
+  }
+
+  private async findResource(
+    resourceType: "file" | "folder",
+    resourceId: string,
+  ) {
+    const db = getDB()
+    if (resourceType === "file") {
+      return db
+        .select()
+        .from(fileObject)
+        .where(and(eq(fileObject.id, resourceId), eq(fileObject.isDeleted, false)))
+        .get()
+    }
+    return db
+      .select()
+      .from(folder)
+      .where(and(eq(folder.id, resourceId), eq(folder.isDeleted, false)))
+      .get()
+  }
+}
+
+export class ShareError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+  ) {
+    super(message)
+    this.name = "ShareError"
+  }
+}

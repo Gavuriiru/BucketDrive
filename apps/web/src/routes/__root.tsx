@@ -3,6 +3,7 @@ import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
 import { LoginPage } from "./login"
 import { DashboardPage } from "./app/dashboard"
+import { SharedPage } from "./app/shared"
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -57,9 +58,15 @@ const dashboardRoute = createRoute({
   component: DashboardPage,
 })
 
+const sharedRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/shared",
+  component: SharedPage,
+})
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appRoute.addChildren([homeRoute, dashboardRoute]),
+  appRoute.addChildren([homeRoute, dashboardRoute, sharedRoute]),
 ])
 
 export const router = createRouter({

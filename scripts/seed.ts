@@ -1,5 +1,6 @@
 import initSqlJs from "sql.js"
 import { drizzle } from "drizzle-orm/sql-js"
+import { eq } from "drizzle-orm"
 import * as schema from "@bucketdrive/shared/db/schema"
 import { v4 as uuid } from "uuid"
 import { readFileSync, writeFileSync, existsSync } from "fs"
@@ -160,6 +161,44 @@ async function main() {
       color: tagColors[i]!,
       createdAt: new Date().toISOString(),
     }).run()
+  }
+
+  const seedFileIds = db
+    .select({ id: schema.fileObject.id, name: schema.fileObject.originalName })
+    .from(schema.fileObject)
+    .where(eq(schema.fileObject.workspaceId, wsId))
+    .all()
+
+  if (seedFileIds.length > 0) {
+    const firstFile = seedFileIds[0]!
+    const shareId = uuid()
+
+    db.insert(schema.shareLink).values({
+      id: shareId,
+      workspaceId: wsId,
+      resourceType: "file",
+      resourceId: firstFile.id,
+      shareType: "internal",
+      createdBy: ownerId,
+      isActive: true,
+      accessCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }).run()
+
+    db.insert(schema.sharePermission).values({
+      id: uuid(),
+      shareLinkId: shareId,
+      permission: "read",
+    }).run()
+
+    db.insert(schema.sharePermission).values({
+      id: uuid(),
+      shareLinkId: shareId,
+      permission: "download",
+    }).run()
+
+    console.log(`  Seed share ID: ${shareId} (shared ${firstFile.name})`)
   }
 
   const data = sqlite.export()
