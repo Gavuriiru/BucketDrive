@@ -1,6 +1,6 @@
-import { useRef } from "react"
-import { Upload, LayoutGrid, List } from "lucide-react"
-import { useFiles, useFolders, useBreadcrumbs, useWorkspaces } from "@/lib/api"
+import { useRef, useMemo, useCallback } from "react"
+import { Upload, LayoutGrid, List, Trash2 } from "lucide-react"
+import { useFiles, useFolders, useBreadcrumbs, useWorkspaces, useRenameFile, useDeleteFile } from "@/lib/api"
 import { useUploadStore } from "@/stores/upload-store"
 import { useExplorerStore } from "@/stores/explorer-store"
 import { UploadDropZone } from "@/components/features/upload-drop-zone"
@@ -8,10 +8,12 @@ import { UploadQueue } from "@/components/features/upload-queue"
 import { FileList } from "@/components/features/file-list"
 import { FileGrid } from "@/components/features/file-grid"
 import { Breadcrumbs } from "@/components/features/breadcrumbs"
+import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
 import type { BreadcrumbItem } from "@/lib/api"
 
 export function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const addFiles = useUploadStore((s) => s.addFiles)
   const {
     viewMode,
@@ -21,6 +23,9 @@ export function DashboardPage() {
     setViewMode,
     navigateTo,
     navigateToRoot,
+    selectedFileIds,
+    selectedFolderIds,
+    clearSelection,
   } = useExplorerStore()
 
   const { data: workspacesData, isLoading: wsLoading } = useWorkspaces()
@@ -39,7 +44,102 @@ export function DashboardPage() {
   const { data: foldersData, isLoading: foldersLoading } = useFolders(workspaceId, currentFolderId)
   const { data: breadcrumbsData } = useBreadcrumbs(workspaceId, currentFolderId)
 
+  const files = filesData?.data ?? []
+  const folders = foldersData?.data ?? []
   const isLoading = filesLoading || foldersLoading
+
+  const renameMutation = useRenameFile(workspaceId)
+  const deleteMutation = useDeleteFile(workspaceId)
+
+  const items = useMemo(
+    () => [
+      ...folders.map((f) => ({ id: f.id, type: "folder" as const })),
+      ...files.map((f) => ({ id: f.id, type: "file" as const })),
+    ],
+    [folders, files],
+  )
+
+  const handleOpenItem = useCallback(
+    (id: string, type: "file" | "folder") => {
+      if (type === "folder") {
+        navigateTo(id)
+      } else {
+        const file = files.find((f) => f.id === id)
+        if (file) {
+          handleContextDownload(file.id)
+        }
+      }
+    },
+    [files, navigateTo],
+  )
+
+  const handleDeleteSelected = useCallback(() => {
+    const allIds = [...selectedFileIds, ...selectedFolderIds]
+    if (allIds.length === 0) return
+    const fileCount = selectedFileIds.length
+    if (fileCount === 0) return
+    const count = fileCount
+    const confirmed = window.confirm(
+      count === 1
+        ? "Delete this file? It will be moved to trash."
+        : `Delete ${count} files? They will be moved to trash.`,
+    )
+    if (confirmed) {
+      for (const fileId of selectedFileIds) {
+        deleteMutation.mutate({ fileId })
+      }
+      clearSelection()
+    }
+  }, [selectedFileIds, deleteMutation, clearSelection])
+
+  const handleNavigateParent = useCallback(() => {
+    if (currentFolderId && breadcrumbsData && breadcrumbsData.length > 1) {
+      const parent = breadcrumbsData[breadcrumbsData.length - 2]
+      if (parent) {
+        navigateTo(parent.id)
+      }
+    } else {
+      navigateToRoot()
+    }
+  }, [currentFolderId, breadcrumbsData, navigateTo, navigateToRoot])
+
+  const handleRenameItem = useCallback(
+    (id: string, type: "file" | "folder") => {
+      const item = type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
+      const currentName = item ? ("originalName" in item ? item.originalName : item.name) : ""
+      const newName = window.prompt("Rename to:", currentName)
+      if (newName && newName.trim() && newName !== currentName) {
+        renameMutation.mutate({ fileId: id, name: newName.trim() })
+      }
+    },
+    [files, folders, renameMutation],
+  )
+
+  const handleContextDownload = useCallback(
+    (fileId: string) => {
+      const fetchUrl = async () => {
+        const res = await fetch(
+          `/api/workspaces/${workspaceId}/files/${fileId}/download`,
+          { credentials: "include" },
+        )
+        const data = (await res.json()) as { signedUrl?: string }
+        if (data.signedUrl) {
+          window.open(data.signedUrl, "_blank")
+        }
+      }
+      fetchUrl().catch(console.error)
+    },
+    [workspaceId],
+  )
+
+  const { handleItemClick } = useExplorerShortcuts({
+    items,
+    containerRef,
+    onOpenItem: handleOpenItem,
+    onDeleteSelected: handleDeleteSelected,
+    onNavigateParent: handleNavigateParent,
+    onRenameItem: handleRenameItem,
+  })
 
   const handleFileSelect = () => {
     fileInputRef.current?.click()
@@ -73,6 +173,8 @@ export function DashboardPage() {
 
   const rootBreadcrumb: BreadcrumbItem[] = [{ id: null, name: workspaceName }]
   const displayBreadcrumbs = currentFolderId && breadcrumbsData ? breadcrumbsData : rootBreadcrumb
+
+  const totalSelected = selectedFileIds.length + selectedFolderIds.length
 
   if (wsLoading) {
     return (
@@ -155,21 +257,65 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-4">
+      {totalSelected > 1 && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-accent bg-accent/10 px-4 py-2">
+          <span className="text-sm font-medium text-text-primary">
+            {totalSelected} items selected
+          </span>
+          <div className="flex-1" />
+          <button
+            onClick={handleDeleteSelected}
+            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-error transition-colors hover:bg-error/10"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete selected
+          </button>
+          <button
+            onClick={() => clearSelection()}
+            className="rounded-md px-3 py-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 space-y-4" ref={containerRef}>
         <UploadDropZone onFilesDrop={handleFilesDrop} className="bg-surface-default" />
         {viewMode === "grid" ? (
           <FileGrid
-            folders={foldersData?.data ?? []}
-            files={filesData?.data ?? []}
+            folders={folders}
+            files={files}
             isLoading={isLoading}
             onFolderClick={handleFolderClick}
+            onItemClick={handleItemClick}
+            onContextOpen={handleOpenItem}
+            onContextDownload={handleContextDownload}
+            onContextRename={handleRenameItem}
+            onContextDelete={(id) => {
+              deleteMutation.mutate({ fileId: id })
+              clearSelection()
+            }}
+            onContextFavorite={(id) => {
+              console.warn("Favorites coming in Day 15", id)
+            }}
           />
         ) : (
           <FileList
-            folders={foldersData?.data ?? []}
-            files={filesData?.data ?? []}
+            folders={folders}
+            files={files}
             isLoading={isLoading}
             onFolderClick={handleFolderClick}
+            onItemClick={handleItemClick}
+            onContextOpen={handleOpenItem}
+            onContextDownload={handleContextDownload}
+            onContextRename={handleRenameItem}
+            onContextDelete={(id) => {
+              deleteMutation.mutate({ fileId: id })
+              clearSelection()
+            }}
+            onContextFavorite={(id) => {
+              console.warn("Favorites coming in Day 15", id)
+            }}
           />
         )}
       </div>

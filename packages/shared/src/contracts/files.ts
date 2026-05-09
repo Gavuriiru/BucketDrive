@@ -60,3 +60,12 @@ export const UpdateFileRequest = z.object({
 export const UpdateFileTagsRequest = z.object({
   tagIds: z.array(z.string().uuid()),
 })
+
+export const DeleteFileResponse = z.object({
+  success: z.literal(true),
+  fileId: z.string().uuid(),
+})
+
+export const RenameFileRequest = z.object({
+  name: z.string().min(1).max(255),
+})

@@ -16,7 +16,7 @@ verifiable result.
 | 4 | Storage | R2 provider with signed URLs | ✅ `101668b` |
 | 5 | Upload | End-to-end drag-drop upload with progress | ✅ `8f0d0c2` |
 | 6 | Explorer | Grid/list views with breadcrumbs | ✅ |
-| 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ⬜ |
+| 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ✅ |
 | 8 | Folders | CRUD, folder tree, drag-drop move | ⬜ |
 | 9 | RBAC | Permission engine with can() checks | ⬜ |
 | 10 | Internal shares | File sharing between workspace members | ⬜ |
@@ -354,9 +354,21 @@ git commit -m "feat(explorer): grid and list views with breadcrumbs"
 
 ---
 
-## Day 7 — Keyboard & Context Menus
+## Day 7 — Keyboard & Context Menus ✅
 
-**Goal:** File explorer feels like Finder/Explorer.
+> **Notes from implementation:**
+> - Added `RenameFileRequest` and `DeleteFileResponse` contracts to `packages/shared/src/contracts/files.ts`
+> - Implemented `PATCH /:fileId` rename handler: updates `originalName` + `extension`, audit log `file.rename`
+> - Implemented `DELETE /:fileId` soft-delete handler: sets `isDeleted=true, deletedAt=now()`, audit log `file.delete`
+> - Expanded `explorer-store.ts` with selection state (`selectedFileIds`, `selectedFolderIds`), focus tracking (`focusedItemId`, `focusedItemType`), click tracking (`lastClickedItemId`, `lastClickedItemIndex`), clipboard support
+> - Added selection actions: `selectItem`, `toggleSelect`, `selectRange`, `selectAll`, `clearSelection`, `setFocusedItem`
+> - Created `use-explorer-shortcuts.ts` hook: arrow keys navigate grid/list, Enter opens, Delete trashes, Ctrl+A selects all, Ctrl+C/X copies/cuts, F2 renames, Escape clears selection
+> - Created `file-context-menu.tsx` using `@radix-ui/react-context-menu` (already installed): right-click menu with Open, Download, Rename, Copy, Move, Share, Favorite, Delete per item type
+> - Updated `file-grid.tsx`: items are `role="button" tabIndex={0}` with `data-item-*` attributes, click handlers with shift/ctrl modifiers, selected items get `ring-1 ring-accent bg-accent/10`, focused items get `ring-1 ring-border-muted`
+> - Updated `file-list.tsx`: rows are interactive with same selection/focus visuals, `MoreVertical` button now opens `@radix-ui/react-dropdown-menu` with per-item actions
+> - Wired `dashboard.tsx` with `useExplorerShortcuts`, bulk actions toolbar (shown when 2+ items selected), context menu callbacks for rename/delete/download
+> - Added `useRenameFile` and `useDeleteFile` mutation hooks to `api.ts` with cache invalidation
+> - Current limitations: Move/Copy/Share/Favorite actions are stubs (console.log or pending); folder operations (rename/delete) use file endpoint (folder CRUD comes in Day 8); no inline rename input yet (uses `window.prompt`)
 
 ### Step 7.1 — Implement context menu
 

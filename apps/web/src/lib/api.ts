@@ -234,6 +234,47 @@ export function useWorkspaces() {
   })
 }
 
+interface RenameFileResponse {
+  id: string
+  originalName: string
+  extension: string | null
+  updatedAt: string
+}
+
+export function useRenameFile(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ fileId, name }: { fileId: string; name: string }) =>
+      api.patch<RenameFileResponse>(
+        `/api/workspaces/${workspaceId}/files/${fileId}`,
+        { name },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+    },
+  })
+}
+
+interface DeleteFileResponse {
+  success: true
+  fileId: string
+}
+
+export function useDeleteFile(workspaceId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ fileId }: { fileId: string }) =>
+      api.delete<DeleteFileResponse>(
+        `/api/workspaces/${workspaceId}/files/${fileId}`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+    },
+  })
+}
+
 export type {
   FileObject,
   Folder,

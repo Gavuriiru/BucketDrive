@@ -4,12 +4,13 @@ import { requirePermission } from "../../middleware/rbac"
 import { createStorageProvider } from "../../services/storage"
 import { UploadService, UploadError } from "../../services/upload.service"
 import { getDB } from "../../lib/db"
-import { fileObject } from "@bucketdrive/shared/db/schema"
-import { eq, and, isNull } from "drizzle-orm"
+import { fileObject, auditLog } from "@bucketdrive/shared/db/schema"
+import { eq, and } from "drizzle-orm"
 import {
   InitiateUploadRequest,
   CompleteUploadRequest,
   ListFilesRequest,
+  RenameFileRequest,
 } from "@bucketdrive/shared"
 
 interface FilesEnv {
@@ -195,11 +196,122 @@ files.get("/:fileId/download", requirePermission("files.read"), async (c) => {
 })
 
 files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
-  return c.json({ message: "File updated" })
+  const workspaceId = c.req.param("workspaceId")
+  const fileId = c.req.param("fileId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "fileId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const body = RenameFileRequest.parse(await c.req.json())
+  const db = getDB()
+  const now = new Date().toISOString()
+
+  const file = await db
+    .select()
+    .from(fileObject)
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
+    .get()
+
+  if (!file || file.isDeleted) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  }
+
+  const newExt = body.name.includes(".")
+    ? (body.name.split(".").pop()?.toLowerCase() ?? null)
+    : null
+
+  await db
+    .update(fileObject)
+    .set({
+      originalName: body.name,
+      extension: newExt,
+      updatedAt: now,
+    })
+    .where(eq(fileObject.id, fileId))
+    .run()
+
+  const renamed = await db
+    .select()
+    .from(fileObject)
+    .where(eq(fileObject.id, fileId))
+    .get()
+
+  await db
+    .insert(auditLog)
+    .values({
+      id: crypto.randomUUID(),
+      workspaceId,
+      actorId: user.id,
+      action: "file.rename",
+      resourceType: "file",
+      resourceId: fileId,
+      metadata: JSON.stringify({ previousName: file.originalName, newName: body.name }),
+      createdAt: now,
+    })
+    .run()
+
+  return c.json(renamed)
 })
 
 files.delete("/:fileId", requirePermission("files.delete"), async (c) => {
-  return c.json({ message: "File deleted" })
+  const workspaceId = c.req.param("workspaceId")
+  const fileId = c.req.param("fileId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "fileId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const db = getDB()
+  const now = new Date().toISOString()
+
+  const file = await db
+    .select()
+    .from(fileObject)
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
+    .get()
+
+  if (!file) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  }
+
+  if (file.isDeleted) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File is already deleted" }, 404)
+  }
+
+  await db
+    .update(fileObject)
+    .set({
+      isDeleted: true,
+      deletedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(fileObject.id, fileId))
+    .run()
+
+  await db
+    .insert(auditLog)
+    .values({
+      id: crypto.randomUUID(),
+      workspaceId,
+      actorId: user.id,
+      action: "file.delete",
+      resourceType: "file",
+      resourceId: fileId,
+      metadata: JSON.stringify({ fileName: file.originalName }),
+      createdAt: now,
+    })
+    .run()
+
+  return c.json({ success: true, fileId })
 })
 
 export const filesHandler = files
