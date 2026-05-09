@@ -13,8 +13,8 @@ verifiable result.
 | 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |
 | 2 | Auth backend | GitHub OAuth working via Better Auth | ✅ `f4f650e` |
 | 3 | Auth frontend | Login page, session guard, user context | ✅ `4b78970` |
-| 4 | Storage | R2 provider with signed URLs | ⬜ |
-| 5 | Upload | End-to-end drag-drop upload with progress | ⬜ |
+| 4 | Storage | R2 provider with signed URLs | ✅ `101668b` |
+| 5 | Upload | End-to-end drag-drop upload with progress | ✅ `8f0d0c2` |
 | 6 | Explorer | Grid/list views with breadcrumbs | ⬜ |
 | 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ⬜ |
 | 8 | Folders | CRUD, folder tree, drag-drop move | ⬜ |
@@ -183,7 +183,18 @@ git commit -m "feat(web): login page and session-based auth guard"
 
 ---
 
-## Day 4 — R2 Storage Provider
+## Day 4 — R2 Storage Provider ✅ (`101668b`)
+
+> **Notes from implementation:**
+> - Created `StorageProvider` interface with `generateSignedUploadUrl`, `generateSignedDownloadUrl`, `delete`, `copy`
+> - Implemented `R2StorageProvider` using `aws4fetch` for S3-compatible presigned URLs (PUT/GET)
+> - Added `R2BindingProvider` fallback when R2 S3 credentials are missing (presigned URLs disabled but delete/copy still work via R2 binding)
+> - R2 S3 credentials loaded from env vars: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`
+> - 8 unit tests passing with mocked R2Bucket and AwsClient
+> - Upload contracts extended: `CompleteUploadRequest` now includes `fileName`, `mimeType`, `folderId`
+> - All Drizzle queries use `await` (.all(), .get(), .run() return Promises in D1 driver)
+> - Shared package `dist/` directory required rebuild after contract changes (`tsc` added as build script)
+> - Workspaces handler (`GET /api/workspaces`) uses `workspaceMember` joined with `workspace` table
 
 **Goal:** Files can be uploaded to R2 via signed URLs.
 
@@ -233,7 +244,20 @@ git commit -m "feat(storage): R2 storage provider with signed URLs"
 
 ---
 
-## Day 5 — File Upload (End-to-End)
+## Day 5 — File Upload (End-to-End) ✅ (`8f0d0c2`)
+
+> **Notes from implementation:**
+> - Combined Day 4 (storage backend) + Day 5 (upload UI) into a single implementation session
+> - Created `UploadService` with `initiateUpload()` (RBAC/quota/mime validation, signed URL, UploadSession) and `completeUpload()` (FileObject creation, audit log)
+> - Files handler wired: `POST /upload`, `POST /upload/complete`, `GET /:fileId/download`, `GET /` (list with sorting/pagination)
+> - Frontend upload via XHR with `upload.onprogress` for progress tracking
+> - Upload queue: Zustand store with status tracking (queued/uploading/completed/failed/cancelled), floating drawer UI
+> - Drag-and-drop zone with native HTML5 drag events (highlight on drag-over)
+> - File list table with loading skeleton, empty state, icons per mime type
+> - Dashboard extracted to own route file (`routes/app/dashboard.tsx`), loads workspace + files
+> - Fixed auth flow: Better Auth v1.x uses `POST /api/auth/sign-in/social` with JSON body (not GET with query params), session endpoint is `GET /api/auth/get-session` (not `/session`), `checkAuth()` verifies `data?.user` not just `res.ok`
+> - Google OAuth pending: `redirect_uri_mismatch` requires exact URI match in Google Cloud Console
+> - Added `vitest` config for API unit tests
 
 **Goal:** User drags a file into the browser, it uploads to R2, metadata is saved.
 
