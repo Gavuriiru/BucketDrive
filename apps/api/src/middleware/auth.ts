@@ -7,7 +7,7 @@ interface AuthVariables {
 }
 
 export const authMiddleware = createMiddleware<{
-  Bindings: { DB: D1Database; GITHUB_CLIENT_ID?: string; GITHUB_CLIENT_SECRET?: string; GOOGLE_CLIENT_ID?: string; GOOGLE_CLIENT_SECRET?: string }
+  Bindings: { BETTER_AUTH_SECRET?: string; DB: D1Database; GITHUB_CLIENT_ID?: string; GITHUB_CLIENT_SECRET?: string; GOOGLE_CLIENT_ID?: string; GOOGLE_CLIENT_SECRET?: string }
   Variables: AuthVariables
 }>(async (c, next) => {
   const auth = createAuth(c.env)

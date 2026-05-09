@@ -1,4 +1,5 @@
-export { workspace, workspaceSettings, bucket, fileObject, folder } from "./workspace"
+export { user, session, account, verification, organization, member } from "./auth"
+export { workspace, workspaceSettings, workspaceMember, bucket, fileObject, folder } from "./workspace"
 export { shareLink, sharePermission, shareAccessAttempt } from "./shares"
 export { fileTag, fileObjectTag, favorite } from "./tags"
 export { auditLog, uploadSession, uploadPart, notification } from "./audit"

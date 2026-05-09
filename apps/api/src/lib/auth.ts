@@ -1,9 +1,12 @@
 import { betterAuth } from "better-auth"
-import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { organization } from "better-auth/plugins"
+import * as schema from "@bucketdrive/shared/db/schema"
 import { createD1DB } from "./db"
 
 interface AuthEnv {
+  BETTER_AUTH_SECRET?: string
+  BETTER_AUTH_URL?: string
   GITHUB_CLIENT_ID?: string
   GITHUB_CLIENT_SECRET?: string
   GOOGLE_CLIENT_ID?: string
@@ -13,7 +16,12 @@ interface AuthEnv {
 
 export function createAuth(env: AuthEnv) {
   return betterAuth({
-    database: drizzleAdapter(createD1DB(env.DB), { provider: "sqlite" }),
+    secret: env.BETTER_AUTH_SECRET,
+    baseURL: env.BETTER_AUTH_URL,
+    database: drizzleAdapter(createD1DB(env.DB), {
+      provider: "sqlite",
+      schema,
+    }),
     session: {
       expiresIn: 30 * 24 * 60 * 60,
       updateAge: 24 * 60 * 60,
@@ -27,7 +35,7 @@ export function createAuth(env: AuthEnv) {
       attributes: {
         httpOnly: true,
         secure: true,
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
       },
     },
@@ -41,6 +49,10 @@ export function createAuth(env: AuthEnv) {
         clientSecret: env.GOOGLE_CLIENT_SECRET ?? "",
       },
     },
+    trustedOrigins: [
+      "http://localhost:5173",
+      "http://localhost:8787",
+    ],
     plugins: [organization()],
   })
 }

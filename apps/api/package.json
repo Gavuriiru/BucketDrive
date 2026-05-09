@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.9",
     "@bucketdrive/shared": "workspace:*",
     "better-auth": "^1.0.0",
     "drizzle-orm": "^0.45.2",
@@ -18,7 +19,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250100.0",
-    "wrangler": "^3.100.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "wrangler": "^3.100.0"
   }
 }

@@ -11,7 +11,7 @@ verifiable result.
 | Day | Topic | Core Deliverable | Status |
 |---|---|---|---|
 | 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |
-| 2 | Auth backend | GitHub OAuth working via Better Auth | ⬜ |
+| 2 | Auth backend | GitHub OAuth working via Better Auth | ✅ |
 | 3 | Auth frontend | Login page, session guard, user context | ⬜ |
 | 4 | Storage | R2 provider with signed URLs | ⬜ |
 | 5 | Upload | End-to-end drag-drop upload with progress | ⬜ |
@@ -76,9 +76,18 @@ git add -A && git commit -m "chore(db): initial migration and seed"
 
 ---
 
-## Day 2 — Authentication (Better Auth)
+## Day 2 — Authentication (Better Auth) ✅
 
-**Goal:** Users can sign in with GitHub OAuth and session persists.
+> **Notes from implementation:**
+> - Installed `@better-auth/drizzle-adapter` as explicit dependency (imported from `better-auth/adapters/drizzle` re-exports it)
+> - Created `packages/shared/src/db/schema/auth.ts` with `user`, `session`, `account`, `verification`, `organization`, `member` tables
+> - Added `workspaceMember` junction table for future RBAC
+> - Better Auth v1.x uses `POST /api/auth/sign-in/social` (not `GET /signin/github` as in v0.x)
+> - D1 Miniflare simulator rejects JavaScript Date objects — added D1 binding wrapper in `db.ts` that serializes Dates to ISO strings
+> - `migrations_dir` added to `wrangler.toml` for D1 local dev; migrations applied via `wrangler d1 execute`
+> - `.dev.vars` must be in the same directory as `wrangler.toml` (repo root) to be picked up by Wrangler
+> - OAuth flow fully functional: sign-in returns GitHub auth URL, callback route active, session endpoint returns null when unauthenticated
+> - Auth middleware returns 401 on protected routes without a valid session
 
 ### Step 2.1 — Create GitHub OAuth App
 

@@ -7,6 +7,8 @@ import { filesHandler } from "./modules/files/files.handler"
 import { sharesHandler } from "./modules/shares/shares.handler"
 
 interface Env {
+  BETTER_AUTH_SECRET?: string
+  BETTER_AUTH_URL?: string
   DB: D1Database
   GITHUB_CLIENT_ID?: string
   GITHUB_CLIENT_SECRET?: string

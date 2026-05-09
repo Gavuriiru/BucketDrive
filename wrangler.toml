@@ -8,6 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "bucketdrive-db"
 database_id = ""
+migrations_dir = "packages/shared/src/db/migrations"
 
 [[env.staging.d1_databases]]
 binding = "DB"

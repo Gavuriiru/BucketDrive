@@ -45,6 +45,14 @@ async function main() {
     updatedAt: new Date().toISOString(),
   }).run()
 
+  db.insert(schema.workspaceMember).values({
+    id: uuid(),
+    workspaceId: wsId,
+    userId: ownerId,
+    role: "owner",
+    createdAt: new Date().toISOString(),
+  }).run()
+
   db.insert(schema.bucket).values({
     id: bucketId,
     workspaceId: wsId,

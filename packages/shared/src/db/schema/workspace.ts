@@ -78,6 +78,18 @@ export const fileObject = sqliteTable("file_object", {
     .default(sql`(current_timestamp)`),
 })
 
+export const workspaceMember = sqliteTable("workspace_member", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspace.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  role: text("role").notNull().default("viewer"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+})
+
 export const folder = sqliteTable("folder", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id")
