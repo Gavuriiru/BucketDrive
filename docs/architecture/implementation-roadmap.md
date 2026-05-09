@@ -12,7 +12,7 @@ verifiable result.
 |---|---|---|---|
 | 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |
 | 2 | Auth backend | GitHub OAuth working via Better Auth | ✅ `f4f650e` |
-| 3 | Auth frontend | Login page, session guard, user context | ⬜ |
+| 3 | Auth frontend | Login page, session guard, user context | ✅ `4b78970` |
 | 4 | Storage | R2 provider with signed URLs | ⬜ |
 | 5 | Upload | End-to-end drag-drop upload with progress | ⬜ |
 | 6 | Explorer | Grid/list views with breadcrumbs | ⬜ |
@@ -132,9 +132,18 @@ git commit -m "feat(auth): verify Better Auth OAuth flow with GitHub"
 
 ---
 
-## Day 3 — Login UI (Frontend)
+## Day 3 — Login UI (Frontend) ✅
 
-**Goal:** User can click "Sign in with GitHub" from the frontend and land on the dashboard.
+> **Notes from implementation:**
+> - Created `apps/web/src/lib/auth.ts` with `useSession()` hook (TanStack Query) and `useSignOut()` hook
+> - Created `apps/web/src/routes/login.tsx` with GitHub OAuth sign-in link (`GET /api/auth/sign-in/social?provider=github&callbackURL=/dashboard`)
+> - Restructured `__root.tsx` routes: root `<Outlet />`, standalone `/login` route (redirects to `/dashboard` if already authenticated), `app` layout route with `beforeLoad` auth guard, `/` and `/dashboard` as children
+> - Updated `topbar.tsx` to show user avatar/initials + name from session, sign-out button, wired theme toggle to Zustand store
+> - Fixed pre-existing `no-confusing-void-expression` lint errors in `app-store.ts`
+> - Added `defaultPendingComponent` spinner shown while session is being checked
+> - Installed missing ESLint dependencies (`eslint`, `@eslint/js`, `typescript-eslint`, `globals`) that were configured but not in lockfile
+> - Better Auth v1.x social sign-in endpoint: `GET /api/auth/sign-in/social?provider=github` (not the old `/api/auth/signin/github` from roadmap v0.x)
+> - `@/` path alias imports from ESLint strict type-checked config trigger false positives on generic hook returns; suppressed with file-level disable in topbar.tsx
 
 ### Step 3.1 — Create login page
 
