@@ -731,7 +731,16 @@ git commit -m "feat(trash): soft delete, restore, and permanent purge"
 
 ---
 
-## Day 14 - Search & Filters
+## Day 14 - Search & Filters DONE
+
+> **Notes from implementation:**
+> - Added `0002_gentle_raven.sql` with a standalone FTS5 index, sync triggers, backfill, and supporting indexes for file search, tags, and favorites
+> - Added `GET /api/workspaces/:workspaceId/search` with workspace-wide file search, MIME category filters, tag AND filtering, favorites filtering, pagination, and relevance-aware sorting
+> - Upgraded file list responses to always include `tags` and `isFavorited`, so explorer and search results render the same metadata shape
+> - Connected the global topbar to contextual Zustand-backed search state, with debounced search on Dashboard, Trash, Shared with me, and Share Links
+> - Dashboard search now replaces folder browsing with result-mode UI, chips for active filters, and search-specific sorting while preserving normal explorer sorting when filters are used without text
+> - Trash search now matches both item names and original locations, and shares pages support server-side query filtering via `q`
+> - Validation after implementation: shared/api/web typecheck passed, `apps/web` production build passed, and API/shared unit tests passed
 
 **Goal:** Users search files by name, filter by type/tags/favorites.
 
@@ -775,7 +784,16 @@ git commit -m "feat(search): FTS5 full-text search with filters"
 
 ---
 
-## Day 15 - Tags, Favorites & Colors
+## Day 15 - Tags, Favorites & Colors DONE
+
+> **Notes from implementation:**
+> - Added tag contracts and workspace tag CRUD endpoints under `/api/workspaces/:workspaceId/tags`
+> - Implemented `POST /api/workspaces/:workspaceId/files/:fileId/tags` and `POST /api/workspaces/:workspaceId/files/:fileId/favorite`
+> - Added dashboard tag filters, favorite-only search filtering, favorite stars, and tag chips in both grid and list explorer modes
+> - Added a reusable tag management dialog for assign/create/edit/delete flows without introducing a new route
+> - Standardized tag colors to a predefined palette so chips stay color-coded without violating the repo rule against inline styles
+> - Favorites now invalidate explorer/search/trash queries consistently, and deleted files continue to deactivate/reactivate favorite state via the trash service
+> - Validation after implementation: API/shared unit tests passed and the new file-query helper coverage verifies FTS tokenization and MIME category mapping
 
 **Goal:** Users can tag files, favorite them, and see visual organization.
 
@@ -1027,4 +1045,3 @@ git commit -m "test: contract tests, unit tests, a11y fixes, staging deploy"
 # Quick Reference
 
 See [Status Overview](#status-overview) at the top of this file for the latest status of each day.
-
