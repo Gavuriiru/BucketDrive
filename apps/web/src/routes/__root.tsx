@@ -3,6 +3,7 @@ import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
 import { LoginPage } from "./login"
 import { DashboardPage } from "./app/dashboard"
+import { ShareManagementPage } from "./app/shares"
 import { SharedPage } from "./app/shared"
 import { ShareAccessPage } from "./share.$shareId"
 
@@ -13,7 +14,7 @@ const rootRoute = createRootRoute({
 async function checkAuth(): Promise<{ user: Record<string, unknown> } | null> {
   const res = await fetch("/api/auth/get-session", { credentials: "include" })
   if (!res.ok) return null
-  const data = await res.json()
+  const data: unknown = await res.json()
   return data as { user: Record<string, unknown> } | null
 }
 
@@ -65,6 +66,12 @@ const sharedRoute = createRoute({
   component: SharedPage,
 })
 
+const shareManagementRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard/shares",
+  component: ShareManagementPage,
+})
+
 const shareAccessRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/share/$shareId",
@@ -74,7 +81,7 @@ const shareAccessRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   shareAccessRoute,
-  appRoute.addChildren([homeRoute, dashboardRoute, sharedRoute]),
+  appRoute.addChildren([homeRoute, dashboardRoute, sharedRoute, shareManagementRoute]),
 ])
 
 export const router = createRouter({

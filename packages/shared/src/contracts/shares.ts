@@ -1,6 +1,10 @@
 import { z } from "zod"
-import { ShareLinkSchema } from "../schemas/share"
-import { PaginatedResponseSchema } from "../schemas/common"
+import {
+  ShareLinkSchema,
+  ShareDashboardItemSchema,
+  SharesListMetaSchema,
+  SharesListScopeSchema,
+} from "../schemas/share"
 
 export const CreateShareRequest = z.object({
   resourceId: z.string().uuid(),
@@ -11,7 +15,16 @@ export const CreateShareRequest = z.object({
   permissions: z.array(z.enum(["read", "download"])).optional(),
 })
 
-export const ListSharesResponse = PaginatedResponseSchema(ShareLinkSchema)
+export const ListSharesRequest = z.object({
+  scope: SharesListScopeSchema.default("mine"),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+})
+
+export const ListSharesResponse = z.object({
+  data: z.array(ShareDashboardItemSchema),
+  meta: SharesListMetaSchema,
+})
 
 export const UpdateShareRequest = z.object({
   password: z.string().min(4).max(128).nullable().optional(),
@@ -51,7 +64,7 @@ export const ShareInfoResponse = z.object({
   id: z.string().uuid(),
   resourceType: z.enum(["file", "folder"]),
   resourceName: z.string(),
-  shareType: z.enum(["internal", "external_direct", "external_explorer"]),
+  shareType: ShareLinkSchema.shape.shareType,
   hasPassword: z.boolean(),
   isActive: z.boolean(),
   expiresAt: z.string().datetime().nullable(),

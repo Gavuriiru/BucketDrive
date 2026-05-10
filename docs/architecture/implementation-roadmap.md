@@ -21,7 +21,7 @@ verifiable result.
 | 9 | RBAC | Permission engine with can() checks | ✅ |
 | 10 | Internal shares | File sharing between workspace members | ✅ |
 | 11 | External shares | Public links with password + rate-limit | ✅ |
-| 12 | Share management | User dashboard + admin oversight | ⬜ |
+| 12 | Share management | User dashboard + admin oversight | ✅ |
 | 13 | Trash | Soft delete, restore, auto-cleanup | ⬜ |
 | 14 | Search | FTS5 full-text with filters | ⬜ |
 | 15 | Tags & favorites | Color-coded tags, star favorites | ⬜ |
@@ -629,7 +629,17 @@ git commit -m "feat(shares): external sharing with password and rate limiting"
 
 ---
 
-## Day 12 — Share Management Dashboard
+## Day 12 — Share Management Dashboard ✅
+
+> **Notes from implementation:**
+> - Added `/dashboard/shares` with a dedicated Share Links dashboard for creators, including copy link, edit expiration/password, and revoke actions
+> - Added owner/admin "All Workspace Shares" tab with workspace-wide visibility and locked-link badges
+> - Enriched `GET /api/workspaces/:workspaceId/shares` to return resource name, creator name, permissions, `hasPassword`, `isLocked`, and scope metadata
+> - Updated `GET /api/workspaces` to include the current member `role`, so the frontend can gate admin oversight explicitly
+> - Added audit events for `share.accessed`, `share.password_failed`, and `share.locked` on public access flows
+> - Updated `/shared` to render real resource names and share creators instead of generic placeholders
+> - Validation: `packages/shared` lint/typecheck passed, `apps/api` share files lint passed, `apps/api` typecheck passed, `apps/web` typecheck passed
+> - Remaining environment issue: root `pnpm build` still fails on Windows because Rollup optional native dependency is skipped under the repo's current Linux-only `pnpm.supportedArchitectures` setting
 
 **Goal:** Users manage their shares; admins manage all workspace shares.
 

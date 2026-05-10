@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query"
-import type { FileObject, Folder } from "@bucketdrive/shared"
+import type {
+  FileObject,
+  Folder,
+  ShareDashboardItem,
+  ShareLink,
+  SharesListScope,
+  WorkspaceRole,
+} from "@bucketdrive/shared"
 
 interface ApiError {
   code: string
@@ -222,6 +229,7 @@ interface WorkspaceData {
   name: string
   slug: string
   ownerId: string
+  role: WorkspaceRole
   storageQuotaBytes: number
   createdAt: string
   updatedAt: string
@@ -371,24 +379,16 @@ export function useMoveFile(workspaceId: string | null) {
 }
 
 interface ListSharesResponse {
-  data: ShareLink[]
-  meta: { page: number; limit: number; total: number; totalPages: number }
-}
-
-interface ShareLink {
-  id: string
-  workspaceId: string
-  resourceType: "file" | "folder"
-  resourceId: string
-  shareType: "internal" | "external_direct" | "external_explorer"
-  createdBy: string
-  passwordHash: string | null
-  expiresAt: string | null
-  accessCount: number
-  lastAccessedAt: string | null
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+  data: ShareDashboardItem[]
+  meta: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    scope: SharesListScope
+    currentUserRole: WorkspaceRole
+    canManageAll: boolean
+  }
 }
 
 interface CreateShareRequest {
@@ -408,19 +408,21 @@ interface UpdateShareRequest {
 
 export function useShares(
   workspaceId: string | null,
-  options?: { sharedWithMe?: boolean },
+  options?: { scope?: SharesListScope; page?: number; limit?: number; enabled?: boolean },
 ): UseQueryResult<ListSharesResponse> {
   return useQuery<ListSharesResponse>({
     queryKey: ["shares", workspaceId, options],
     queryFn: () => {
       const params = new URLSearchParams()
-      if (options?.sharedWithMe) params.set("sharedWithMe", "true")
+      if (options?.scope) params.set("scope", options.scope)
+      if (options?.page) params.set("page", String(options.page))
+      if (options?.limit) params.set("limit", String(options.limit))
       const qs = params.toString()
       return api.get<ListSharesResponse>(
         `/api/workspaces/${workspaceId}/shares${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: !!workspaceId,
+    enabled: !!workspaceId && options?.enabled !== false,
   })
 }
 

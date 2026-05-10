@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router"
-import { Files, Share2, Trash2, Settings, HardDrive } from "lucide-react"
+import { Files, Share2, Trash2, Settings, HardDrive, Link2 } from "lucide-react"
 import { FolderTree } from "@/components/features/folder-tree"
 
 const navItems = [
   { to: "/dashboard", icon: Files, label: "Files" },
-  { to: "/shared", icon: Share2, label: "Shared" },
+  { to: "/shared", icon: Share2, label: "Shared With Me" },
+  { to: "/dashboard/shares", icon: Link2, label: "Share Links" },
   { to: "/dashboard", icon: Trash2, label: "Trash" },
   { to: "/dashboard", icon: HardDrive, label: "Storage" },
   { to: "/dashboard", icon: Settings, label: "Settings" },

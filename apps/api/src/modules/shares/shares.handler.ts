@@ -7,12 +7,14 @@ import { createStorageProvider } from "../../services/storage"
 import { workspaceMember } from "@bucketdrive/shared/db/schema"
 import {
   CreateShareRequest,
+  ListSharesRequest,
   ListSharesResponse,
   UpdateShareRequest,
   ShareAccessRequest,
   ShareAccessResponse,
   ShareInfoResponse,
   ShareBrowseResponse,
+  type WorkspaceRole,
 } from "@bucketdrive/shared"
 import { SharesService, ShareError } from "./shares.service"
 
@@ -52,19 +54,23 @@ shares.get("/", requirePermission("shares.read"), async (c) => {
     )
     .get()
 
-  const role = member?.role ?? "viewer"
-  const sharedWithMe = c.req.query("sharedWithMe") === "true"
-  const page = parseInt(c.req.query("page") ?? "1", 10)
-  const limit = parseInt(c.req.query("limit") ?? "50", 10)
+  const role = (member?.role ?? "viewer") as WorkspaceRole
+  const request = ListSharesRequest.parse({
+    scope:
+      c.req.query("scope") ??
+      (c.req.query("sharedWithMe") === "true" ? "shared_with_me" : "mine"),
+    page: c.req.query("page"),
+    limit: c.req.query("limit"),
+  })
 
   const service = new SharesService()
   const result = await service.listShares({
     workspaceId,
     userId: user.id,
     role,
-    page,
-    limit,
-    sharedWithMe,
+    page: request.page,
+    limit: request.limit,
+    scope: request.scope,
   })
 
   return c.json(
@@ -131,7 +137,8 @@ shares.patch("/:shareId", requirePermission("shares.update"), async (c) => {
       const statusMap: Record<string, number> = {
         SHARE_NOT_FOUND: 404,
       }
-      return c.json({ code: err.code, message: err.message }, statusMap[err.code] as never ?? 400)
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
     }
     throw err
   }
@@ -175,7 +182,8 @@ publicShares.get("/:shareId", async (c) => {
       const statusMap: Record<string, number> = {
         SHARE_NOT_FOUND: 404,
       }
-      return c.json({ code: err.code, message: err.message }, statusMap[err.code] as never ?? 400)
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
     }
     throw err
   }
@@ -212,7 +220,8 @@ publicShares.post("/:shareId/access", async (c) => {
         SHARE_PASSWORD_RATE_LIMITED: 429,
         NOT_FOUND: 404,
       }
-      return c.json({ code: err.code, message: err.message }, statusMap[err.code] as never ?? 400)
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
     }
     throw err
   }
@@ -250,7 +259,8 @@ publicShares.get("/:shareId/browse", async (c) => {
         NOT_FOUND: 404,
         INVALID_RESOURCE: 400,
       }
-      return c.json({ code: err.code, message: err.message }, statusMap[err.code] as never ?? 400)
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
     }
     throw err
   }

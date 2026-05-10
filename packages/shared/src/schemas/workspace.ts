@@ -6,6 +6,7 @@ export const WorkspaceSchema = z.object({
   name: z.string(),
   slug: z.string(),
   ownerId: z.string().uuid(),
+  role: WorkspaceRole,
   storageQuotaBytes: z.number().int().positive(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

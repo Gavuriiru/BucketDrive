@@ -1,4 +1,4 @@
-import { eq, and, ne, sql } from "drizzle-orm"
+import { eq, and, inArray, ne, sql, type SQL } from "drizzle-orm"
 import { getDB } from "../../lib/db"
 import {
   shareLink,
@@ -7,12 +7,17 @@ import {
   fileObject,
   folder,
   auditLog,
+  user,
 } from "@bucketdrive/shared/db/schema"
 import type { StorageProvider } from "../../services/storage"
-import type { ShareLink } from "@bucketdrive/shared"
+import type {
+  ShareDashboardItem,
+  ShareLink,
+  SharesListScope,
+  WorkspaceRole,
+} from "@bucketdrive/shared"
 
 const encoder = new TextEncoder()
-const decoder = new TextDecoder()
 
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16))
@@ -52,10 +57,10 @@ export interface CreateShareParams {
 export interface ListSharesParams {
   workspaceId: string
   userId: string
-  role: string
+  role: WorkspaceRole
   page: number
   limit: number
-  sharedWithMe?: boolean
+  scope: SharesListScope
 }
 
 export interface UpdateShareParams {
@@ -68,6 +73,33 @@ export interface UpdateShareParams {
 }
 
 export class SharesService {
+  private async recordAudit(params: {
+    workspaceId: string
+    actorId: string
+    action: string
+    resourceId: string
+    metadata?: Record<string, unknown>
+    ipAddress?: string
+    userAgent?: string
+  }) {
+    const db = getDB()
+    await db
+      .insert(auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId: params.workspaceId,
+        actorId: params.actorId,
+        action: params.action,
+        resourceType: "share",
+        resourceId: params.resourceId,
+        ipAddress: params.ipAddress ?? null,
+        userAgent: params.userAgent ?? null,
+        metadata: params.metadata ? JSON.stringify(params.metadata) : null,
+        createdAt: new Date().toISOString(),
+      })
+      .run()
+  }
+
   async createShare(params: CreateShareParams): Promise<ShareLink> {
     const db = getDB()
     const now = new Date().toISOString()
@@ -113,23 +145,17 @@ export class SharesService {
       }
     }
 
-    await db
-      .insert(auditLog)
-      .values({
-        id: crypto.randomUUID(),
-        workspaceId: params.workspaceId,
-        actorId: params.userId,
-        action: "share.created",
-        resourceType: "share",
-        resourceId: id,
-        metadata: JSON.stringify({
-          shareType: params.shareType,
-          resourceType: params.resourceType,
-          resourceId: params.resourceId,
-        }),
-        createdAt: now,
-      })
-      .run()
+    await this.recordAudit({
+      workspaceId: params.workspaceId,
+      actorId: params.userId,
+      action: "share.created",
+      resourceId: id,
+      metadata: {
+        shareType: params.shareType,
+        resourceType: params.resourceType,
+        sharedResourceId: params.resourceId,
+      },
+    })
 
     const created = await db.select().from(shareLink).where(eq(shareLink.id, id)).get()
     if (!created) {
@@ -141,40 +167,140 @@ export class SharesService {
 
   async listShares(params: ListSharesParams) {
     const db = getDB()
+    const canManageAll = params.role === "admin" || params.role === "owner"
+    const effectiveScope =
+      params.scope === "workspace" && !canManageAll ? "mine" : params.scope
 
-    const conditions: ReturnType<typeof eq>[] = [eq(shareLink.workspaceId, params.workspaceId)]
+    const conditions: SQL[] = [eq(shareLink.workspaceId, params.workspaceId)]
 
-    if (params.sharedWithMe) {
+    if (effectiveScope === "shared_with_me") {
       conditions.push(eq(shareLink.shareType, "internal"))
       conditions.push(ne(shareLink.createdBy, params.userId))
       conditions.push(eq(shareLink.isActive, true))
-    } else if (params.role !== "admin" && params.role !== "owner") {
+    } else if (effectiveScope === "mine" || !canManageAll) {
       conditions.push(eq(shareLink.createdBy, params.userId))
     }
 
-    const total = (
-      await db
-        .select({ count: sql<number>`count(*)` })
-        .from(shareLink)
-        .where(and(...conditions))
-        .get()
-    )?.count ?? 0
+    const totalRow = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(shareLink)
+      .where(and(...conditions))
+      .get()
+    const total = totalRow ? totalRow.count : 0
 
     const rows = await db
       .select()
       .from(shareLink)
       .where(and(...conditions))
+      .orderBy(sql`${shareLink.createdAt} desc`)
       .limit(params.limit)
       .offset((params.page - 1) * params.limit)
       .all()
 
+    const shareIds = rows.map((row) => row.id)
+    const creatorIds = Array.from(new Set(rows.map((row) => row.createdBy)))
+    const fileIds = rows.filter((row) => row.resourceType === "file").map((row) => row.resourceId)
+    const folderIds = rows.filter((row) => row.resourceType === "folder").map((row) => row.resourceId)
+
+    const permissionRows =
+      shareIds.length > 0
+        ? await db
+            .select({
+              shareLinkId: sharePermission.shareLinkId,
+              permission: sharePermission.permission,
+            })
+            .from(sharePermission)
+            .where(inArray(sharePermission.shareLinkId, shareIds))
+            .all()
+        : []
+
+    const creatorRows =
+      creatorIds.length > 0
+        ? await db
+            .select({
+              id: user.id,
+              name: user.name,
+            })
+            .from(user)
+            .where(inArray(user.id, creatorIds))
+            .all()
+        : []
+
+    const fileRows =
+      fileIds.length > 0
+        ? await db
+            .select({
+              id: fileObject.id,
+              name: fileObject.originalName,
+            })
+            .from(fileObject)
+            .where(inArray(fileObject.id, fileIds))
+            .all()
+        : []
+
+    const folderRows =
+      folderIds.length > 0
+        ? await db
+            .select({
+              id: folder.id,
+              name: folder.name,
+            })
+            .from(folder)
+            .where(inArray(folder.id, folderIds))
+            .all()
+        : []
+
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    const lockRows =
+      shareIds.length > 0
+        ? await db
+            .select({
+              shareLinkId: shareAccessAttempt.shareLinkId,
+              count: sql<number>`count(*)`,
+            })
+            .from(shareAccessAttempt)
+            .where(
+              and(
+                inArray(shareAccessAttempt.shareLinkId, shareIds),
+                eq(shareAccessAttempt.success, false),
+                sql`${shareAccessAttempt.attemptedAt} >= ${thirtyMinAgo}`,
+              ),
+            )
+            .groupBy(shareAccessAttempt.shareLinkId)
+            .all()
+        : []
+
+    const creatorNameById = new Map(creatorRows.map((row) => [row.id, row.name]))
+    const resourceNameById = new Map([
+      ...fileRows.map((row) => [row.id, row.name] as const),
+      ...folderRows.map((row) => [row.id, row.name] as const),
+    ])
+    const permissionsByShareId = new Map<string, Array<"read" | "download">>()
+    for (const row of permissionRows) {
+      const current = permissionsByShareId.get(row.shareLinkId) ?? []
+      permissionsByShareId.set(row.shareLinkId, [...current, row.permission as "read" | "download"])
+    }
+    const lockCountByShareId = new Map(lockRows.map((row) => [row.shareLinkId, row.count]))
+
+    const data: ShareDashboardItem[] = rows.map((row) => ({
+      ...(row as unknown as ShareLink),
+      resourceName: resourceNameById.get(row.resourceId) ?? "Deleted resource",
+      createdByName: creatorNameById.get(row.createdBy) ?? "Unknown user",
+      permissions: permissionsByShareId.get(row.id) ?? [],
+      hasPassword: row.passwordHash !== null,
+      isLocked: (lockCountByShareId.get(row.id) ?? 0) >= 10,
+    }))
+
     return {
-      data: rows as unknown as ShareLink[],
+      data,
       meta: {
         page: params.page,
         limit: params.limit,
         total,
         totalPages: Math.ceil(total / params.limit),
+        scope: effectiveScope,
+        currentUserRole: params.role,
+        canManageAll,
       },
     }
   }
@@ -182,7 +308,7 @@ export class SharesService {
   async getShare(shareId: string): Promise<ShareLink | null> {
     const db = getDB()
     const row = await db.select().from(shareLink).where(eq(shareLink.id, shareId)).get()
-    return (row as unknown as ShareLink) ?? null
+    return row ? (row as unknown as ShareLink) : null
   }
 
   async getSharePermissions(shareId: string): Promise<string[]> {
@@ -229,19 +355,13 @@ export class SharesService {
 
     await db.update(shareLink).set(updateSet).where(eq(shareLink.id, params.shareId)).run()
 
-    await db
-      .insert(auditLog)
-      .values({
-        id: crypto.randomUUID(),
-        workspaceId: params.workspaceId,
-        actorId: params.userId,
-        action: "share.updated",
-        resourceType: "share",
-        resourceId: params.shareId,
-        metadata: JSON.stringify(updateSet),
-        createdAt: now,
-      })
-      .run()
+    await this.recordAudit({
+      workspaceId: params.workspaceId,
+      actorId: params.userId,
+      action: "share.updated",
+      resourceId: params.shareId,
+      metadata: updateSet,
+    })
 
     const updated = await db.select().from(shareLink).where(eq(shareLink.id, params.shareId)).get()
     if (!updated) {
@@ -271,18 +391,12 @@ export class SharesService {
       .where(eq(shareLink.id, shareId))
       .run()
 
-    await db
-      .insert(auditLog)
-      .values({
-        id: crypto.randomUUID(),
-        workspaceId,
-        actorId: userId,
-        action: "share.revoked",
-        resourceType: "share",
-        resourceId: shareId,
-        createdAt: now,
-      })
-      .run()
+    await this.recordAudit({
+      workspaceId,
+      actorId: userId,
+      action: "share.revoked",
+      resourceId: shareId,
+    })
   }
 
   private async checkShareRateLimit(shareId: string, ipAddress?: string): Promise<void> {
@@ -292,39 +406,37 @@ export class SharesService {
     const thirtyMinAgo = new Date(now - 30 * 60 * 1000).toISOString()
 
     if (ipAddress) {
-      const ipFailures = (
-        await db
-          .select({ count: sql<number>`count(*)` })
-          .from(shareAccessAttempt)
-          .where(
-            and(
-              eq(shareAccessAttempt.shareLinkId, shareId),
-              eq(shareAccessAttempt.ipAddress, ipAddress),
-              eq(shareAccessAttempt.success, false),
-              sql`${shareAccessAttempt.attemptedAt} >= ${fifteenMinAgo}`,
-            ),
-          )
-          .get()
-      )?.count ?? 0
+      const ipFailuresRow = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(shareAccessAttempt)
+        .where(
+          and(
+            eq(shareAccessAttempt.shareLinkId, shareId),
+            eq(shareAccessAttempt.ipAddress, ipAddress),
+            eq(shareAccessAttempt.success, false),
+            sql`${shareAccessAttempt.attemptedAt} >= ${fifteenMinAgo}`,
+          ),
+        )
+        .get()
+      const ipFailures = ipFailuresRow ? ipFailuresRow.count : 0
 
       if (ipFailures >= 5) {
         throw new ShareError("SHARE_PASSWORD_RATE_LIMITED", "Too many failed attempts from this IP. Try again in 15 minutes.")
       }
     }
 
-    const totalFailures = (
-      await db
-        .select({ count: sql<number>`count(*)` })
-        .from(shareAccessAttempt)
-        .where(
-          and(
-            eq(shareAccessAttempt.shareLinkId, shareId),
-            eq(shareAccessAttempt.success, false),
-            sql`${shareAccessAttempt.attemptedAt} >= ${thirtyMinAgo}`,
-          ),
-        )
-        .get()
-    )?.count ?? 0
+    const totalFailuresRow = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(shareAccessAttempt)
+      .where(
+        and(
+          eq(shareAccessAttempt.shareLinkId, shareId),
+          eq(shareAccessAttempt.success, false),
+          sql`${shareAccessAttempt.attemptedAt} >= ${thirtyMinAgo}`,
+        ),
+      )
+      .get()
+    const totalFailures = totalFailuresRow ? totalFailuresRow.count : 0
 
     if (totalFailures >= 10) {
       throw new ShareError("SHARE_LOCKED", "This share link has been temporarily locked due to too many failed attempts. Try again in 30 minutes.")
@@ -354,32 +466,74 @@ export class SharesService {
     }
 
     if (share.passwordHash) {
-      await this.checkShareRateLimit(shareId, options?.ipAddress)
+      const password = options?.password
+      const ipAddress = options?.ipAddress
+      const userAgent = options?.userAgent
 
-      if (!options?.password) {
+      await this.checkShareRateLimit(shareId, ipAddress)
+
+      if (!password) {
         throw new ShareError("PASSWORD_REQUIRED", "Password is required")
       }
-      const valid = await verifyPassword(options.password, share.passwordHash)
+      const valid = await verifyPassword(password, share.passwordHash)
       if (!valid) {
-        if (options?.ipAddress) {
+        if (ipAddress) {
           await db
             .insert(shareAccessAttempt)
             .values({
               id: crypto.randomUUID(),
               shareLinkId: shareId,
-              ipAddress: options.ipAddress,
-              userAgent: options.userAgent ?? null,
+              ipAddress,
+              userAgent: userAgent ?? null,
               success: false,
               attemptedAt: now,
             })
             .run()
+        }
+        await this.recordAudit({
+          workspaceId: share.workspaceId,
+          actorId: "public",
+          action: "share.password_failed",
+          resourceId: shareId,
+          ipAddress,
+          userAgent,
+          metadata: {
+            shareType: share.shareType,
+          },
+        })
+
+        const recentFailuresRow = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(shareAccessAttempt)
+          .where(
+            and(
+              eq(shareAccessAttempt.shareLinkId, shareId),
+              eq(shareAccessAttempt.success, false),
+              sql`${shareAccessAttempt.attemptedAt} >= ${new Date(Date.now() - 30 * 60 * 1000).toISOString()}`,
+            ),
+          )
+          .get()
+        const recentFailures = recentFailuresRow ? recentFailuresRow.count : 0
+
+        if (recentFailures === 10) {
+          await this.recordAudit({
+            workspaceId: share.workspaceId,
+            actorId: "public",
+            action: "share.locked",
+            resourceId: shareId,
+            ipAddress,
+            userAgent,
+            metadata: {
+              reason: "too_many_failed_password_attempts",
+            },
+          })
         }
         throw new ShareError("INVALID_PASSWORD", "Invalid password")
       }
     }
 
     const resourceType = share.resourceType as "file" | "folder"
-    let resourceName = ""
+    let resourceName: string
     let signedUrl: string | null = null
     let files: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }> = []
     let folders: Array<{ id: string; name: string }> = []
@@ -445,7 +599,7 @@ export class SharesService {
     await db
       .update(shareLink)
       .set({
-        accessCount: (share.accessCount ?? 0) + 1,
+        accessCount: share.accessCount + 1,
         lastAccessedAt: now,
         updatedAt: now,
       })
@@ -465,6 +619,20 @@ export class SharesService {
         })
         .run()
     }
+
+    await this.recordAudit({
+      workspaceId: share.workspaceId,
+      actorId: "public",
+      action: "share.accessed",
+      resourceId: shareId,
+      ipAddress: options?.ipAddress,
+      userAgent: options?.userAgent,
+      metadata: {
+        shareType: share.shareType,
+        resourceType,
+        mode: resourceType === "file" ? "download" : "folder_root",
+      },
+    })
 
     return { resourceType, resourceName, signedUrl, files, folders }
   }
@@ -552,25 +720,67 @@ export class SharesService {
     }
 
     if (share.passwordHash) {
-      await this.checkShareRateLimit(shareId, options?.ipAddress)
+      const password = options?.password
+      const ipAddress = options?.ipAddress
+      const userAgent = options?.userAgent
 
-      if (!options?.password) {
+      await this.checkShareRateLimit(shareId, ipAddress)
+
+      if (!password) {
         throw new ShareError("PASSWORD_REQUIRED", "Password is required")
       }
-      const valid = await verifyPassword(options.password, share.passwordHash)
+      const valid = await verifyPassword(password, share.passwordHash)
       if (!valid) {
-        if (options?.ipAddress) {
+        if (ipAddress) {
           await db
             .insert(shareAccessAttempt)
             .values({
               id: crypto.randomUUID(),
               shareLinkId: shareId,
-              ipAddress: options.ipAddress,
-              userAgent: options.userAgent ?? null,
+              ipAddress,
+              userAgent: userAgent ?? null,
               success: false,
               attemptedAt: now,
             })
             .run()
+        }
+        await this.recordAudit({
+          workspaceId: share.workspaceId,
+          actorId: "public",
+          action: "share.password_failed",
+          resourceId: shareId,
+          ipAddress,
+          userAgent,
+          metadata: {
+            shareType: share.shareType,
+          },
+        })
+
+        const recentFailuresRow = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(shareAccessAttempt)
+          .where(
+            and(
+              eq(shareAccessAttempt.shareLinkId, shareId),
+              eq(shareAccessAttempt.success, false),
+              sql`${shareAccessAttempt.attemptedAt} >= ${new Date(Date.now() - 30 * 60 * 1000).toISOString()}`,
+            ),
+          )
+          .get()
+        const recentFailures = recentFailuresRow ? recentFailuresRow.count : 0
+
+        if (recentFailures === 10) {
+          await this.recordAudit({
+            workspaceId: share.workspaceId,
+            actorId: "public",
+            action: "share.locked",
+            resourceId: shareId,
+            ipAddress,
+            userAgent,
+            metadata: {
+              reason: "too_many_failed_password_attempts",
+            },
+          })
         }
         throw new ShareError("INVALID_PASSWORD", "Invalid password")
       }
@@ -604,7 +814,8 @@ export class SharesService {
       currentId = f.parentFolderId ?? null
     }
 
-    if (breadcrumbs.length === 0 || breadcrumbs[0]?.id !== share.resourceId) {
+    const rootBreadcrumb = breadcrumbs[0]
+    if (!rootBreadcrumb || rootBreadcrumb.id !== share.resourceId) {
       throw new ShareError("NOT_FOUND", "Folder is not within the shared scope")
     }
 
@@ -633,7 +844,7 @@ export class SharesService {
     await db
       .update(shareLink)
       .set({
-        accessCount: (share.accessCount ?? 0) + 1,
+        accessCount: share.accessCount + 1,
         lastAccessedAt: now,
         updatedAt: now,
       })
@@ -653,6 +864,21 @@ export class SharesService {
         })
         .run()
     }
+
+    await this.recordAudit({
+      workspaceId: share.workspaceId,
+      actorId: "public",
+      action: "share.accessed",
+      resourceId: shareId,
+      ipAddress: options?.ipAddress,
+      userAgent: options?.userAgent,
+      metadata: {
+        shareType: share.shareType,
+        resourceType: share.resourceType,
+        mode: "browse",
+        currentFolderId: targetFolderId,
+      },
+    })
 
     return {
       resourceName: targetFolder.name,

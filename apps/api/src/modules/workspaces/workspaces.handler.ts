@@ -32,7 +32,13 @@ workspaces.get("/", async (c) => {
 
   const workspaceIds = memberships.map((m) => m.workspaceId)
   const allWorkspaces = await db.select().from(workspace).all()
-  const userWorkspaces = allWorkspaces.filter((w) => workspaceIds.includes(w.id))
+  const roleByWorkspaceId = new Map(memberships.map((membership) => [membership.workspaceId, membership.role]))
+  const userWorkspaces = allWorkspaces
+    .filter((w) => workspaceIds.includes(w.id))
+    .map((w) => ({
+      ...w,
+      role: roleByWorkspaceId.get(w.id) ?? "viewer",
+    }))
 
   return c.json({ data: userWorkspaces })
 })

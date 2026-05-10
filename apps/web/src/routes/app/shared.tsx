@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { Share2, Download } from "lucide-react"
 import { useWorkspaces, useShares, useDownloadUrl } from "@/lib/api"
-import type { ShareLink } from "@/lib/api"
+import type { ShareDashboardItem } from "@bucketdrive/shared"
 
 export function SharedPage() {
   const { data: workspacesData, isLoading: wsLoading } = useWorkspaces()
   const workspaceId = workspacesData?.data?.[0]?.id ?? null
 
   const { data: sharesData, isLoading: sharesLoading } = useShares(workspaceId, {
-    sharedWithMe: true,
+    scope: "shared_with_me",
   })
 
   const shares = sharesData?.data ?? []
@@ -73,7 +74,7 @@ export function SharedPage() {
   )
 }
 
-function SharedRow({ share, workspaceId }: { share: ShareLink; workspaceId: string }) {
+function SharedRow({ share, workspaceId }: { share: ShareDashboardItem; workspaceId: string }) {
   const { data: downloadData } = useDownloadUrl(
     share.resourceType === "file" ? workspaceId : null,
     share.resourceType === "file" ? share.resourceId : null,
@@ -90,9 +91,9 @@ function SharedRow({ share, workspaceId }: { share: ShareLink; workspaceId: stri
           </span>
           <div>
             <p className="truncate text-sm font-medium text-text-primary">
-              {share.resourceType === "folder" ? "Shared Folder" : "Shared File"}
+              {share.resourceName}
             </p>
-            <p className="text-xs text-text-tertiary">{share.resourceType}</p>
+            <p className="text-xs text-text-tertiary">Shared by {share.createdByName}</p>
           </div>
         </div>
       </td>
