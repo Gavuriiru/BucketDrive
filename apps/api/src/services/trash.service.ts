@@ -158,7 +158,10 @@ export class TrashService {
 
     const searchTerm = query.q?.toLowerCase()
     const filtered = searchTerm
-      ? items.filter((item) => item.name.toLowerCase().includes(searchTerm))
+      ? items.filter((item) =>
+          item.name.toLowerCase().includes(searchTerm) ||
+          item.originalLocation.toLowerCase().includes(searchTerm),
+        )
       : items
 
     const sorted = [...filtered].sort((a, b) => {

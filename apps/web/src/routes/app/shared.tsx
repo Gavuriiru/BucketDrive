@@ -1,14 +1,19 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { Share2, Download } from "lucide-react"
 import { useWorkspaces, useShares, useDownloadUrl } from "@/lib/api"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { useSearchStore } from "@/stores/search-store"
 import type { ShareDashboardItem } from "@bucketdrive/shared"
 
 export function SharedPage() {
   const { data: workspacesData, isLoading: wsLoading } = useWorkspaces()
   const workspaceId = workspacesData?.data?.[0]?.id ?? null
+  const query = useSearchStore((state) => state.shared.query)
+  const debouncedQuery = useDebouncedValue(query.trim(), 300)
 
   const { data: sharesData, isLoading: sharesLoading } = useShares(workspaceId, {
     scope: "shared_with_me",
+    q: debouncedQuery || undefined,
   })
 
   const shares = sharesData?.data ?? []

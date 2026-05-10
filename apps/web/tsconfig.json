@@ -1,13 +1,17 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "outDir": "./dist",
-    "rootDir": ".",
+    "rootDir": "../..",
     "jsx": "react-jsx",
     "types": ["vite/client"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@bucketdrive/shared": ["../../packages/shared/src"],
+      "@bucketdrive/shared/*": ["../../packages/shared/src/*"]
     }
   },
-  "include": ["src", "vite-env.d.ts"]
+  "include": ["src", "vite-env.d.ts"],
+  "references": [{ "path": "../../packages/shared" }]
 }

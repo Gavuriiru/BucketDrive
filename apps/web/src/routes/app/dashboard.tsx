@@ -1,7 +1,27 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands, @typescript-eslint/restrict-template-expressions */
 import { useRef, useMemo, useCallback, useState } from "react"
-import { Upload, LayoutGrid, List, Trash2, FolderPlus } from "lucide-react"
-import { useFiles, useFolders, useBreadcrumbs, useWorkspaces, useRenameFile, useDeleteFile, useCreateFolder, useUpdateFolder, useDeleteFolder, api, useMoveFile } from "@/lib/api"
+import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X } from "lucide-react"
+import {
+  useFiles,
+  useFolders,
+  useBreadcrumbs,
+  useWorkspaces,
+  useRenameFile,
+  useDeleteFile,
+  useCreateFolder,
+  useUpdateFolder,
+  useDeleteFolder,
+  api,
+  useMoveFile,
+  useSearchFiles,
+  useTags,
+  useToggleFavorite,
+  type BreadcrumbItem,
+} from "@/lib/api"
+import { getTagColorClasses } from "@/lib/tag-colors"
+import { TagPickerDialog } from "@/components/features/tag-picker-dialog"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { useSearchStore } from "@/stores/search-store"
 import { useQueryClient } from "@tanstack/react-query"
 import { useUploadStore } from "@/stores/upload-store"
 import { useExplorerStore } from "@/stores/explorer-store"
@@ -14,7 +34,16 @@ import { ShareModal } from "@/components/features/share-modal"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
 import { DndContext, DragOverlay } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
-import type { BreadcrumbItem } from "@/lib/api"
+import { can } from "@bucketdrive/shared"
+
+const typeFilterOptions = [
+  { value: "all", label: "All files" },
+  { value: "documents", label: "Documents" },
+  { value: "images", label: "Images" },
+  { value: "videos", label: "Videos" },
+  { value: "audio", label: "Audio" },
+  { value: "archives", label: "Archives" },
+] as const
 
 export function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -33,11 +62,28 @@ export function DashboardPage() {
     selectedFolderIds,
     clearSelection,
   } = useExplorerStore()
+  const dashboardSearch = useSearchStore((state) => state.dashboard)
+  const setDashboardType = useSearchStore((state) => state.setDashboardType)
+  const setDashboardFavoriteOnly = useSearchStore((state) => state.setDashboardFavoriteOnly)
+  const setDashboardSelectedTagIds = useSearchStore((state) => state.setDashboardSelectedTagIds)
+  const setDashboardSort = useSearchStore((state) => state.setDashboardSort)
+  const setDashboardOrder = useSearchStore((state) => state.setDashboardOrder)
+  const clearDashboardSearch = useSearchStore((state) => state.clearDashboardSearch)
+
+  const debouncedQuery = useDebouncedValue(dashboardSearch.query.trim(), 300)
+  const isSearchActive =
+    debouncedQuery.length > 0 ||
+    dashboardSearch.type !== "all" ||
+    dashboardSearch.favoriteOnly ||
+    dashboardSearch.selectedTagIds.length > 0
 
   const { data: workspacesData, isLoading: wsLoading } = useWorkspaces()
 
-  const workspaceId = workspacesData?.data?.[0]?.id ?? null
-  const workspaceName = workspacesData?.data?.[0]?.name ?? "Workspace"
+  const workspace = workspacesData?.data?.[0] ?? null
+  const workspaceId = workspace?.id ?? null
+  const workspaceName = workspace?.name ?? "Workspace"
+  const canFavorite = workspace ? can(workspace.role, "files.favorite") : false
+  const canTag = workspace ? can(workspace.role, "files.tag") : false
 
   const { data: filesData, isLoading: filesLoading } = useFiles(workspaceId, {
     folderId: currentFolderId,
@@ -45,14 +91,42 @@ export function DashboardPage() {
     order,
     page: 1,
     limit: 100,
+    enabled: !isSearchActive,
   })
 
-  const { data: foldersData, isLoading: foldersLoading } = useFolders(workspaceId, currentFolderId)
-  const { data: breadcrumbsData } = useBreadcrumbs(workspaceId, currentFolderId)
+  const { data: searchData, isLoading: searchLoading } = useSearchFiles(workspaceId, {
+    q: debouncedQuery || undefined,
+    type: dashboardSearch.type,
+    tags:
+      dashboardSearch.selectedTagIds.length > 0
+        ? dashboardSearch.selectedTagIds
+        : undefined,
+    favorite: dashboardSearch.favoriteOnly || undefined,
+    sort:
+      !debouncedQuery && dashboardSearch.sort === "relevance"
+        ? sort
+        : dashboardSearch.sort,
+    order:
+      !debouncedQuery && dashboardSearch.sort === "relevance"
+        ? order
+        : dashboardSearch.order,
+    page: 1,
+    limit: 100,
+    enabled: isSearchActive,
+  })
 
-  const files = filesData?.data ?? []
-  const folders = foldersData?.data ?? []
-  const isLoading = filesLoading || foldersLoading
+  const { data: foldersData, isLoading: foldersLoading } = useFolders(
+    workspaceId,
+    currentFolderId,
+    !isSearchActive,
+  )
+  const { data: breadcrumbsData } = useBreadcrumbs(workspaceId, currentFolderId)
+  const { data: tagsData } = useTags(workspaceId)
+
+  const files = isSearchActive ? searchData?.data ?? [] : filesData?.data ?? []
+  const folders = isSearchActive ? [] : foldersData?.data ?? []
+  const isLoading = isSearchActive ? searchLoading : filesLoading || foldersLoading
+  const allTags = tagsData?.data ?? []
 
   const renameMutation = useRenameFile(workspaceId)
   const deleteFileMutation = useDeleteFile(workspaceId)
@@ -60,8 +134,10 @@ export function DashboardPage() {
   const updateFolderMutation = useUpdateFolder(workspaceId)
   const deleteFolderMutation = useDeleteFolder(workspaceId)
   const moveFileMutation = useMoveFile(workspaceId)
+  const toggleFavoriteMutation = useToggleFavorite(workspaceId)
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [tagDialogFileId, setTagDialogFileId] = useState<string | null>(null)
   const [shareModal, setShareModal] = useState<{
     open: boolean
     resourceId: string
@@ -132,18 +208,35 @@ export function DashboardPage() {
     [folders, files],
   )
 
+  const handleContextDownload = useCallback(
+    (fileId: string) => {
+      const fetchUrl = async () => {
+        const res = await fetch(
+          `/api/workspaces/${workspaceId}/files/${fileId}/download`,
+          { credentials: "include" },
+        )
+        const data = (await res.json()) as { signedUrl?: string }
+        if (data.signedUrl) {
+          window.open(data.signedUrl, "_blank")
+        }
+      }
+      fetchUrl().catch(console.error)
+    },
+    [workspaceId],
+  )
+
   const handleOpenItem = useCallback(
     (id: string, type: "file" | "folder") => {
       if (type === "folder") {
         navigateTo(id)
       } else {
-        const file = files.find((f) => f.id === id)
+        const file = files.find((candidate) => candidate.id === id)
         if (file) {
           handleContextDownload(file.id)
         }
       }
     },
-    [files, navigateTo],
+    [files, handleContextDownload, navigateTo],
   )
 
   const handleDeleteSelected = useCallback(() => {
@@ -181,7 +274,8 @@ export function DashboardPage() {
 
   const handleRenameItem = useCallback(
     (id: string, type: "file" | "folder") => {
-      const item = type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
+      const item =
+        type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
       const currentName = item ? ("originalName" in item ? item.originalName : item.name) : ""
       const newName = window.prompt("Rename to:", currentName)
       if (newName && newName.trim() && newName !== currentName) {
@@ -193,23 +287,6 @@ export function DashboardPage() {
       }
     },
     [files, folders, renameMutation, updateFolderMutation],
-  )
-
-  const handleContextDownload = useCallback(
-    (fileId: string) => {
-      const fetchUrl = async () => {
-        const res = await fetch(
-          `/api/workspaces/${workspaceId}/files/${fileId}/download`,
-          { credentials: "include" },
-        )
-        const data = (await res.json()) as { signedUrl?: string }
-        if (data.signedUrl) {
-          window.open(data.signedUrl, "_blank")
-        }
-      }
-      fetchUrl().catch(console.error)
-    },
-    [workspaceId],
   )
 
   const { handleItemClick } = useExplorerShortcuts({
@@ -245,36 +322,38 @@ export function DashboardPage() {
           .then(() => {
             void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
             void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+            void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
           })
           .catch(console.error)
       } else {
         updateFolderMutation.mutate({ folderId: id, parentFolderId: targetId })
       }
     },
-    [workspaceId, updateFolderMutation],
+    [queryClient, workspaceId, updateFolderMutation],
   )
 
   const handleContextShare = useCallback(
     (id: string, type: "file" | "folder") => {
-      const item = type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
+      const item =
+        type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
       const name = item ? ("originalName" in item ? item.originalName : item.name) : ""
       setShareModal({ open: true, resourceId: id, resourceType: type, resourceName: name })
     },
     [files, folders],
   )
 
-  const handleFilesChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    if (files.length > 0) {
-      addFiles(files)
+  const handleFilesChosen = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const chosenFiles = Array.from(event.target.files ?? [])
+    if (chosenFiles.length > 0) {
+      addFiles(chosenFiles)
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
   }
 
-  const handleFilesDrop = (files: File[]) => {
-    addFiles(files)
+  const handleFilesDrop = (droppedFiles: File[]) => {
+    addFiles(droppedFiles)
   }
 
   const handleFolderClick = (folderId: string) => {
@@ -291,8 +370,10 @@ export function DashboardPage() {
 
   const rootBreadcrumb: BreadcrumbItem[] = [{ id: null, name: workspaceName }]
   const displayBreadcrumbs = currentFolderId && breadcrumbsData ? breadcrumbsData : rootBreadcrumb
-
   const totalSelected = selectedFileIds.length + selectedFolderIds.length
+  const totalFiles = isSearchActive ? searchData?.meta.total ?? 0 : filesData?.meta?.total ?? 0
+  const selectedTagNames = allTags.filter((tag) => dashboardSearch.selectedTagIds.includes(tag.id))
+  const fileForTagDialog = files.find((file) => file.id === tagDialogFileId) ?? null
 
   if (wsLoading) {
     return (
@@ -302,7 +383,7 @@ export function DashboardPage() {
     )
   }
 
-  if (!workspaceId) {
+  if (!workspaceId || !workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="text-center">
@@ -316,173 +397,341 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex h-full flex-col p-6">
-      <div className="mb-4">
-        <Breadcrumbs
-          items={displayBreadcrumbs}
-          onNavigate={handleBreadcrumbNavigate}
-          currentFolderId={currentFolderId}
+    <>
+      <div className="flex h-full flex-col p-6">
+        {!isSearchActive && (
+          <div className="mb-4">
+            <Breadcrumbs
+              items={displayBreadcrumbs}
+              onNavigate={handleBreadcrumbNavigate}
+              currentFolderId={currentFolderId}
+            />
+          </div>
+        )}
+
+        <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-text-primary">
+              {isSearchActive ? "Search results" : "Files"}
+            </h1>
+            <p className="text-xs text-text-tertiary">
+              {isSearchActive
+                ? `${totalFiles} results across ${workspaceName}`
+                : `${totalFiles} files${foldersData?.data?.length ? ` · ${foldersData.data.length} folders` : ""}`}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-lg border border-border-muted bg-surface-default p-0.5">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`rounded-md p-1.5 transition-colors ${
+                  viewMode === "grid"
+                    ? "bg-surface-active text-text-primary"
+                    : "text-text-tertiary hover:text-text-secondary"
+                }`}
+                aria-label="Grid view"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`rounded-md p-1.5 transition-colors ${
+                  viewMode === "list"
+                    ? "bg-surface-active text-text-primary"
+                    : "text-text-tertiary hover:text-text-secondary"
+                }`}
+                aria-label="List view"
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
+            <button
+              onClick={handleCreateFolder}
+              className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+            >
+              <FolderPlus className="h-4 w-4" />
+              New Folder
+            </button>
+            <button
+              onClick={handleFileSelect}
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+            >
+              <Upload className="h-4 w-4" />
+              Upload
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFilesChosen}
+              className="hidden"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4 space-y-3 rounded-2xl border border-border-default bg-surface-default p-4">
+          <div className="flex flex-wrap gap-2">
+            {typeFilterOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setDashboardType(option.value)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  dashboardSearch.type === option.value
+                    ? "bg-accent text-white"
+                    : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setDashboardFavoriteOnly(!dashboardSearch.favoriteOnly)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                dashboardSearch.favoriteOnly
+                  ? "bg-warning/20 text-warning"
+                  : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+              }`}
+            >
+              <Star className={`h-3.5 w-3.5 ${dashboardSearch.favoriteOnly ? "fill-warning" : ""}`} />
+              Favorites
+            </button>
+
+            {isSearchActive && (
+              <>
+                <select
+                  value={dashboardSearch.sort}
+                  onChange={(event) =>
+                    setDashboardSort(event.target.value as typeof dashboardSearch.sort)
+                  }
+                  className="rounded-full border border-border-default bg-surface-secondary px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-accent"
+                >
+                  {debouncedQuery && <option value="relevance">Relevance</option>}
+                  <option value="name">Name</option>
+                  <option value="created_at">Date</option>
+                  <option value="size">Size</option>
+                  <option value="type">Type</option>
+                </select>
+                <button
+                  onClick={() =>
+                    setDashboardOrder(dashboardSearch.order === "asc" ? "desc" : "asc")
+                  }
+                  className="rounded-full bg-surface-secondary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                >
+                  {dashboardSearch.order === "asc" ? "Ascending" : "Descending"}
+                </button>
+                <button
+                  onClick={clearDashboardSearch}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear search
+                </button>
+              </>
+            )}
+          </div>
+
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                Tags
+              </span>
+              {allTags.map((tag) => {
+                const selected = dashboardSearch.selectedTagIds.includes(tag.id)
+                const colorClasses = getTagColorClasses(tag.color)
+
+                return (
+                  <button
+                    key={tag.id}
+                    onClick={() => {
+                      setDashboardSelectedTagIds(
+                        selected
+                          ? dashboardSearch.selectedTagIds.filter((id) => id !== tag.id)
+                          : [...dashboardSearch.selectedTagIds, tag.id],
+                      )
+                    }}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      selected
+                        ? `border-transparent ${colorClasses.chipClassName}`
+                        : "border-border-default bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                    }`}
+                  >
+                    {tag.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {isSearchActive && (
+            <div className="flex flex-wrap gap-2">
+              {debouncedQuery && (
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                  Query: {debouncedQuery}
+                </span>
+              )}
+              {dashboardSearch.favoriteOnly && (
+                <span className="rounded-full bg-warning/10 px-3 py-1 text-xs font-medium text-warning">
+                  Favorites only
+                </span>
+              )}
+              {dashboardSearch.type !== "all" && (
+                <span className="rounded-full bg-surface-secondary px-3 py-1 text-xs font-medium text-text-primary">
+                  Type: {typeFilterOptions.find((option) => option.value === dashboardSearch.type)?.label}
+                </span>
+              )}
+              {selectedTagNames.map((tag) => (
+                <span
+                  key={tag.id}
+                  className={[
+                    "rounded-full px-3 py-1 text-xs font-medium",
+                    getTagColorClasses(tag.color).chipClassName,
+                  ].join(" ")}
+                >
+                  Tag: {tag.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {totalSelected > 1 && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-accent bg-accent/10 px-4 py-2">
+            <span className="text-sm font-medium text-text-primary">
+              {totalSelected} items selected
+            </span>
+            <div className="flex-1" />
+            <button
+              onClick={handleDeleteSelected}
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-error transition-colors hover:bg-error/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete selected
+            </button>
+            <button
+              onClick={() => clearSelection()}
+              className="rounded-md px-3 py-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        <div className="flex-1 space-y-4" ref={containerRef}>
+          <UploadDropZone onFilesDrop={handleFilesDrop} className="bg-surface-default" />
+          <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            {viewMode === "grid" ? (
+              <FileGrid
+                folders={folders}
+                files={files}
+                isLoading={isLoading}
+                onFolderClick={handleFolderClick}
+                onItemClick={handleItemClick}
+                onContextOpen={handleOpenItem}
+                onContextDownload={handleContextDownload}
+                onContextRename={handleRenameItem}
+                onContextDelete={(id, type) => {
+                  if (type === "folder") {
+                    deleteFolderMutation.mutate({ folderId: id })
+                  } else {
+                    deleteFileMutation.mutate({ fileId: id })
+                  }
+                  clearSelection()
+                }}
+                onContextFavorite={
+                  canFavorite
+                    ? (id) => {
+                        toggleFavoriteMutation.mutate({ fileId: id })
+                      }
+                    : undefined
+                }
+                onContextTags={
+                  canTag
+                    ? (id) => {
+                        setTagDialogFileId(id)
+                      }
+                    : undefined
+                }
+                onContextMove={handleContextMove}
+                onContextShare={handleContextShare}
+                onItemDrop={!isSearchActive ? handleItemDrop : undefined}
+              />
+            ) : (
+              <FileList
+                folders={folders}
+                files={files}
+                isLoading={isLoading}
+                onFolderClick={handleFolderClick}
+                onItemClick={handleItemClick}
+                onContextOpen={handleOpenItem}
+                onContextDownload={handleContextDownload}
+                onContextRename={handleRenameItem}
+                onContextDelete={(id, type) => {
+                  if (type === "folder") {
+                    deleteFolderMutation.mutate({ folderId: id })
+                  } else {
+                    deleteFileMutation.mutate({ fileId: id })
+                  }
+                  clearSelection()
+                }}
+                onContextFavorite={
+                  canFavorite
+                    ? (id) => {
+                        toggleFavoriteMutation.mutate({ fileId: id })
+                      }
+                    : undefined
+                }
+                onContextTags={
+                  canTag
+                    ? (id) => {
+                        setTagDialogFileId(id)
+                      }
+                    : undefined
+                }
+                onContextMove={handleContextMove}
+                onContextShare={handleContextShare}
+                onItemDrop={!isSearchActive ? handleItemDrop : undefined}
+              />
+            )}
+            <DragOverlay dropAnimation={null}>
+              {activeDragItem ? (
+                <div className="flex items-center gap-2 rounded-lg border border-accent bg-surface-default px-3 py-2 shadow-lg">
+                  {activeDragItem.type === "folder" ? (
+                    <FolderPlus className="h-4 w-4 text-text-tertiary" />
+                  ) : (
+                    <Upload className="h-4 w-4 text-text-tertiary" />
+                  )}
+                  <span className="text-sm font-medium text-text-primary">{activeDragItem.name}</span>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
+
+        {workspaceId && <UploadQueue workspaceId={workspaceId} />}
+
+        <ShareModal
+          open={shareModal.open}
+          onOpenChange={(open) => setShareModal((prev) => ({ ...prev, open }))}
+          workspaceId={workspaceId ?? ""}
+          resourceId={shareModal.resourceId}
+          resourceType={shareModal.resourceType}
+          resourceName={shareModal.resourceName}
         />
       </div>
 
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-text-primary">Files</h1>
-          <p className="text-xs text-text-tertiary">
-            {filesData?.meta?.total ?? 0} files
-            {foldersData?.data?.length ? ` · ${foldersData.data.length} folders` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-border-muted bg-surface-default p-0.5">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`rounded-md p-1.5 transition-colors ${
-                viewMode === "grid"
-                  ? "bg-surface-active text-text-primary"
-                  : "text-text-tertiary hover:text-text-secondary"
-              }`}
-              aria-label="Grid view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`rounded-md p-1.5 transition-colors ${
-                viewMode === "list"
-                  ? "bg-surface-active text-text-primary"
-                  : "text-text-tertiary hover:text-text-secondary"
-              }`}
-              aria-label="List view"
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
-          <button
-            onClick={handleCreateFolder}
-            className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
-          >
-            <FolderPlus className="h-4 w-4" />
-            New Folder
-          </button>
-          <button
-            onClick={handleFileSelect}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
-          >
-            <Upload className="h-4 w-4" />
-            Upload
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            onChange={handleFilesChosen}
-            className="hidden"
-          />
-        </div>
-      </div>
-
-      {totalSelected > 1 && (
-        <div className="mb-3 flex items-center gap-2 rounded-lg border border-accent bg-accent/10 px-4 py-2">
-          <span className="text-sm font-medium text-text-primary">
-            {totalSelected} items selected
-          </span>
-          <div className="flex-1" />
-          <button
-            onClick={handleDeleteSelected}
-            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-error transition-colors hover:bg-error/10"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete selected
-          </button>
-          <button
-            onClick={() => clearSelection()}
-            className="rounded-md px-3 py-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      <div className="flex-1 space-y-4" ref={containerRef}>
-        <UploadDropZone onFilesDrop={handleFilesDrop} className="bg-surface-default" />
-        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          {viewMode === "grid" ? (
-            <FileGrid
-              folders={folders}
-              files={files}
-              isLoading={isLoading}
-              onFolderClick={handleFolderClick}
-              onItemClick={handleItemClick}
-              onContextOpen={handleOpenItem}
-              onContextDownload={handleContextDownload}
-              onContextRename={handleRenameItem}
-              onContextDelete={(id, type) => {
-                if (type === "folder") {
-                  deleteFolderMutation.mutate({ folderId: id })
-                } else {
-                  deleteFileMutation.mutate({ fileId: id })
-                }
-                clearSelection()
-              }}
-              onContextFavorite={(id) => {
-                console.warn("Favorites coming in Day 15", id)
-              }}
-              onContextMove={handleContextMove}
-              onContextShare={handleContextShare}
-              onItemDrop={handleItemDrop}
-            />
-          ) : (
-            <FileList
-              folders={folders}
-              files={files}
-              isLoading={isLoading}
-              onFolderClick={handleFolderClick}
-              onItemClick={handleItemClick}
-              onContextOpen={handleOpenItem}
-              onContextDownload={handleContextDownload}
-              onContextRename={handleRenameItem}
-              onContextDelete={(id, type) => {
-                if (type === "folder") {
-                  deleteFolderMutation.mutate({ folderId: id })
-                } else {
-                  deleteFileMutation.mutate({ fileId: id })
-                }
-                clearSelection()
-              }}
-              onContextFavorite={(id) => {
-                console.warn("Favorites coming in Day 15", id)
-              }}
-              onContextMove={handleContextMove}
-              onContextShare={handleContextShare}
-              onItemDrop={handleItemDrop}
-            />
-          )}
-          <DragOverlay dropAnimation={null}>
-            {activeDragItem ? (
-              <div className="flex items-center gap-2 rounded-lg border border-accent bg-surface-default px-3 py-2 shadow-lg">
-                {activeDragItem.type === "folder" ? (
-                  <FolderPlus className="h-4 w-4 text-text-tertiary" />
-                ) : (
-                  <Upload className="h-4 w-4 text-text-tertiary" />
-                )}
-                <span className="text-sm font-medium text-text-primary">{activeDragItem.name}</span>
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      </div>
-
-      {workspaceId && <UploadQueue workspaceId={workspaceId} />}
-
-      <ShareModal
-        open={shareModal.open}
-        onOpenChange={(open) => setShareModal((prev) => ({ ...prev, open }))}
-        workspaceId={workspaceId ?? ""}
-        resourceId={shareModal.resourceId}
-        resourceType={shareModal.resourceType}
-        resourceName={shareModal.resourceName}
+      <TagPickerDialog
+        open={tagDialogFileId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTagDialogFileId(null)
+          }
+        }}
+        workspaceId={workspaceId}
+        file={fileForTagDialog}
+        canManageTags={canTag}
       />
-    </div>
+    </>
   )
 }

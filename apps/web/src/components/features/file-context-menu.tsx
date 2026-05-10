@@ -8,6 +8,7 @@ import {
   Copy,
   ArrowRightLeft,
   Star,
+  Tags,
 } from "lucide-react"
 
 interface FileContextMenuProps {
@@ -20,6 +21,8 @@ interface FileContextMenuProps {
   onDelete?: () => void
   onShare?: () => void
   onFavorite?: () => void
+  favoriteLabel?: string
+  onTags?: () => void
   onCopy?: () => void
   onMove?: () => void
 }
@@ -38,6 +41,8 @@ export function FileContextMenu({
   onDelete,
   onShare,
   onFavorite,
+  favoriteLabel = "Favorite",
+  onTags,
   onCopy,
   onMove,
 }: FileContextMenuProps) {
@@ -80,8 +85,19 @@ export function FileContextMenu({
                 }}
               >
                 <Star className="h-4 w-4 text-text-tertiary" />
-                Favorite
+                {favoriteLabel}
               </ContextMenu.Item>
+              {onTags && (
+                <ContextMenu.Item
+                  className={menuItemClass}
+                  onClick={() => {
+                    onTags()
+                  }}
+                >
+                  <Tags className="h-4 w-4 text-text-tertiary" />
+                  Tags
+                </ContextMenu.Item>
+              )}
               <ContextMenu.Separator className={separatorClass} />
             </>
           )}

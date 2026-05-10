@@ -10,8 +10,9 @@ import type {
   Folder,
   ShareDashboardItem,
   ShareLink,
-  TrashItem,
   SharesListScope,
+  Tag,
+  TrashItem,
   WorkspaceRole,
 } from "@bucketdrive/shared"
 
@@ -156,6 +157,15 @@ interface ListTrashResponse {
   meta: PaginationMeta
 }
 
+interface ListTagsResponse {
+  data: Tag[]
+}
+
+interface SearchFilesResponse {
+  data: FileObject[]
+  meta: PaginationMeta
+}
+
 interface BreadcrumbItem {
   id: string | null
   name: string
@@ -167,6 +177,19 @@ export interface UseFilesOptions {
   order?: "asc" | "desc"
   page?: number
   limit?: number
+  enabled?: boolean
+}
+
+export interface UseSearchOptions {
+  q?: string
+  type?: "all" | "documents" | "images" | "videos" | "audio" | "archives"
+  tags?: string[]
+  favorite?: boolean
+  sort?: "relevance" | "name" | "created_at" | "size" | "type"
+  order?: "asc" | "desc"
+  page?: number
+  limit?: number
+  enabled?: boolean
 }
 
 export interface UseTrashOptions {
@@ -197,13 +220,46 @@ export function useFiles(
         `${buildWorkspacePath(workspaceId, "/files")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: workspaceId !== null,
+    enabled: workspaceId !== null && options?.enabled !== false,
+  })
+}
+
+export function useSearchFiles(
+  workspaceId: string | null,
+  options?: UseSearchOptions,
+): UseQueryResult<SearchFilesResponse, ApiRequestError> {
+  return useQuery<SearchFilesResponse, ApiRequestError>({
+    queryKey: ["search", workspaceId, options],
+    queryFn: () => {
+      const params = new URLSearchParams()
+
+      if (options?.q) params.set("q", options.q)
+      if (options?.type) params.set("type", options.type)
+      if (options?.tags) {
+        for (const tagId of options.tags) {
+          params.append("tags", tagId)
+        }
+      }
+      if (options?.favorite !== undefined) params.set("favorite", String(options.favorite))
+      if (options?.sort) params.set("sort", options.sort)
+      if (options?.order) params.set("order", options.order)
+      if (options?.page !== undefined) params.set("page", String(options.page))
+      if (options?.limit !== undefined) params.set("limit", String(options.limit))
+
+      const qs = params.toString()
+      return api.get<SearchFilesResponse>(
+        `${buildWorkspacePath(workspaceId, "/search")}${qs ? `?${qs}` : ""}`,
+      )
+    },
+    enabled: workspaceId !== null && options?.enabled !== false,
+    staleTime: 30_000,
   })
 }
 
 export function useFolders(
   workspaceId: string | null,
   parentFolderId?: string | null,
+  enabled = true,
 ): UseQueryResult<ListFoldersResponse, ApiRequestError> {
   return useQuery<ListFoldersResponse, ApiRequestError>({
     queryKey: ["folders", workspaceId, parentFolderId],
@@ -217,7 +273,7 @@ export function useFolders(
         `${buildWorkspacePath(workspaceId, "/folders")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: workspaceId !== null,
+    enabled: workspaceId !== null && enabled,
   })
 }
 
@@ -281,6 +337,7 @@ export function useInitiateUpload(): UseMutationResult<
       ),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["files", variables.workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", variables.workspaceId] })
     },
   })
 }
@@ -300,6 +357,7 @@ export function useCompleteUpload(): UseMutationResult<
       ),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["files", data.workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", data.workspaceId] })
     },
   })
 }
@@ -340,6 +398,63 @@ export function useWorkspaces(): UseQueryResult<WorkspacesResponse, ApiRequestEr
   })
 }
 
+export function useTags(
+  workspaceId: string | null,
+): UseQueryResult<ListTagsResponse, ApiRequestError> {
+  return useQuery<ListTagsResponse, ApiRequestError>({
+    queryKey: ["tags", workspaceId],
+    queryFn: () => api.get<ListTagsResponse>(buildWorkspacePath(workspaceId, "/tags")),
+    enabled: workspaceId !== null,
+  })
+}
+
+export function useCreateTag(
+  workspaceId: string | null,
+): UseMutationResult<Tag, ApiRequestError, { name: string; color: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<Tag, ApiRequestError, { name: string; color: string }>({
+    mutationFn: (body) => api.post<Tag>(buildWorkspacePath(workspaceId, "/tags"), body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["tags", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+    },
+  })
+}
+
+export function useUpdateTag(
+  workspaceId: string | null,
+): UseMutationResult<Tag, ApiRequestError, { tagId: string; name?: string; color?: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<Tag, ApiRequestError, { tagId: string; name?: string; color?: string }>({
+    mutationFn: ({ tagId, ...body }) =>
+      api.patch<Tag>(buildWorkspacePath(workspaceId, `/tags/${tagId}`), body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["tags", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+    },
+  })
+}
+
+export function useDeleteTag(
+  workspaceId: string | null,
+): UseMutationResult<{ success: true; tagId: string }, ApiRequestError, { tagId: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<{ success: true; tagId: string }, ApiRequestError, { tagId: string }>({
+    mutationFn: ({ tagId }) =>
+      api.delete<{ success: true; tagId: string }>(buildWorkspacePath(workspaceId, `/tags/${tagId}`)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["tags", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+    },
+  })
+}
+
 interface RenameFileResponse {
   id: string
   originalName: string
@@ -360,6 +475,7 @@ export function useRenameFile(
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
     },
   })
 }
@@ -395,6 +511,7 @@ export function useDeleteFile(
       api.delete<DeleteFileResponse>(buildWorkspacePath(workspaceId, `/files/${fileId}`)),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
     },
   })
 }
@@ -411,6 +528,7 @@ export function useRestoreFile(
       void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
@@ -428,7 +546,42 @@ export function usePermanentlyDeleteFile(
       void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+    },
+  })
+}
+
+export function useToggleFavorite(
+  workspaceId: string | null,
+): UseMutationResult<{ fileId: string; isFavorited: boolean }, ApiRequestError, { fileId: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<{ fileId: string; isFavorited: boolean }, ApiRequestError, { fileId: string }>({
+    mutationFn: ({ fileId }) =>
+      api.post<{ fileId: string; isFavorited: boolean }>(
+        buildWorkspacePath(workspaceId, `/files/${fileId}/favorite`),
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+    },
+  })
+}
+
+export function useUpdateFileTags(
+  workspaceId: string | null,
+): UseMutationResult<FileObject, ApiRequestError, { fileId: string; tagIds: string[] }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<FileObject, ApiRequestError, { fileId: string; tagIds: string[] }>({
+    mutationFn: ({ fileId, tagIds }) =>
+      api.post<FileObject>(buildWorkspacePath(workspaceId, `/files/${fileId}/tags`), { tagIds }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["tags", workspaceId] })
     },
   })
 }
@@ -512,6 +665,7 @@ export function useDeleteFolder(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
     },
   })
 }
@@ -530,6 +684,7 @@ export function useRestoreFolder(
       void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
@@ -549,6 +704,7 @@ export function usePermanentlyDeleteFolder(
       void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
@@ -584,6 +740,7 @@ export function useMoveFile(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
     },
   })
 }
@@ -614,7 +771,7 @@ interface UpdateShareRequest {
 
 export function useShares(
   workspaceId: string | null,
-  options?: { scope?: SharesListScope; page?: number; limit?: number; enabled?: boolean },
+  options?: { scope?: SharesListScope; q?: string; page?: number; limit?: number; enabled?: boolean },
 ): UseQueryResult<ListSharesResponse, ApiRequestError> {
   return useQuery<ListSharesResponse, ApiRequestError>({
     queryKey: ["shares", workspaceId, options],
@@ -622,6 +779,7 @@ export function useShares(
       const params = new URLSearchParams()
 
       if (options?.scope) params.set("scope", options.scope)
+      if (options?.q) params.set("q", options.q)
       if (options?.page !== undefined) params.set("page", String(options.page))
       if (options?.limit !== undefined) params.set("limit", String(options.limit))
 

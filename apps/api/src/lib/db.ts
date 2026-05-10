@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { drizzle } from "drizzle-orm/d1"
 import * as schema from "@bucketdrive/shared/db/schema"
 

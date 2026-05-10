@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-argument */
 import { useMemo, useState } from "react"
-import { RotateCcw, Search, Trash2 } from "lucide-react"
+import { RotateCcw, Trash2 } from "lucide-react"
 import {
   usePermanentlyDeleteFile,
   usePermanentlyDeleteFolder,
@@ -10,6 +10,8 @@ import {
   useWorkspaces,
   type TrashItem,
 } from "@/lib/api"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { useSearchStore } from "@/stores/search-store"
 
 type TrashSort = "deleted_at" | "name" | "location" | "size"
 
@@ -18,12 +20,13 @@ export function TrashPage() {
   const workspace = workspacesData?.data?.[0] ?? null
   const workspaceId = workspace?.id ?? null
 
-  const [query, setQuery] = useState("")
   const [sort, setSort] = useState<TrashSort>("deleted_at")
   const [order, setOrder] = useState<"asc" | "desc">("desc")
+  const query = useSearchStore((state) => state.trash.query)
+  const debouncedQuery = useDebouncedValue(query.trim(), 300)
 
   const trashQuery = useTrash(workspaceId, {
-    q: query.trim() || undefined,
+    q: debouncedQuery || undefined,
     sort,
     order,
     page: 1,
@@ -96,16 +99,6 @@ export function TrashPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search trash"
-              className="w-64 rounded-lg border border-border-default bg-surface-default py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </label>
-
           <select
             value={sort}
             onChange={(event) => setSort(event.target.value as TrashSort)}

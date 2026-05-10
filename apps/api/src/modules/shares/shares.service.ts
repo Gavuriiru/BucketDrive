@@ -60,6 +60,7 @@ export interface ListSharesParams {
   role: WorkspaceRole
   page: number
   limit: number
+  q?: string
   scope: SharesListScope
 }
 
@@ -181,20 +182,11 @@ export class SharesService {
       conditions.push(eq(shareLink.createdBy, params.userId))
     }
 
-    const totalRow = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(shareLink)
-      .where(and(...conditions))
-      .get()
-    const total = totalRow ? totalRow.count : 0
-
     const rows = await db
       .select()
       .from(shareLink)
       .where(and(...conditions))
       .orderBy(sql`${shareLink.createdAt} desc`)
-      .limit(params.limit)
-      .offset((params.page - 1) * params.limit)
       .all()
 
     const shareIds = rows.map((row) => row.id)
@@ -282,7 +274,7 @@ export class SharesService {
     }
     const lockCountByShareId = new Map(lockRows.map((row) => [row.shareLinkId, row.count]))
 
-    const data: ShareDashboardItem[] = rows.map((row) => ({
+    const mapped: ShareDashboardItem[] = rows.map((row) => ({
       ...(row as unknown as ShareLink),
       resourceName: resourceNameById.get(row.resourceId) ?? "Deleted resource",
       createdByName: creatorNameById.get(row.createdBy) ?? "Unknown user",
@@ -290,6 +282,18 @@ export class SharesService {
       hasPassword: row.passwordHash !== null,
       isLocked: (lockCountByShareId.get(row.id) ?? 0) >= 10,
     }))
+
+    const q = params.q?.trim().toLowerCase()
+    const filtered = q
+      ? mapped.filter((share) =>
+          share.resourceName.toLowerCase().includes(q) ||
+          share.createdByName.toLowerCase().includes(q),
+        )
+      : mapped
+
+    const total = filtered.length
+    const start = (params.page - 1) * params.limit
+    const data = filtered.slice(start, start + params.limit)
 
     return {
       data,

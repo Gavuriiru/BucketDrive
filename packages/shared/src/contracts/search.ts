@@ -3,10 +3,12 @@ import { PaginatedResponseSchema } from "../schemas/common"
 import { FileObjectSchema } from "../schemas/file"
 
 export const SearchRequest = z.object({
-  q: z.string().min(1).max(200),
+  q: z.string().trim().max(200).optional(),
   type: z.enum(["all", "documents", "images", "videos", "audio", "archives"]).default("all"),
   tags: z.array(z.string().uuid()).optional(),
-  favorite: z.boolean().optional(),
+  favorite: z.coerce.boolean().optional(),
+  sort: z.enum(["relevance", "name", "created_at", "size", "type"]).default("relevance"),
+  order: z.enum(["asc", "desc"]).default("asc"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 })

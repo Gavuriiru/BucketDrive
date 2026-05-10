@@ -5,13 +5,16 @@ import { createStorageProvider } from "../../services/storage"
 import { UploadService, UploadError } from "../../services/upload.service"
 import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import { getDB } from "../../lib/db"
-import { fileObject, auditLog } from "@bucketdrive/shared/db/schema"
-import { eq, and } from "drizzle-orm"
+import { hydrateFiles } from "./file-query"
+import { auditLog, favorite, fileObject, fileObjectTag, fileTag } from "@bucketdrive/shared/db/schema"
+import { and, eq, inArray } from "drizzle-orm"
 import {
   InitiateUploadRequest,
   CompleteUploadRequest,
   ListFilesRequest,
+  ToggleFavoriteResponse,
   UpdateFileRequest,
+  UpdateFileTagsRequest,
 } from "@bucketdrive/shared"
 
 interface FilesEnv {
@@ -39,6 +42,7 @@ files.get("/", requirePermission("files.read"), async (c) => {
 
   const query = ListFilesRequest.parse(c.req.query())
   const db = getDB()
+  const user = c.get("user")
 
   const rows = await db
     .select()
@@ -72,7 +76,7 @@ files.get("/", requirePermission("files.read"), async (c) => {
   const page = query.page
   const limit = query.limit
   const start = (page - 1) * limit
-  const paged = sorted.slice(start, start + limit)
+  const paged = await hydrateFiles(db, workspaceId, user.id, sorted.slice(start, start + limit))
 
   return c.json({
     data: paged,
@@ -158,6 +162,7 @@ files.post("/upload/complete", requirePermission("files.upload"), async (c) => {
 files.get("/:fileId", requirePermission("files.read"), async (c) => {
   const fileId = c.req.param("fileId")
   const db = getDB()
+  const user = c.get("user")
 
   const file = await db
     .select()
@@ -169,7 +174,8 @@ files.get("/:fileId", requirePermission("files.read"), async (c) => {
     return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
   }
 
-  return c.json(file)
+  const [hydrated] = await hydrateFiles(db, file.workspaceId, user.id, [file])
+  return c.json(hydrated ?? file)
 })
 
 files.get("/:fileId/download", requirePermission("files.read"), async (c) => {
@@ -280,6 +286,121 @@ files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
   }
 
   return c.json(updated)
+})
+
+files.post("/:fileId/favorite", requirePermission("files.favorite"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const fileId = c.req.param("fileId")
+
+  if (!workspaceId || !fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and fileId are required" }, 400)
+  }
+
+  const user = c.get("user")
+  const db = getDB()
+  const file = await db
+    .select()
+    .from(fileObject)
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
+    .get()
+
+  if (!file || file.isDeleted) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  }
+
+  const existing = await db
+    .select()
+    .from(favorite)
+    .where(and(eq(favorite.fileObjectId, fileId), eq(favorite.userId, user.id)))
+    .get()
+
+  const nextIsFavorited = !(existing?.isActive ?? false)
+
+  if (existing) {
+    await db
+      .update(favorite)
+      .set({ isActive: nextIsFavorited })
+      .where(eq(favorite.id, existing.id))
+      .run()
+  } else {
+    await db
+      .insert(favorite)
+      .values({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        fileObjectId: fileId,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      })
+      .run()
+  }
+
+  return c.json(
+    ToggleFavoriteResponse.parse({
+      fileId,
+      isFavorited: nextIsFavorited,
+    }),
+  )
+})
+
+files.post("/:fileId/tags", requirePermission("files.tag"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const fileId = c.req.param("fileId")
+
+  if (!workspaceId || !fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and fileId are required" }, 400)
+  }
+
+  const body = UpdateFileTagsRequest.parse(await c.req.json())
+  const db = getDB()
+
+  const file = await db
+    .select()
+    .from(fileObject)
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
+    .get()
+
+  if (!file || file.isDeleted) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  }
+
+  const uniqueTagIds = Array.from(new Set(body.tagIds))
+  if (uniqueTagIds.length > 0) {
+    const tags = await db
+      .select({ id: fileTag.id })
+      .from(fileTag)
+      .where(and(eq(fileTag.workspaceId, workspaceId), inArray(fileTag.id, uniqueTagIds)))
+      .all()
+
+    if (tags.length !== uniqueTagIds.length) {
+      return c.json({ code: "VALIDATION_ERROR", message: "One or more tags are invalid" }, 400)
+    }
+  }
+
+  await db.delete(fileObjectTag).where(eq(fileObjectTag.fileObjectId, fileId)).run()
+
+  if (uniqueTagIds.length > 0) {
+    await db.insert(fileObjectTag).values(
+      uniqueTagIds.map((tagId) => ({
+        id: crypto.randomUUID(),
+        fileObjectId: fileId,
+        tagId,
+      })),
+    ).run()
+  }
+
+  const updated = await db
+    .select()
+    .from(fileObject)
+    .where(eq(fileObject.id, fileId))
+    .get()
+
+  if (!updated) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  }
+
+  const [hydrated] = await hydrateFiles(db, workspaceId, c.get("user").id, [updated])
+  return c.json(hydrated ?? updated)
 })
 
 files.post("/:fileId/restore", requirePermission("files.restore"), async (c) => {

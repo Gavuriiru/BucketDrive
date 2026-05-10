@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-import { Folder, FolderOpen, MoreVertical } from "lucide-react"
+import { Folder, FolderOpen, MoreVertical, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 import { FileContextMenu } from "./file-context-menu"
+import { getTagColorClasses } from "@/lib/tag-colors"
 import { useExplorerStore } from "@/stores/explorer-store"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 
@@ -35,6 +36,35 @@ function getFileIcon(mimeType: string) {
   if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "\uD83D\uDCBD"
   if (mimeType.startsWith("text/")) return "\uD83D\uDCDD"
   return "\uD83D\uDCC1"
+}
+
+function renderTagPreview(file: FileObject) {
+  const tags = file.tags ?? []
+  if (tags.length === 0) return null
+
+  const visible = tags.slice(0, 2)
+  const hiddenCount = tags.length - visible.length
+
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {visible.map((tag) => (
+        <span
+          key={tag.id}
+          className={[
+            "rounded-full px-2 py-0.5 text-[10px] font-medium",
+            getTagColorClasses(tag.color).chipClassName,
+          ].join(" ")}
+        >
+          {tag.name}
+        </span>
+      ))}
+      {hiddenCount > 0 && (
+        <span className="rounded-full bg-surface-hover px-2 py-0.5 text-[10px] text-text-secondary">
+          +{hiddenCount}
+        </span>
+      )}
+    </div>
+  )
 }
 
 const dropdownItemClass =
@@ -130,6 +160,9 @@ function FolderListRow({
         <td className="hidden px-4 py-2.5 text-sm text-text-tertiary md:table-cell">
           —
         </td>
+        <td className="hidden px-4 py-2.5 text-sm text-text-tertiary lg:table-cell">
+          —
+        </td>
         <td className="hidden px-4 py-2.5 text-sm text-text-tertiary sm:table-cell">
           {formatDate(folder.updatedAt)}
         </td>
@@ -193,6 +226,7 @@ interface FileListRowProps {
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextFavorite?: (id: string) => void
+  onContextTags?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
   dndEnabled: boolean
@@ -209,6 +243,7 @@ function FileListRow({
   onContextRename,
   onContextDelete,
   onContextFavorite,
+  onContextTags,
   onContextMove,
   onContextShare,
   dndEnabled,
@@ -230,6 +265,8 @@ function FileListRow({
       onRename={() => onContextRename?.(file.id, "file")}
       onDelete={() => onContextDelete?.(file.id, "file")}
       onFavorite={() => onContextFavorite?.(file.id)}
+      favoriteLabel={file.isFavorited ? "Remove favorite" : "Add favorite"}
+      onTags={() => onContextTags?.(file.id)}
       onMove={() => onContextMove?.(file.id, "file")}
       onShare={() => onContextShare?.(file.id, "file")}
       onCopy={() => {
@@ -263,11 +300,41 @@ function FileListRow({
         <td className="px-4 py-2.5">
           <div className="flex items-center gap-3">
             <span className="text-lg">{getFileIcon(file.mimeType)}</span>
-            <span className="truncate text-sm text-text-primary">{file.originalName}</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-sm text-text-primary">{file.originalName}</span>
+                {file.isFavorited && <Star className="h-3.5 w-3.5 fill-warning text-warning" />}
+              </div>
+              {renderTagPreview(file)}
+            </div>
           </div>
         </td>
         <td className="hidden px-4 py-2.5 text-sm text-text-tertiary md:table-cell">
           {formatSize(file.sizeBytes)}
+        </td>
+        <td className="hidden px-4 py-2.5 lg:table-cell">
+          {file.tags && file.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {file.tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag.id}
+                  className={[
+                    "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                    getTagColorClasses(tag.color).chipClassName,
+                  ].join(" ")}
+                >
+                  {tag.name}
+                </span>
+              ))}
+              {file.tags.length > 2 && (
+                <span className="rounded-full bg-surface-hover px-2 py-0.5 text-[10px] text-text-secondary">
+                  +{file.tags.length - 2}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs text-text-tertiary">No tags</span>
+          )}
         </td>
         <td className="hidden px-4 py-2.5 text-sm text-text-tertiary sm:table-cell">
           {formatDate(file.updatedAt)}
@@ -342,6 +409,7 @@ interface FileListProps {
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextFavorite?: (id: string) => void
+  onContextTags?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
@@ -358,6 +426,7 @@ export function FileList({
   onContextRename,
   onContextDelete,
   onContextFavorite,
+  onContextTags,
   onContextMove,
   onContextShare,
   onItemDrop,
@@ -405,6 +474,9 @@ export function FileList({
             <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary md:table-cell">
               Size
             </th>
+            <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary lg:table-cell">
+              Tags
+            </th>
             <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary sm:table-cell">
               Modified
             </th>
@@ -440,12 +512,13 @@ export function FileList({
                 onItemClick={onItemClick}
                 onContextOpen={onContextOpen}
                 onContextDownload={onContextDownload}
-                onContextRename={onContextRename}
-                onContextDelete={onContextDelete}
-                onContextFavorite={onContextFavorite}
-                onContextMove={onContextMove}
-                onContextShare={onContextShare}
-                dndEnabled={dndEnabled}
+            onContextRename={onContextRename}
+            onContextDelete={onContextDelete}
+            onContextFavorite={onContextFavorite}
+            onContextTags={onContextTags}
+            onContextMove={onContextMove}
+            onContextShare={onContextShare}
+            dndEnabled={dndEnabled}
               />
             )
           })}

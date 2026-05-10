@@ -61,6 +61,13 @@ export const UpdateFileTagsRequest = z.object({
   tagIds: z.array(z.string().uuid()),
 })
 
+export const UpdateFileTagsResponse = FileObjectSchema
+
+export const ToggleFavoriteResponse = z.object({
+  fileId: z.string().uuid(),
+  isFavorited: z.boolean(),
+})
+
 export const DeleteFileResponse = z.object({
   success: z.literal(true),
   fileId: z.string().uuid(),

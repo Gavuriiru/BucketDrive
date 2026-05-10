@@ -59,6 +59,7 @@ shares.get("/", requirePermission("shares.read"), async (c) => {
     scope:
       c.req.query("scope") ??
       (c.req.query("sharedWithMe") === "true" ? "shared_with_me" : "mine"),
+    q: c.req.query("q") ?? undefined,
     page: c.req.query("page"),
     limit: c.req.query("limit"),
   })
@@ -70,6 +71,7 @@ shares.get("/", requirePermission("shares.read"), async (c) => {
     role,
     page: request.page,
     limit: request.limit,
+    q: request.q,
     scope: request.scope,
   })
 

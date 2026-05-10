@@ -1,13 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { Search, Moon, Sun, LogOut } from "lucide-react"
+import { useRouterState } from "@tanstack/react-router"
 import { useSession, useSignOut } from "@/lib/auth"
+import { getSearchContextFromPath } from "@/lib/search-context"
 import { useAppStore } from "@/stores/app-store"
+import { useSearchStore } from "@/stores/search-store"
 
 export function Topbar() {
   const { data: session, isLoading } = useSession()
   const signOut = useSignOut()
   const theme = useAppStore((s) => s.theme)
   const toggleTheme = useAppStore((s) => s.toggleTheme)
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const searchContext = getSearchContextFromPath(pathname)
+  const routeKey = searchContext.routeKey
+  const query = useSearchStore((state) => (routeKey ? state[routeKey].query : ""))
+  const setRouteQuery = useSearchStore((state) => state.setRouteQuery)
 
   return (
     <header className="flex h-topbar items-center gap-4 border-b border-border-muted bg-bg-primary px-4">
@@ -22,8 +32,15 @@ export function Topbar() {
           <Search className="h-4 w-4 text-text-tertiary" />
           <input
             type="text"
-            placeholder="Search files..."
-            className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-tertiary"
+            value={query}
+            onChange={(event) => {
+              if (routeKey) {
+                setRouteQuery(routeKey, event.target.value)
+              }
+            }}
+            placeholder={searchContext.placeholder}
+            disabled={!searchContext.enabled}
+            className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-tertiary disabled:cursor-not-allowed disabled:text-text-tertiary"
           />
           <kbd className="rounded-md border border-border-default bg-surface-default px-1.5 py-0.5 text-xs text-text-tertiary">
             ⌘K

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-import { Folder, FolderOpen } from "lucide-react"
+import { Folder, FolderOpen, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 import { FileContextMenu } from "./file-context-menu"
+import { getTagColorClasses } from "@/lib/tag-colors"
 import { useExplorerStore } from "@/stores/explorer-store"
 
 function formatSize(bytes: number): string {
@@ -34,6 +35,35 @@ function getFileIcon(mimeType: string) {
   if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "\uD83D\uDCBD"
   if (mimeType.startsWith("text/")) return "\uD83D\uDCDD"
   return "\uD83D\uDCC1"
+}
+
+function renderTagPreview(file: FileObject) {
+  const tags = file.tags ?? []
+  if (tags.length === 0) return null
+
+  const visible = tags.slice(0, 2)
+  const hiddenCount = tags.length - visible.length
+
+  return (
+    <div className="mt-2 flex flex-wrap justify-center gap-1">
+      {visible.map((tag) => (
+        <span
+          key={tag.id}
+          className={[
+            "rounded-full px-2 py-0.5 text-[10px] font-medium",
+            getTagColorClasses(tag.color).chipClassName,
+          ].join(" ")}
+        >
+          {tag.name}
+        </span>
+      ))}
+      {hiddenCount > 0 && (
+        <span className="rounded-full bg-surface-hover px-2 py-0.5 text-[10px] text-text-secondary">
+          +{hiddenCount}
+        </span>
+      )}
+    </div>
+  )
 }
 
 const gridClass =
@@ -145,6 +175,7 @@ interface FileGridCardProps {
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextFavorite?: (id: string) => void
+  onContextTags?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
   dndEnabled: boolean
@@ -161,6 +192,7 @@ function FileGridCard({
   onContextRename,
   onContextDelete,
   onContextFavorite,
+  onContextTags,
   onContextMove,
   onContextShare,
   dndEnabled,
@@ -182,6 +214,8 @@ function FileGridCard({
       onRename={() => onContextRename?.(file.id, "file")}
       onDelete={() => onContextDelete?.(file.id, "file")}
       onFavorite={() => onContextFavorite?.(file.id)}
+      favoriteLabel={file.isFavorited ? "Remove favorite" : "Add favorite"}
+      onTags={() => onContextTags?.(file.id)}
       onMove={() => onContextMove?.(file.id, "file")}
       onShare={() => onContextShare?.(file.id, "file")}
       onCopy={() => {
@@ -215,12 +249,16 @@ function FileGridCard({
         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-surface-hover text-2xl">
           {getFileIcon(file.mimeType)}
         </div>
-        <span className="mb-0.5 line-clamp-2 w-full break-words text-xs font-medium text-text-primary">
-          {file.originalName}
-        </span>
+        <div className="mb-0.5 flex w-full items-center justify-center gap-1">
+          <span className="line-clamp-2 break-words text-xs font-medium text-text-primary">
+            {file.originalName}
+          </span>
+          {file.isFavorited && <Star className="h-3.5 w-3.5 fill-warning text-warning" />}
+        </div>
         <span className="text-[10px] text-text-tertiary">
           {formatSize(file.sizeBytes)} &middot; {formatDate(file.updatedAt)}
         </span>
+        {renderTagPreview(file)}
       </div>
     </FileContextMenu>
   )
@@ -237,6 +275,7 @@ interface FileGridProps {
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextFavorite?: (id: string) => void
+  onContextTags?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
@@ -253,6 +292,7 @@ export function FileGrid({
   onContextRename,
   onContextDelete,
   onContextFavorite,
+  onContextTags,
   onContextMove,
   onContextShare,
   onItemDrop,
@@ -322,6 +362,7 @@ export function FileGrid({
             onContextRename={onContextRename}
             onContextDelete={onContextDelete}
             onContextFavorite={onContextFavorite}
+            onContextTags={onContextTags}
             onContextMove={onContextMove}
             onContextShare={onContextShare}
             dndEnabled={dndEnabled}

@@ -20,6 +20,8 @@ import {
   useWorkspaces,
   type WorkspaceData,
 } from "@/lib/api"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { useSearchStore } from "@/stores/search-store"
 import type { ShareDashboardItem } from "@bucketdrive/shared"
 
 type ShareTab = "mine" | "workspace"
@@ -29,10 +31,13 @@ export function ShareManagementPage() {
   const workspace = workspacesData?.data?.[0] ?? null
   const workspaceId = workspace?.id ?? null
   const canManageAll = workspace?.role === "owner" || workspace?.role === "admin"
+  const query = useSearchStore((state) => state.shares.query)
+  const debouncedQuery = useDebouncedValue(query.trim(), 300)
 
-  const mineSharesQuery = useShares(workspaceId, { scope: "mine" })
+  const mineSharesQuery = useShares(workspaceId, { scope: "mine", q: debouncedQuery || undefined })
   const workspaceSharesQuery = useShares(workspaceId, {
     scope: "workspace",
+    q: debouncedQuery || undefined,
     enabled: canManageAll,
   })
 
