@@ -24,8 +24,8 @@ verifiable result.
 | 11 | External shares | Public links with password + rate-limit | ✅ `47a6000` |
 | 12 | Share management | User dashboard + admin oversight | ✅ `56d0816` |
 | 13 | Trash | Soft delete, restore, auto-cleanup | ✅ `11a6385` |
-| 14 | Search | FTS5 full-text with filters | ⬜ |
-| 15 | Tags & favorites | Color-coded tags, star favorites | ⬜ |
+| 14 | Search | FTS5 full-text with filters | ✅ `50e2e7b` |
+| 15 | Tags & favorites | Color-coded tags, star favorites | ✅ `50e2e7b` |
 | 16 | Command palette | Ctrl+K with search + commands | ⬜ |
 | 17 | Preview | Space to preview files inline | ⬜ |
 | 18 | Dark mode | Theme toggle, system detection | PARTIAL |
