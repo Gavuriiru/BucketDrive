@@ -35,7 +35,7 @@ export const useUploadStore = create<UploadState>((set) => ({
     const newItems: UploadItem[] = files.map((file) => {
       idCounter++
       return {
-        id: `upload-${Date.now()}-${idCounter}`,
+        id: `upload-${String(Date.now())}-${String(idCounter)}`,
         file,
         fileName: file.name,
         fileSize: file.size,

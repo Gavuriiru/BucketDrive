@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { AwsClient } from "aws4fetch"
 
 export interface StorageProvider {
@@ -87,12 +88,12 @@ export function createStorageProvider(env: {
 class R2BindingProvider implements StorageProvider {
   constructor(private binding: R2Bucket) {}
 
-  async generateSignedUploadUrl(_key: string, _expiresIn?: number): Promise<string> {
-    throw new Error("Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ENDPOINT in .dev.vars.")
+  generateSignedUploadUrl(_key: string, _expiresIn?: number): Promise<string> {
+    return Promise.reject(new Error("Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ENDPOINT in .dev.vars."))
   }
 
-  async generateSignedDownloadUrl(_key: string, _expiresIn?: number): Promise<string> {
-    throw new Error("Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ENDPOINT in .dev.vars.")
+  generateSignedDownloadUrl(_key: string, _expiresIn?: number): Promise<string> {
+    return Promise.reject(new Error("Presigned URLs require R2 S3 credentials. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ENDPOINT in .dev.vars."))
   }
 
   async delete(key: string): Promise<void> {

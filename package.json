@@ -35,15 +35,5 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.59.2",
     "uuid": "^10.0.0"
-  },
-  "pnpm": {
-    "supportedArchitectures": {
-      "os": [
-        "linux"
-      ],
-      "cpu": [
-        "x64"
-      ]
-    }
   }
 }

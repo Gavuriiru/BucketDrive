@@ -147,7 +147,8 @@ files.post("/upload/complete", requirePermission("files.upload"), async (c) => {
         FORBIDDEN: 403,
         CONFLICT: 409,
       }
-      return c.json({ code: err.code, message: err.message }, statusMap[err.code] as never ?? 400)
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
     }
     throw err
   }

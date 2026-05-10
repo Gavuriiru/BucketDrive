@@ -29,7 +29,7 @@ const menuItemClass =
 const separatorClass = "mx-2 my-1 h-px bg-border-muted"
 
 export function FileContextMenu({
-  itemId,
+  itemId: _itemId,
   itemType,
   children,
   onOpen,
@@ -48,7 +48,9 @@ export function FileContextMenu({
         <ContextMenu.Content className="z-50 min-w-[180px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg"> 
           <ContextMenu.Item
             className={menuItemClass}
-            onClick={() => onOpen?.()}
+            onClick={() => {
+              onOpen?.()
+            }}
           >
             <FolderOpen className="h-4 w-4 text-text-tertiary" />
             Open
@@ -58,7 +60,9 @@ export function FileContextMenu({
           {itemType === "file" && onDownload && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => onDownload?.()}
+              onClick={() => {
+                onDownload()
+              }}
             >
               <Download className="h-4 w-4 text-text-tertiary" />
               Download
@@ -71,7 +75,9 @@ export function FileContextMenu({
             <>
               <ContextMenu.Item
                 className={menuItemClass}
-                onClick={() => onFavorite?.()}
+                onClick={() => {
+                  onFavorite()
+                }}
               >
                 <Star className="h-4 w-4 text-text-tertiary" />
                 Favorite
@@ -82,7 +88,9 @@ export function FileContextMenu({
 
           <ContextMenu.Item
             className={menuItemClass}
-            onClick={() => onRename?.()}
+            onClick={() => {
+              onRename?.()
+            }}
           >
             <Pencil className="h-4 w-4 text-text-tertiary" />
             Rename
@@ -91,7 +99,9 @@ export function FileContextMenu({
 
           <ContextMenu.Item
             className={menuItemClass}
-            onClick={() => onCopy?.()}
+            onClick={() => {
+              onCopy?.()
+            }}
           >
             <Copy className="h-4 w-4 text-text-tertiary" />
             Copy
@@ -101,7 +111,9 @@ export function FileContextMenu({
           {onMove && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => onMove?.()}
+              onClick={() => {
+                onMove()
+              }}
             >
               <ArrowRightLeft className="h-4 w-4 text-text-tertiary" />
               Move
@@ -113,7 +125,9 @@ export function FileContextMenu({
           {onShare && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => onShare?.()}
+              onClick={() => {
+                onShare()
+              }}
             >
               <Share2 className="h-4 w-4 text-text-tertiary" />
               Share
@@ -124,7 +138,9 @@ export function FileContextMenu({
 
           <ContextMenu.Item
             className={menuItemClass}
-            onClick={() => onDelete?.()}
+            onClick={() => {
+              onDelete?.()
+            }}
           >
             <Trash2 className="h-4 w-4 text-text-tertiary" />
             Delete

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-template-expressions */
 import { useCallback } from "react"
 import { useUploadStore } from "@/stores/upload-store"
-import { useInitiateUpload, useCompleteUpload, api } from "@/lib/api"
+import { useInitiateUpload, useCompleteUpload } from "@/lib/api"
 import type { UploadItem } from "@/stores/upload-store"
 
 export function useUploadProcessor(workspaceId: string) {

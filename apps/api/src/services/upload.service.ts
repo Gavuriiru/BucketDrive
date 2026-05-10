@@ -64,7 +64,7 @@ export class UploadService {
     this.validateFileType(params.fileName, params.mimeType)
 
     if (params.sizeBytes > MAX_FILE_SIZE) {
-      throw new UploadError("FILE_TOO_LARGE", `Max file size is ${MAX_FILE_SIZE / 1e9} GB`)
+      throw new UploadError("FILE_TOO_LARGE", `Max file size is ${String(MAX_FILE_SIZE / 1e9)} GB`)
     }
 
     const ws = await db
@@ -239,7 +239,8 @@ export class UploadService {
   }
 
   private validateFileType(fileName: string, mimeType: string): void {
-    const ext = fileName.includes(".") ? `.${fileName.split(".").pop()?.toLowerCase()}` : ""
+    const extPart = fileName.split(".").pop()?.toLowerCase()
+    const ext = fileName.includes(".") && extPart ? `.${extPart}` : ""
 
     if (ext && BLOCKED_EXTENSIONS.includes(ext)) {
       throw new UploadError("BLOCKED_EXTENSION", `File type ${ext} is not allowed`)

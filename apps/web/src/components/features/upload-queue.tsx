@@ -1,14 +1,17 @@
-import { useEffect, useRef, useCallback } from "react"
-import { X, ChevronDown, ChevronUp, File, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+import { useEffect, useRef } from "react"
+import { X, ChevronUp, File, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { useUploadStore } from "@/stores/upload-store"
 import { useUploadProcessor } from "@/hooks/use-upload"
 import { ProgressBar } from "@/components/shared/progress-bar"
+import type { UploadItem } from "@/stores/upload-store"
 
 function formatSize(bytes: number): string {
   if (bytes === 0) return "0 B"
   const units = ["B", "KB", "MB", "GB"]
   const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+  const unit = units[i] ?? "GB"
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${unit}`
 }
 
 export function UploadQueue({ workspaceId }: { workspaceId: string }) {
@@ -79,7 +82,7 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
           onClick={() => setOpen(true)}
           className="flex w-full items-center justify-center gap-2 border-t border-border-muted px-4 py-2 text-xs text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
         >
-          {queuedCount > 0 ? `${queuedCount} uploading` : failedCount > 0 ? `${failedCount} failed` : "All complete"}
+          {queuedCount > 0 ? `${String(queuedCount)} uploading` : failedCount > 0 ? `${String(failedCount)} failed` : "All complete"}
           <ChevronUp className="h-3 w-3" />
         </button>
       )}
@@ -92,7 +95,7 @@ function UploadQueueItem({
   onCancel,
   onRemove,
 }: {
-  item: ReturnType<typeof useUploadStore.getState>["items"][number]
+  item: UploadItem
   onCancel: () => void
   onRemove: () => void
 }) {

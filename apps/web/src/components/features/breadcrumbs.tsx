@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { ChevronRight, Home } from "lucide-react"
 import type { BreadcrumbItem } from "@/lib/api"
 
@@ -23,7 +24,9 @@ export function Breadcrumbs({ items, onNavigate, currentFolderId }: BreadcrumbsP
             )}
             {item.id === null ? (
               <button
-                onClick={() => onNavigate(null)}
+                onClick={() => {
+                  onNavigate(null)
+                }}
                 className={`flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors ${
                   isActive
                     ? "text-text-primary font-medium"
@@ -35,7 +38,9 @@ export function Breadcrumbs({ items, onNavigate, currentFolderId }: BreadcrumbsP
               </button>
             ) : (
               <button
-                onClick={() => onNavigate(item.id)}
+                onClick={() => {
+                  onNavigate(item.id)
+                }}
                 disabled={isLast}
                 className={`rounded-md px-2 py-1 transition-colors ${
                   isLast

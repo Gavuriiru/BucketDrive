@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query"
 import type {
   FileObject,
   Folder,
@@ -13,19 +19,50 @@ interface ApiError {
   message: string
 }
 
+function isApiError(value: unknown): value is ApiError {
+  if (typeof value !== "object" || value === null) return false
+
+  const error = value as Record<string, unknown>
+  return typeof error.code === "string" && typeof error.message === "string"
+}
+
+function requireId(value: string | null, label: string): string {
+  if (!value) {
+    throw new Error(`${label} is required`)
+  }
+
+  return value
+}
+
+function buildWorkspacePath(
+  workspaceId: string | null,
+  suffix: string,
+): string {
+  return `/api/workspaces/${requireId(workspaceId, "workspaceId")}${suffix}`
+}
+
 class ApiClient {
   private async request<T>(url: string, options?: RequestInit): Promise<T> {
+    const headers = new Headers(options?.headers)
+
+    if (options?.body !== undefined && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json")
+    }
+
     const res = await fetch(url, {
       credentials: "include",
-      headers: { "Content-Type": "application/json", ...options?.headers },
       ...options,
+      headers,
     })
 
-    const data = (await res.json()) as T | ApiError
+    const data: unknown = await res.json()
 
     if (!res.ok) {
-      const err = data as ApiError
-      throw new ApiRequestError(err.code ?? "UNKNOWN", err.message ?? "Request failed", res.status)
+      if (isApiError(data)) {
+        throw new ApiRequestError(data.code, data.message, res.status)
+      }
+
+      throw new ApiRequestError("UNKNOWN", "Request failed", res.status)
     }
 
     return data as T
@@ -38,21 +75,14 @@ class ApiClient {
   async post<T>(url: string, body?: unknown): Promise<T> {
     return this.request<T>(url, {
       method: "POST",
-      body: body ? JSON.stringify(body) : undefined,
-    })
-  }
-
-  async put<T>(url: string, body?: unknown): Promise<T> {
-    return this.request<T>(url, {
-      method: "PUT",
-      body: body ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : JSON.stringify(body),
     })
   }
 
   async patch<T>(url: string, body?: unknown): Promise<T> {
     return this.request<T>(url, {
       method: "PATCH",
-      body: body ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : JSON.stringify(body),
     })
   }
 
@@ -74,9 +104,16 @@ export class ApiRequestError extends Error {
 
 export const api = new ApiClient()
 
+interface PaginationMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
 interface ListFilesResponse {
   data: FileObject[]
-  meta: { page: number; limit: number; total: number; totalPages: number }
+  meta: PaginationMeta
 }
 
 interface InitiateUploadRequest {
@@ -110,7 +147,7 @@ interface DownloadUrlResponse {
 
 interface ListFoldersResponse {
   data: Folder[]
-  meta: { page: number; limit: number; total: number; totalPages: number }
+  meta: PaginationMeta
 }
 
 interface BreadcrumbItem {
@@ -129,98 +166,117 @@ export interface UseFilesOptions {
 export function useFiles(
   workspaceId: string | null,
   options?: UseFilesOptions,
-): UseQueryResult<ListFilesResponse> {
-  return useQuery<ListFilesResponse>({
+): UseQueryResult<ListFilesResponse, ApiRequestError> {
+  return useQuery<ListFilesResponse, ApiRequestError>({
     queryKey: ["files", workspaceId, options],
     queryFn: () => {
       const params = new URLSearchParams()
+
       if (options?.folderId) params.set("folderId", options.folderId)
       if (options?.sort) params.set("sort", options.sort)
       if (options?.order) params.set("order", options.order)
-      if (options?.page) params.set("page", String(options.page))
-      if (options?.limit) params.set("limit", String(options.limit))
+      if (options?.page !== undefined) params.set("page", String(options.page))
+      if (options?.limit !== undefined) params.set("limit", String(options.limit))
+
       const qs = params.toString()
       return api.get<ListFilesResponse>(
-        `/api/workspaces/${workspaceId}/files${qs ? `?${qs}` : ""}`,
+        `${buildWorkspacePath(workspaceId, "/files")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: !!workspaceId,
+    enabled: workspaceId !== null,
   })
 }
 
 export function useFolders(
   workspaceId: string | null,
   parentFolderId?: string | null,
-): UseQueryResult<ListFoldersResponse> {
-  return useQuery<ListFoldersResponse>({
+): UseQueryResult<ListFoldersResponse, ApiRequestError> {
+  return useQuery<ListFoldersResponse, ApiRequestError>({
     queryKey: ["folders", workspaceId, parentFolderId],
     queryFn: () => {
       const params = new URLSearchParams()
+
       if (parentFolderId) params.set("parentFolderId", parentFolderId)
+
       const qs = params.toString()
       return api.get<ListFoldersResponse>(
-        `/api/workspaces/${workspaceId}/folders${qs ? `?${qs}` : ""}`,
+        `${buildWorkspacePath(workspaceId, "/folders")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: !!workspaceId,
+    enabled: workspaceId !== null,
   })
 }
 
 export function useBreadcrumbs(
   workspaceId: string | null,
   folderId: string | null,
-) {
-  return useQuery<BreadcrumbItem[]>({
+): UseQueryResult<BreadcrumbItem[], ApiRequestError> {
+  return useQuery<BreadcrumbItem[], ApiRequestError>({
     queryKey: ["breadcrumbs", workspaceId, folderId],
     queryFn: () =>
       api.get<BreadcrumbItem[]>(
-        `/api/workspaces/${workspaceId}/folders/${folderId}/breadcrumbs`,
+        buildWorkspacePath(
+          workspaceId,
+          `/folders/${requireId(folderId, "folderId")}/breadcrumbs`,
+        ),
       ),
-    enabled: !!workspaceId && !!folderId,
+    enabled: workspaceId !== null && folderId !== null,
   })
 }
 
-export function useInitiateUpload() {
+export function useInitiateUpload(): UseMutationResult<
+  InitiateUploadResponse,
+  ApiRequestError,
+  InitiateUploadRequest & { workspaceId: string }
+> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({
-      workspaceId,
-      ...body
-    }: InitiateUploadRequest & { workspaceId: string }) =>
-      api.post<InitiateUploadResponse>(`/api/workspaces/${workspaceId}/files/upload`, body),
+  return useMutation<
+    InitiateUploadResponse,
+    ApiRequestError,
+    InitiateUploadRequest & { workspaceId: string }
+  >({
+    mutationFn: ({ workspaceId, ...body }) =>
+      api.post<InitiateUploadResponse>(
+        buildWorkspacePath(workspaceId, "/files/upload"),
+        body,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["files", variables.workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", variables.workspaceId] })
     },
   })
 }
 
-export function useCompleteUpload() {
+export function useCompleteUpload(): UseMutationResult<
+  FileObject,
+  ApiRequestError,
+  CompleteUploadRequest & { workspaceId: string }
+> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({
-      workspaceId,
-      ...body
-    }: CompleteUploadRequest & { workspaceId: string }) =>
+  return useMutation<FileObject, ApiRequestError, CompleteUploadRequest & { workspaceId: string }>({
+    mutationFn: ({ workspaceId, ...body }) =>
       api.post<FileObject>(
-        `/api/workspaces/${workspaceId}/files/upload/complete`,
+        buildWorkspacePath(workspaceId, "/files/upload/complete"),
         body,
       ),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["files", data.workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", data.workspaceId] })
     },
   })
 }
 
-export function useDownloadUrl(workspaceId: string | null, fileId: string | null) {
-  return useQuery({
+export function useDownloadUrl(
+  workspaceId: string | null,
+  fileId: string | null,
+): UseQueryResult<DownloadUrlResponse, ApiRequestError> {
+  return useQuery<DownloadUrlResponse, ApiRequestError>({
     queryKey: ["download", workspaceId, fileId],
     queryFn: () =>
       api.get<DownloadUrlResponse>(
-        `/api/workspaces/${workspaceId}/files/${fileId}/download`,
+        buildWorkspacePath(workspaceId, `/files/${requireId(fileId, "fileId")}/download`),
       ),
-    enabled: !!workspaceId && !!fileId,
+    enabled: workspaceId !== null && fileId !== null,
   })
 }
 
@@ -235,10 +291,14 @@ interface WorkspaceData {
   updatedAt: string
 }
 
-export function useWorkspaces() {
-  return useQuery({
+interface WorkspacesResponse {
+  data: WorkspaceData[]
+}
+
+export function useWorkspaces(): UseQueryResult<WorkspacesResponse, ApiRequestError> {
+  return useQuery<WorkspacesResponse, ApiRequestError>({
     queryKey: ["workspaces"],
-    queryFn: () => api.get<{ data: WorkspaceData[] }>("/api/workspaces"),
+    queryFn: () => api.get<WorkspacesResponse>("/api/workspaces"),
   })
 }
 
@@ -249,17 +309,19 @@ interface RenameFileResponse {
   updatedAt: string
 }
 
-export function useRenameFile(workspaceId: string | null) {
+export function useRenameFile(
+  workspaceId: string | null,
+): UseMutationResult<RenameFileResponse, ApiRequestError, { fileId: string; name: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({ fileId, name }: { fileId: string; name: string }) =>
+  return useMutation<RenameFileResponse, ApiRequestError, { fileId: string; name: string }>({
+    mutationFn: ({ fileId, name }) =>
       api.patch<RenameFileResponse>(
-        `/api/workspaces/${workspaceId}/files/${fileId}`,
+        buildWorkspacePath(workspaceId, `/files/${fileId}`),
         { name },
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
     },
   })
 }
@@ -269,16 +331,16 @@ interface DeleteFileResponse {
   fileId: string
 }
 
-export function useDeleteFile(workspaceId: string | null) {
+export function useDeleteFile(
+  workspaceId: string | null,
+): UseMutationResult<DeleteFileResponse, ApiRequestError, { fileId: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({ fileId }: { fileId: string }) =>
-      api.delete<DeleteFileResponse>(
-        `/api/workspaces/${workspaceId}/files/${fileId}`,
-      ),
+  return useMutation<DeleteFileResponse, ApiRequestError, { fileId: string }>({
+    mutationFn: ({ fileId }) =>
+      api.delete<DeleteFileResponse>(buildWorkspacePath(workspaceId, `/files/${fileId}`)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
     },
   })
 }
@@ -301,55 +363,67 @@ interface DeleteFolderResponse {
   folderId: string
 }
 
-export function useCreateFolder(workspaceId: string | null) {
+export function useCreateFolder(
+  workspaceId: string | null,
+): UseMutationResult<
+  FolderResponse,
+  ApiRequestError,
+  { name: string; parentFolderId?: string | null }
+> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({ name, parentFolderId }: { name: string; parentFolderId?: string | null }) =>
-      api.post<FolderResponse>(
-        `/api/workspaces/${workspaceId}/folders`,
-        { name, parentFolderId: parentFolderId ?? null },
-      ),
+  return useMutation<
+    FolderResponse,
+    ApiRequestError,
+    { name: string; parentFolderId?: string | null }
+  >({
+    mutationFn: ({ name, parentFolderId }) =>
+      api.post<FolderResponse>(buildWorkspacePath(workspaceId, "/folders"), {
+        name,
+        parentFolderId: parentFolderId ?? null,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
     },
   })
 }
 
-export function useUpdateFolder(workspaceId: string | null) {
+export function useUpdateFolder(
+  workspaceId: string | null,
+): UseMutationResult<
+  FolderResponse,
+  ApiRequestError,
+  { folderId: string; name?: string; parentFolderId?: string | null }
+> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({
-      folderId,
-      name,
-      parentFolderId,
-    }: {
-      folderId: string
-      name?: string
-      parentFolderId?: string | null
-    }) =>
+  return useMutation<
+    FolderResponse,
+    ApiRequestError,
+    { folderId: string; name?: string; parentFolderId?: string | null }
+  >({
+    mutationFn: ({ folderId, name, parentFolderId }) =>
       api.patch<FolderResponse>(
-        `/api/workspaces/${workspaceId}/folders/${folderId}`,
+        buildWorkspacePath(workspaceId, `/folders/${folderId}`),
         { name, parentFolderId },
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
     },
   })
 }
 
-export function useDeleteFolder(workspaceId: string | null) {
+export function useDeleteFolder(
+  workspaceId: string | null,
+): UseMutationResult<DeleteFolderResponse, ApiRequestError, { folderId: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({ folderId }: { folderId: string }) =>
-      api.delete<DeleteFolderResponse>(
-        `/api/workspaces/${workspaceId}/folders/${folderId}`,
-      ),
+  return useMutation<DeleteFolderResponse, ApiRequestError, { folderId: string }>({
+    mutationFn: ({ folderId }) =>
+      api.delete<DeleteFolderResponse>(buildWorkspacePath(workspaceId, `/folders/${folderId}`)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
-      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
     },
   })
 }
@@ -362,29 +436,35 @@ interface UpdateFileResponse {
   updatedAt: string
 }
 
-export function useMoveFile(workspaceId: string | null) {
+export function useMoveFile(
+  workspaceId: string | null,
+): UseMutationResult<
+  UpdateFileResponse,
+  ApiRequestError,
+  { fileId: string; folderId: string | null }
+> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({ fileId, folderId }: { fileId: string; folderId: string | null }) =>
+  return useMutation<
+    UpdateFileResponse,
+    ApiRequestError,
+    { fileId: string; folderId: string | null }
+  >({
+    mutationFn: ({ fileId, folderId }) =>
       api.patch<UpdateFileResponse>(
-        `/api/workspaces/${workspaceId}/files/${fileId}`,
+        buildWorkspacePath(workspaceId, `/files/${fileId}`),
         { folderId },
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
-      queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
     },
   })
 }
 
 interface ListSharesResponse {
   data: ShareDashboardItem[]
-  meta: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
+  meta: PaginationMeta & {
     scope: SharesListScope
     currentUserRole: WorkspaceRole
     canManageAll: boolean
@@ -409,57 +489,69 @@ interface UpdateShareRequest {
 export function useShares(
   workspaceId: string | null,
   options?: { scope?: SharesListScope; page?: number; limit?: number; enabled?: boolean },
-): UseQueryResult<ListSharesResponse> {
-  return useQuery<ListSharesResponse>({
+): UseQueryResult<ListSharesResponse, ApiRequestError> {
+  return useQuery<ListSharesResponse, ApiRequestError>({
     queryKey: ["shares", workspaceId, options],
     queryFn: () => {
       const params = new URLSearchParams()
+
       if (options?.scope) params.set("scope", options.scope)
-      if (options?.page) params.set("page", String(options.page))
-      if (options?.limit) params.set("limit", String(options.limit))
+      if (options?.page !== undefined) params.set("page", String(options.page))
+      if (options?.limit !== undefined) params.set("limit", String(options.limit))
+
       const qs = params.toString()
       return api.get<ListSharesResponse>(
-        `/api/workspaces/${workspaceId}/shares${qs ? `?${qs}` : ""}`,
+        `${buildWorkspacePath(workspaceId, "/shares")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: !!workspaceId && options?.enabled !== false,
+    enabled: workspaceId !== null && options?.enabled !== false,
   })
 }
 
-export function useCreateShare(workspaceId: string | null) {
+export function useCreateShare(
+  workspaceId: string | null,
+): UseMutationResult<ShareLink, ApiRequestError, CreateShareRequest> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: (body: CreateShareRequest) =>
-      api.post<ShareLink>(`/api/workspaces/${workspaceId}/shares`, body),
+  return useMutation<ShareLink, ApiRequestError, CreateShareRequest>({
+    mutationFn: (body) =>
+      api.post<ShareLink>(buildWorkspacePath(workspaceId, "/shares"), body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
 }
 
-export function useUpdateShare(workspaceId: string | null) {
+export function useUpdateShare(
+  workspaceId: string | null,
+): UseMutationResult<ShareLink, ApiRequestError, UpdateShareRequest & { shareId: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({ shareId, ...body }: UpdateShareRequest & { shareId: string }) =>
-      api.patch<ShareLink>(`/api/workspaces/${workspaceId}/shares/${shareId}`, body),
+  return useMutation<ShareLink, ApiRequestError, UpdateShareRequest & { shareId: string }>({
+    mutationFn: ({ shareId, ...body }) =>
+      api.patch<ShareLink>(buildWorkspacePath(workspaceId, `/shares/${shareId}`), body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
 }
 
-export function useDeleteShare(workspaceId: string | null) {
+export function useDeleteShare(
+  workspaceId: string | null,
+): UseMutationResult<{ success: boolean; shareId: string }, ApiRequestError, { shareId: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: ({ shareId }: { shareId: string }) =>
+  return useMutation<
+    { success: boolean; shareId: string },
+    ApiRequestError,
+    { shareId: string }
+  >({
+    mutationFn: ({ shareId }) =>
       api.delete<{ success: boolean; shareId: string }>(
-        `/api/workspaces/${workspaceId}/shares/${shareId}`,
+        buildWorkspacePath(workspaceId, `/shares/${shareId}`),
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
 }
@@ -486,46 +578,63 @@ interface ShareAccessResult {
 interface ShareBrowseResult {
   resourceName: string
   currentFolderId: string | null
-  breadcrumbs: Array<{ id: string; name: string }>
+  breadcrumbs: Array<{ id: string | null; name: string }>
   files: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }>
   folders: Array<{ id: string; name: string }>
 }
 
-export function useShareInfo(shareId: string | null): UseQueryResult<ShareInfoData> {
-  return useQuery<ShareInfoData>({
+export function useShareInfo(
+  shareId: string | null,
+): UseQueryResult<ShareInfoData, ApiRequestError> {
+  return useQuery<ShareInfoData, ApiRequestError>({
     queryKey: ["shareInfo", shareId],
-    queryFn: () => api.get<ShareInfoData>(`/api/shares/${shareId}`),
-    enabled: !!shareId,
+    queryFn: () => api.get<ShareInfoData>(`/api/shares/${requireId(shareId, "shareId")}`),
+    enabled: shareId !== null,
     retry: (failureCount, error) => {
-      const status = (error as { status?: number }).status
-      if (status === 404 || status === 410 || status === 423) return false
+      if (error.status === 404 || error.status === 410 || error.status === 423) {
+        return false
+      }
+
       return failureCount < 3
     },
   })
 }
 
-export function useAccessShare(shareId: string | null) {
+export function useAccessShare(
+  shareId: string | null,
+): UseMutationResult<ShareAccessResult, ApiRequestError, { password?: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: (body: { password?: string }) =>
-      api.post<ShareAccessResult>(`/api/shares/${shareId}/access`, body),
+  return useMutation<ShareAccessResult, ApiRequestError, { password?: string }>({
+    mutationFn: (body) =>
+      api.post<ShareAccessResult>(`/api/shares/${requireId(shareId, "shareId")}/access`, body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shareInfo", shareId] })
+      void queryClient.invalidateQueries({ queryKey: ["shareInfo", shareId] })
     },
   })
 }
 
-export function useBrowseShare(shareId: string | null) {
+export function useBrowseShare(
+  shareId: string | null,
+): UseMutationResult<ShareBrowseResult, ApiRequestError, { folderId?: string; password: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: (params: { folderId?: string; password: string }) =>
-      api.get<ShareBrowseResult>(
-        `/api/shares/${shareId}/browse?folderId=${params.folderId ?? ""}&password=${encodeURIComponent(params.password)}`,
-      ),
+  return useMutation<ShareBrowseResult, ApiRequestError, { folderId?: string; password: string }>({
+    mutationFn: ({ folderId, password }) => {
+      const params = new URLSearchParams({
+        password,
+      })
+
+      if (folderId) {
+        params.set("folderId", folderId)
+      }
+
+      return api.get<ShareBrowseResult>(
+        `/api/shares/${requireId(shareId, "shareId")}/browse?${params.toString()}`,
+      )
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shareBrowse", shareId] })
+      void queryClient.invalidateQueries({ queryKey: ["shareBrowse", shareId] })
     },
   })
 }
@@ -533,18 +642,18 @@ export function useBrowseShare(shareId: string | null) {
 export type {
   FileObject,
   Folder,
-  ListFilesResponse,
-  ListFoldersResponse,
   BreadcrumbItem,
+  CompleteUploadRequest as CompleteUploadPayload,
+  CreateShareRequest,
+  DownloadUrlResponse,
   InitiateUploadRequest,
   InitiateUploadResponse,
-  CompleteUploadRequest as CompleteUploadPayload,
-  DownloadUrlResponse,
-  WorkspaceData,
-  ShareLink,
-  CreateShareRequest,
+  ListFilesResponse,
+  ListFoldersResponse,
   ListSharesResponse,
-  ShareInfoData,
   ShareAccessResult,
   ShareBrowseResult,
+  ShareInfoData,
+  ShareLink,
+  WorkspaceData,
 }

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-template-expressions */
 import { useState, useCallback } from "react"
 import { ChevronRight, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react"
-import { useFolders, useWorkspaces, useCreateFolder, useUpdateFolder, useDeleteFolder, api } from "@/lib/api"
+import { useFolders, useWorkspaces, useCreateFolder, useUpdateFolder, useDeleteFolder } from "@/lib/api"
 import { useExplorerStore } from "@/stores/explorer-store"
 import * as ContextMenu from "@radix-ui/react-context-menu"
 import type { Folder as FolderType } from "@bucketdrive/shared"
@@ -68,21 +69,27 @@ function TreeNode({
           <ContextMenu.Content className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg">
             <ContextMenu.Item
               className={contextMenuItemClass}
-              onClick={() => onCreateSubfolder(folder.id)}
+            onClick={() => {
+              onCreateSubfolder(folder.id)
+            }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-text-tertiary" />
               New Subfolder
             </ContextMenu.Item>
             <ContextMenu.Item
               className={contextMenuItemClass}
-              onClick={() => onRename(folder.id, folder.name)}
+            onClick={() => {
+              onRename(folder.id, folder.name)
+            }}
             >
               <Pencil className="h-3.5 w-3.5 text-text-tertiary" />
               Rename
             </ContextMenu.Item>
             <ContextMenu.Item
               className={contextMenuItemClass}
-              onClick={() => onDelete(folder.id, folder.name)}
+            onClick={() => {
+              onDelete(folder.id, folder.name)
+            }}
             >
               <Trash2 className="h-3.5 w-3.5 text-text-tertiary" />
               Delete

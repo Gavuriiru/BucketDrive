@@ -12,7 +12,7 @@ export function ProgressBar({ value, className = "", size = "sm" }: ProgressBarP
     <div className={`w-full overflow-hidden rounded-full bg-surface-hover ${height} ${className}`}>
       <div
         className={`h-full rounded-full bg-accent transition-all duration-300 ease-out ${clamped < 100 ? "animate-pulse" : ""}`}
-        style={{ width: `${clamped}%` }}
+        style={{ width: `${String(clamped)}%` }}
       />
     </div>
   )
@@ -46,7 +46,7 @@ export function ProgressCircle({ value, size = 24 }: { value: number; size?: num
         strokeDasharray={circumference}
         strokeDashoffset={offset}
         className="text-accent transition-all duration-300"
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        transform={`rotate(-90 ${String(size / 2)} ${String(size / 2)})`}
       />
     </svg>
   )

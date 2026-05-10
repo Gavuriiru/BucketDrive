@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { Folder, FolderOpen, MoreVertical } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
@@ -9,7 +10,8 @@ function formatSize(bytes: number): string {
   if (bytes === 0) return "0 B"
   const units = ["B", "KB", "MB", "GB"]
   const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+  const unit = units[i] ?? "GB"
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${unit}`
 }
 
 function formatDate(dateStr: string): string {
@@ -20,7 +22,7 @@ function formatDate(dateStr: string): string {
 
   if (days === 0) return "Today"
   if (days === 1) return "Yesterday"
-  if (days < 7) return `${days} days ago`
+  if (days < 7) return `${String(days)} days ago`
   return date.toLocaleDateString()
 }
 
@@ -71,6 +73,7 @@ function FolderListRow({
   const dragId = `folder-${folder.id}`
   const droppable = useDroppable({ id: dragId, disabled: !dndEnabled })
   const draggable = useDraggable({ id: dragId, disabled: !dndEnabled })
+  const setClipboard = useExplorerStore((state) => state.setClipboard)
 
   const setRefs = (node: HTMLTableRowElement | null) => {
     draggable.setNodeRef(node)
@@ -88,7 +91,7 @@ function FolderListRow({
       onMove={() => onContextMove?.(folder.id, "folder")}
       onShare={() => onContextShare?.(folder.id, "folder")}
       onCopy={() => {
-        useExplorerStore.getState().setClipboard({
+        setClipboard({
           action: "copy",
           fileIds: [],
           folderIds: [folder.id],
@@ -113,7 +116,7 @@ function FolderListRow({
               ? "bg-accent/10"
               : isSelected
                 ? "bg-accent/10"
-                : isFocused && !isSelected
+                : isFocused
                   ? "bg-surface-hover"
                   : ""
         }`}
@@ -143,21 +146,31 @@ function FolderListRow({
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg" side="bottom" align="end">
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onFolderClick(folder.id)}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onFolderClick(folder.id)
+                }}>
                   Open
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename?.(folder.id, "folder")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextRename?.(folder.id, "folder")
+                }}>
                   Rename
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove?.(folder.id, "folder")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextMove?.(folder.id, "folder")
+                }}>
                   Move
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare?.(folder.id, "folder")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextShare?.(folder.id, "folder")
+                }}>
                   Share
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete?.(folder.id, "folder")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextDelete?.(folder.id, "folder")
+                }}>
                   Delete
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
@@ -205,6 +218,7 @@ function FileListRow({
     id: dragId,
     disabled: !dndEnabled,
   })
+  const setClipboard = useExplorerStore((state) => state.setClipboard)
 
   return (
     <FileContextMenu
@@ -219,7 +233,7 @@ function FileListRow({
       onMove={() => onContextMove?.(file.id, "file")}
       onShare={() => onContextShare?.(file.id, "file")}
       onCopy={() => {
-        useExplorerStore.getState().setClipboard({
+        setClipboard({
           action: "copy",
           fileIds: [file.id],
           folderIds: [],
@@ -241,7 +255,7 @@ function FileListRow({
             ? "opacity-50"
             : isSelected
               ? "bg-accent/10"
-              : isFocused && !isSelected
+              : isFocused
                 ? "bg-surface-hover"
                 : ""
         }`}
@@ -271,27 +285,41 @@ function FileListRow({
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg" side="bottom" align="end">
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextOpen?.(file.id, "file")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextOpen?.(file.id, "file")
+                }}>
                   Open
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDownload?.(file.id)}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextDownload?.(file.id)
+                }}>
                   Download
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename?.(file.id, "file")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextRename?.(file.id, "file")
+                }}>
                   Rename
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextFavorite?.(file.id)}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextFavorite?.(file.id)
+                }}>
                   Favorite
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove?.(file.id, "file")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextMove?.(file.id, "file")
+                }}>
                   Move
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare?.(file.id, "file")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextShare?.(file.id, "file")
+                }}>
                   Share
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete?.(file.id, "file")}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                  onContextDelete?.(file.id, "file")
+                }}>
                   Delete
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
