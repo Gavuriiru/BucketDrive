@@ -24,6 +24,7 @@ export function can(
       "files.delete",
       "files.restore",
       "folders.delete",
+      "folders.restore",
     ]
     return OWNER_OVERRIDE_PERMISSIONS.includes(permission)
   }

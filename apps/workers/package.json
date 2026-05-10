@@ -1,0 +1,21 @@
+{
+  "name": "@bucketdrive/workers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8788 --inspector-port 9230",
+    "deploy": "wrangler deploy",
+    "build": "tsc --noEmit",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bucketdrive/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250100.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^3.100.0"
+  }
+}

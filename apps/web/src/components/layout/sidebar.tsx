@@ -6,7 +6,7 @@ const navItems = [
   { to: "/dashboard", icon: Files, label: "Files" },
   { to: "/shared", icon: Share2, label: "Shared With Me" },
   { to: "/dashboard/shares", icon: Link2, label: "Share Links" },
-  { to: "/dashboard", icon: Trash2, label: "Trash" },
+  { to: "/dashboard/trash", icon: Trash2, label: "Trash" },
   { to: "/dashboard", icon: HardDrive, label: "Storage" },
   { to: "/dashboard", icon: Settings, label: "Settings" },
 ]

@@ -5,6 +5,7 @@ import { LoginPage } from "./login"
 import { DashboardPage } from "./app/dashboard"
 import { ShareManagementPage } from "./app/shares"
 import { SharedPage } from "./app/shared"
+import { TrashPage } from "./app/trash"
 import { ShareAccessPage } from "./share.$shareId"
 
 const rootRoute = createRootRoute({
@@ -72,6 +73,12 @@ const shareManagementRoute = createRoute({
   component: ShareManagementPage,
 })
 
+const trashRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard/trash",
+  component: TrashPage,
+})
+
 const shareAccessRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/share/$shareId",
@@ -81,7 +88,7 @@ const shareAccessRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   shareAccessRoute,
-  appRoute.addChildren([homeRoute, dashboardRoute, sharedRoute, shareManagementRoute]),
+  appRoute.addChildren([homeRoute, dashboardRoute, sharedRoute, shareManagementRoute, trashRoute]),
 ])
 
 export const router = createRouter({

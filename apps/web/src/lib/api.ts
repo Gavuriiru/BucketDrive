@@ -10,6 +10,7 @@ import type {
   Folder,
   ShareDashboardItem,
   ShareLink,
+  TrashItem,
   SharesListScope,
   WorkspaceRole,
 } from "@bucketdrive/shared"
@@ -150,6 +151,11 @@ interface ListFoldersResponse {
   meta: PaginationMeta
 }
 
+interface ListTrashResponse {
+  data: TrashItem[]
+  meta: PaginationMeta
+}
+
 interface BreadcrumbItem {
   id: string | null
   name: string
@@ -158,6 +164,14 @@ interface BreadcrumbItem {
 export interface UseFilesOptions {
   folderId?: string | null
   sort?: "name" | "created_at" | "size" | "type"
+  order?: "asc" | "desc"
+  page?: number
+  limit?: number
+}
+
+export interface UseTrashOptions {
+  q?: string
+  sort?: "deleted_at" | "name" | "location" | "size"
   order?: "asc" | "desc"
   page?: number
   limit?: number
@@ -201,6 +215,30 @@ export function useFolders(
       const qs = params.toString()
       return api.get<ListFoldersResponse>(
         `${buildWorkspacePath(workspaceId, "/folders")}${qs ? `?${qs}` : ""}`,
+      )
+    },
+    enabled: workspaceId !== null,
+  })
+}
+
+export function useTrash(
+  workspaceId: string | null,
+  options?: UseTrashOptions,
+): UseQueryResult<ListTrashResponse, ApiRequestError> {
+  return useQuery<ListTrashResponse, ApiRequestError>({
+    queryKey: ["trash", workspaceId, options],
+    queryFn: () => {
+      const params = new URLSearchParams()
+
+      if (options?.q) params.set("q", options.q)
+      if (options?.sort) params.set("sort", options.sort)
+      if (options?.order) params.set("order", options.order)
+      if (options?.page !== undefined) params.set("page", String(options.page))
+      if (options?.limit !== undefined) params.set("limit", String(options.limit))
+
+      const qs = params.toString()
+      return api.get<ListTrashResponse>(
+        `${buildWorkspacePath(workspaceId, "/trash")}${qs ? `?${qs}` : ""}`,
       )
     },
     enabled: workspaceId !== null,
@@ -331,6 +369,22 @@ interface DeleteFileResponse {
   fileId: string
 }
 
+interface RestoreFileResponse {
+  success: true
+  fileId: string
+  restoredToFolderId: string | null
+  restoredName: string
+  restoredToRoot: boolean
+}
+
+interface RestoreFolderResponse {
+  success: true
+  folderId: string
+  restoredToFolderId: string | null
+  restoredName: string
+  restoredToRoot: boolean
+}
+
 export function useDeleteFile(
   workspaceId: string | null,
 ): UseMutationResult<DeleteFileResponse, ApiRequestError, { fileId: string }> {
@@ -341,6 +395,40 @@ export function useDeleteFile(
       api.delete<DeleteFileResponse>(buildWorkspacePath(workspaceId, `/files/${fileId}`)),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+    },
+  })
+}
+
+export function useRestoreFile(
+  workspaceId: string | null,
+): UseMutationResult<RestoreFileResponse, ApiRequestError, { fileId: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<RestoreFileResponse, ApiRequestError, { fileId: string }>({
+    mutationFn: ({ fileId }) =>
+      api.post<RestoreFileResponse>(buildWorkspacePath(workspaceId, `/files/${fileId}/restore`)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+    },
+  })
+}
+
+export function usePermanentlyDeleteFile(
+  workspaceId: string | null,
+): UseMutationResult<DeleteFileResponse, ApiRequestError, { fileId: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<DeleteFileResponse, ApiRequestError, { fileId: string }>({
+    mutationFn: ({ fileId }) =>
+      api.delete<DeleteFileResponse>(buildWorkspacePath(workspaceId, `/files/${fileId}/permanent`)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
 }
@@ -424,6 +512,44 @@ export function useDeleteFolder(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+    },
+  })
+}
+
+export function useRestoreFolder(
+  workspaceId: string | null,
+): UseMutationResult<RestoreFolderResponse, ApiRequestError, { folderId: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<RestoreFolderResponse, ApiRequestError, { folderId: string }>({
+    mutationFn: ({ folderId }) =>
+      api.post<RestoreFolderResponse>(
+        buildWorkspacePath(workspaceId, `/folders/${folderId}/restore`),
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+    },
+  })
+}
+
+export function usePermanentlyDeleteFolder(
+  workspaceId: string | null,
+): UseMutationResult<DeleteFolderResponse, ApiRequestError, { folderId: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<DeleteFolderResponse, ApiRequestError, { folderId: string }>({
+    mutationFn: ({ folderId }) =>
+      api.delete<DeleteFolderResponse>(
+        buildWorkspacePath(workspaceId, `/folders/${folderId}/permanent`),
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
   })
 }
@@ -650,10 +776,12 @@ export type {
   InitiateUploadResponse,
   ListFilesResponse,
   ListFoldersResponse,
+  ListTrashResponse,
   ListSharesResponse,
   ShareAccessResult,
   ShareBrowseResult,
   ShareInfoData,
   ShareLink,
+  TrashItem,
   WorkspaceData,
 }

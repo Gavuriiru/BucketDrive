@@ -23,7 +23,7 @@ verifiable result.
 | 10 | Internal shares | File sharing between workspace members | DONE `27163c2` |
 | 11 | External shares | Public links with password + rate-limit | DONE `47a6000` |
 | 12 | Share management | User dashboard + admin oversight | DONE `56d0816` |
-| 13 | Trash | Soft delete, restore, auto-cleanup | PARTIAL |
+| 13 | Trash | Soft delete, restore, auto-cleanup | DONE |
 | 14 | Search | FTS5 full-text with filters | TODO |
 | 15 | Tags & favorites | Color-coded tags, star favorites | TODO |
 | 16 | Command palette | Ctrl+K with search + commands | TODO |
@@ -678,13 +678,17 @@ git commit -m "feat(shares): management dashboard with admin oversight"
 
 ---
 
-## Day 13 - Trash System
+## Day 13 - Trash System DONE
 
-> **Current state audit (2026-05-09):**
-> - `DELETE /api/workspaces/:workspaceId/files/:fileId` already performs a soft delete by setting `isDeleted=true` and `deletedAt`
-> - Explorer delete flows already describe deletion as "move to trash"
-> - The dedicated trash route, restore endpoint/UI, permanent purge flow, and auto-cleanup worker are still missing
-> - This day remains `PARTIAL` and must not be treated as complete
+> **Notes from implementation:**
+> - Added shared trash contracts with combined file/folder trash items, restore responses, and permanent delete responses
+> - Added dedicated `GET /api/workspaces/:workspaceId/trash` route plus file/folder restore and permanent purge endpoints
+> - Centralized trash logic in `TrashService`: soft-delete side effects, name conflict handling on restore, share deactivation, favorite reactivation, and permanent purge
+> - Normalized audit events to `file.deleted`, `folder.deleted`, `file.restored`, `folder.restored`, `file.permanently_deleted`, `folder.permanently_deleted`, plus auto-purge events
+> - Added authenticated `/dashboard/trash` UI with search, sort, restore, and permanent delete actions
+> - Fixed sidebar Trash navigation to point to the dedicated route
+> - Added `apps/workers` scheduled worker app running daily at `03:00 UTC` to purge expired trash using workspace retention settings
+> - Validation after implementation: `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` passed
 
 **Goal:** Deleted files go to trash, can be restored within retention period.
 

@@ -2,8 +2,10 @@ import { Hono } from "hono"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
-import { folder, workspace, fileObject, auditLog } from "@bucketdrive/shared/db/schema"
-import { eq, and, isNull, inArray } from "drizzle-orm"
+import { folder, workspace, auditLog } from "@bucketdrive/shared/db/schema"
+import { eq, and, isNull } from "drizzle-orm"
+import { createStorageProvider } from "../../services/storage"
+import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import {
   ListFoldersRequest,
   BreadcrumbItemSchema,
@@ -13,6 +15,10 @@ import {
 
 interface FoldersEnv {
   DB: D1Database
+  STORAGE: R2Bucket
+  R2_ACCESS_KEY_ID?: string
+  R2_SECRET_ACCESS_KEY?: string
+  R2_ENDPOINT?: string
 }
 
 interface FoldersVariables {
@@ -286,7 +292,36 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
   return c.json(updated)
 })
 
-folders.delete("/:folderId", requirePermission("folders.delete"), async (c) => {
+folders.post("/:folderId/restore", requirePermission("folders.restore"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const folderId = c.req.param("folderId")
+
+  if (!workspaceId || !folderId) {
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and folderId are required" },
+      400,
+    )
+  }
+
+  const user = c.get("user")
+  const trashService = new TrashService(getDB(), createStorageProvider(c.env))
+
+  try {
+    const result = await trashService.restoreFolder({
+      workspaceId,
+      folderId,
+      actorId: user.id,
+    })
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof TrashServiceError) {
+      return c.json({ code: err.code, message: err.message }, err.status as never)
+    }
+    throw err
+  }
+})
+
+folders.delete("/:folderId/permanent", async (c) => {
   const workspaceId = c.req.param("workspaceId")
   const folderId = c.req.param("folderId")
 
@@ -299,78 +334,64 @@ folders.delete("/:folderId", requirePermission("folders.delete"), async (c) => {
 
   const user = c.get("user")
   const db = getDB()
-  const now = new Date().toISOString()
+  const role = await getWorkspaceRole(db, workspaceId, user.id)
 
-  const target = await db
-    .select()
-    .from(folder)
-    .where(and(eq(folder.id, folderId), eq(folder.workspaceId, workspaceId)))
-    .get()
-
-  if (!target) {
-    return c.json({ code: "FOLDER_NOT_FOUND", message: "Folder not found" }, 404)
+  if (!role) {
+    return c.json({ code: "WORKSPACE_ACCESS_DENIED", message: "Not a workspace member" }, 403)
   }
 
-  if (target.isDeleted) {
-    return c.json({ code: "FOLDER_NOT_FOUND", message: "Folder is already deleted" }, 404)
+  if (role !== "owner" && role !== "admin") {
+    return c.json(
+      { code: "FORBIDDEN", message: "Only owners and admins can permanently delete folders" },
+      403,
+    )
   }
 
-  const descendantIds: string[] = []
-  let toVisit = [folderId]
+  const trashService = new TrashService(db, createStorageProvider(c.env))
 
-  while (toVisit.length > 0) {
-    const currentIds = [...toVisit]
-    toVisit = []
-
-    for (const currentId of currentIds) {
-      descendantIds.push(currentId)
-      const children = await db
-        .select({ id: folder.id })
-        .from(folder)
-        .where(and(eq(folder.parentFolderId, currentId), eq(folder.isDeleted, false)))
-        .all()
-
-      toVisit.push(...children.map((c) => c.id))
+  try {
+    const result = await trashService.permanentlyDeleteFolder({
+      workspaceId,
+      folderId,
+      actorId: user.id,
+    })
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof TrashServiceError) {
+      return c.json({ code: err.code, message: err.message }, err.status as never)
     }
+    throw err
+  }
+})
+
+folders.delete("/:folderId", requirePermission("folders.delete"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const folderId = c.req.param("folderId")
+
+  if (!workspaceId || !folderId) {
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and folderId are required" },
+      400,
+    )
   }
 
-  if (descendantIds.length > 0) {
-    await db
-      .update(fileObject)
-      .set({ isDeleted: true, deletedAt: now, updatedAt: now })
-      .where(
-        and(
-          eq(fileObject.workspaceId, workspaceId),
-          inArray(fileObject.folderId, descendantIds),
-          eq(fileObject.isDeleted, false),
-        ),
-      )
-      .run()
+  const user = c.get("user")
+  const trashService = new TrashService(getDB(), createStorageProvider(c.env))
+
+  try {
+    const result = await trashService.softDeleteFolder({
+      workspaceId,
+      folderId,
+      actorId: user.id,
+    })
+
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof TrashServiceError) {
+      return c.json({ code: err.code, message: err.message }, err.status as never)
+    }
+    throw err
   }
-
-  await db
-    .update(folder)
-    .set({ isDeleted: true, deletedAt: now, updatedAt: now })
-    .where(and(inArray(folder.id, descendantIds), eq(folder.isDeleted, false)))
-    .run()
-
-  for (const id of descendantIds) {
-    await db
-      .insert(auditLog)
-      .values({
-        id: crypto.randomUUID(),
-        workspaceId,
-        actorId: user.id,
-        action: "folder.delete",
-        resourceType: "folder",
-        resourceId: id,
-        metadata: JSON.stringify({ deletedByParent: id !== folderId }),
-        createdAt: now,
-      })
-      .run()
-  }
-
-  return c.json({ success: true as const, folderId })
 })
 
 export const foldersHandler = folders

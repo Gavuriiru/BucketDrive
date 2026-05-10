@@ -3,6 +3,7 @@ import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { createStorageProvider } from "../../services/storage"
 import { UploadService, UploadError } from "../../services/upload.service"
+import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import { getDB } from "../../lib/db"
 import { fileObject, auditLog } from "@bucketdrive/shared/db/schema"
 import { eq, and } from "drizzle-orm"
@@ -281,7 +282,37 @@ files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
   return c.json(updated)
 })
 
-files.delete("/:fileId", requirePermission("files.delete"), async (c) => {
+files.post("/:fileId/restore", requirePermission("files.restore"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const fileId = c.req.param("fileId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "fileId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const trashService = new TrashService(getDB(), createStorageProvider(c.env))
+
+  try {
+    const result = await trashService.restoreFile({
+      workspaceId,
+      fileId,
+      actorId: user.id,
+    })
+
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof TrashServiceError) {
+      return c.json({ code: err.code, message: err.message }, err.status as never)
+    }
+    throw err
+  }
+})
+
+files.delete("/:fileId/permanent", async (c) => {
   const workspaceId = c.req.param("workspaceId")
   const fileId = c.req.param("fileId")
 
@@ -294,47 +325,62 @@ files.delete("/:fileId", requirePermission("files.delete"), async (c) => {
 
   const user = c.get("user")
   const db = getDB()
-  const now = new Date().toISOString()
+  const role = await getWorkspaceRole(db, workspaceId, user.id)
 
-  const file = await db
-    .select()
-    .from(fileObject)
-    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
-    .get()
-
-  if (!file) {
-    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  if (!role) {
+    return c.json({ code: "WORKSPACE_ACCESS_DENIED", message: "Not a workspace member" }, 403)
   }
 
-  if (file.isDeleted) {
-    return c.json({ code: "FILE_NOT_FOUND", message: "File is already deleted" }, 404)
+  if (role !== "owner" && role !== "admin") {
+    return c.json({ code: "FORBIDDEN", message: "Only owners and admins can permanently delete files" }, 403)
   }
 
-  await db
-    .update(fileObject)
-    .set({
-      isDeleted: true,
-      deletedAt: now,
-      updatedAt: now,
-    })
-    .where(eq(fileObject.id, fileId))
-    .run()
+  const trashService = new TrashService(db, createStorageProvider(c.env))
 
-  await db
-    .insert(auditLog)
-    .values({
-      id: crypto.randomUUID(),
+  try {
+    const result = await trashService.permanentlyDeleteFile({
       workspaceId,
+      fileId,
       actorId: user.id,
-      action: "file.delete",
-      resourceType: "file",
-      resourceId: fileId,
-      metadata: JSON.stringify({ fileName: file.originalName }),
-      createdAt: now,
     })
-    .run()
 
-  return c.json({ success: true, fileId })
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof TrashServiceError) {
+      return c.json({ code: err.code, message: err.message }, err.status as never)
+    }
+    throw err
+  }
+})
+
+files.delete("/:fileId", requirePermission("files.delete"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const fileId = c.req.param("fileId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "fileId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const trashService = new TrashService(getDB(), createStorageProvider(c.env))
+
+  try {
+    const result = await trashService.softDeleteFile({
+      workspaceId,
+      fileId,
+      actorId: user.id,
+    })
+
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof TrashServiceError) {
+      return c.json({ code: err.code, message: err.message }, err.status as never)
+    }
+    throw err
+  }
 })
 
 export const filesHandler = files

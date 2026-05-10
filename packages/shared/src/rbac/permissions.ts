@@ -17,6 +17,7 @@ export const Permission = z.enum([
   "folders.rename",
   "folders.move",
   "folders.delete",
+  "folders.restore",
   "folders.share",
   "shares.read",
   "shares.create",

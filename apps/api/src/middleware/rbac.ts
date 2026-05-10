@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory"
 import { and, eq } from "drizzle-orm"
-import { workspaceMember } from "@bucketdrive/shared/db/schema"
+import { fileObject, folder, workspaceMember } from "@bucketdrive/shared/db/schema"
 import { getDB } from "../lib/db"
 import { can, type Permission } from "@bucketdrive/shared"
 import type { WorkspaceRole } from "@bucketdrive/shared"
@@ -38,7 +38,33 @@ export const requirePermission = (permission: Permission) => {
     }
 
     const role = member.role as WorkspaceRole
-    const allowed = can(role, permission)
+    let resourceOwnerId: string | undefined
+
+    if (permission === "files.delete" || permission === "files.restore") {
+      const fileId = c.req.param("fileId")
+      if (fileId) {
+        const file = await db
+          .select({ ownerId: fileObject.ownerId })
+          .from(fileObject)
+          .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
+          .get()
+        resourceOwnerId = file?.ownerId
+      }
+    }
+
+    if (permission === "folders.delete" || permission === "folders.restore") {
+      const folderId = c.req.param("folderId")
+      if (folderId) {
+        const targetFolder = await db
+          .select({ createdBy: folder.createdBy })
+          .from(folder)
+          .where(and(eq(folder.id, folderId), eq(folder.workspaceId, workspaceId)))
+          .get()
+        resourceOwnerId = targetFolder?.createdBy
+      }
+    }
+
+    const allowed = can(role, permission, resourceOwnerId, user.id)
 
     if (!allowed) {
       return c.json(

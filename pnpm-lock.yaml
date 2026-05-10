@@ -152,6 +152,22 @@ importers:
         specifier: ^6.0.0
         version: 6.4.2(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)
 
+  apps/workers:
+    dependencies:
+      '@bucketdrive/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20250100.0
+        version: 4.20260509.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      wrangler:
+        specifier: ^3.100.0
+        version: 3.114.17(@cloudflare/workers-types@4.20260509.1)
+
   packages/shared:
     dependencies:
       zod:

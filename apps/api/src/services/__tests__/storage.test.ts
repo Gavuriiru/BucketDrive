@@ -112,6 +112,7 @@ describe("R2StorageProvider", () => {
   describe("delete", () => {
     it("calls R2 delete on the binding", async () => {
       await provider.delete("some-key")
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockBucket.delete).toHaveBeenCalledWith("some-key")
     })
 
@@ -124,6 +125,7 @@ describe("R2StorageProvider", () => {
     it("copies an object from one key to another", async () => {
       await mockBucket.put("source-key", "test content")
       await provider.copy("source-key", "dest-key")
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockBucket.put).toHaveBeenCalledWith("dest-key", expect.anything())
     })
 
