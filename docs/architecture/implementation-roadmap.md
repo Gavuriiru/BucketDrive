@@ -11,26 +11,26 @@ verifiable result.
 
 | Day | Topic | Core Deliverable | Status |
 |---|---|---|---|
-| 1 | Database | Schema migrated, seed data | DONE `59d3ea2` |
-| 2 | Auth backend | GitHub OAuth working via Better Auth | DONE `f4f650e` |
-| 3 | Auth frontend | Login page, session guard, user context | DONE `4b78970` |
-| 4 | Storage | R2 provider with signed URLs | DONE `101668b` |
-| 5 | Upload | End-to-end drag-drop upload with progress | DONE `8f0d0c2` |
-| 6 | Explorer | Grid/list views with breadcrumbs | DONE `c31881c` |
-| 7 | Interactions | Context menus, keyboard shortcuts, multi-select | DONE `680aa87` |
-| 8 | Folders | CRUD, folder tree, drag-drop move | DONE `70f64d0` |
-| 9 | RBAC | Permission engine with can() checks | DONE `e780c23` |
-| 10 | Internal shares | File sharing between workspace members | DONE `27163c2` |
-| 11 | External shares | Public links with password + rate-limit | DONE `47a6000` |
-| 12 | Share management | User dashboard + admin oversight | DONE `56d0816` |
-| 13 | Trash | Soft delete, restore, auto-cleanup | DONE |
-| 14 | Search | FTS5 full-text with filters | TODO |
-| 15 | Tags & favorites | Color-coded tags, star favorites | TODO |
-| 16 | Command palette | Ctrl+K with search + commands | TODO |
-| 17 | Preview | Space to preview files inline | TODO |
+| 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |
+| 2 | Auth backend | GitHub OAuth working via Better Auth | ✅ `f4f650e` |
+| 3 | Auth frontend | Login page, session guard, user context | ✅ `4b78970` |
+| 4 | Storage | R2 provider with signed URLs | ✅ `101668b` |
+| 5 | Upload | End-to-end drag-drop upload with progress | ✅ `8f0d0c2` |
+| 6 | Explorer | Grid/list views with breadcrumbs | ✅ `c31881c` |
+| 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ✅ `680aa87` |
+| 8 | Folders | CRUD, folder tree, drag-drop move | ✅ `70f64d0` |
+| 9 | RBAC | Permission engine with can() checks | ✅ `e780c23` |
+| 10 | Internal shares | File sharing between workspace members | ✅ `27163c2` |
+| 11 | External shares | Public links with password + rate-limit | ✅ `47a6000` |
+| 12 | Share management | User dashboard + admin oversight | ✅ `56d0816` |
+| 13 | Trash | Soft delete, restore, auto-cleanup | ✅ `11a6385` |
+| 14 | Search | FTS5 full-text with filters | ⬜ |
+| 15 | Tags & favorites | Color-coded tags, star favorites | ⬜ |
+| 16 | Command palette | Ctrl+K with search + commands | ⬜ |
+| 17 | Preview | Space to preview files inline | ⬜ |
 | 18 | Dark mode | Theme toggle, system detection | PARTIAL |
-| 19 | Dashboard | Admin analytics + settings | TODO |
-| 20 | Testing | Contracts, units, a11y, staging deploy | TODO |
+| 19 | Dashboard | Admin analytics + settings | ⬜ |
+| 20 | Testing | Contracts, units, a11y, staging deploy | ⬜ |
 
 ---
 
