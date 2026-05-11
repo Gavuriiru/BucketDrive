@@ -31,7 +31,7 @@ verifiable result.
 | 18 | Dark mode | Theme toggle, system detection, persistence | ✅ `e9e10a6` |
 | 19 | Admin dashboard | Analytics, members, audit, settings | ✅ `5f8ed5e` |
 | 20 | Testing foundation | Unit tests, type system, build health | ✅ — infra ready, real tests Days 30-31 |
-| 21 | Multipart upload | Real chunking, resumability, retry | ✅ `7c15015` |
+| 21 | Multipart upload | Real chunking, resumability, retry | ✅ `bb9aec4` |
 | 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ⬜ |
 | 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ⬜ |
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ⬜ |
@@ -1120,7 +1120,7 @@ git commit -m "test: confirm testing foundation and build health"
 
 ---
 
-## Day 21 - Multipart Upload & Resumability DONE (`6e8f4a2`)
+## Day 21 - Multipart Upload & Resumability DONE (`bb9aec4`)
 
 > **Notes from implementation:**
 > - **Multipart threshold:** 250 MB (arquivos ≤ 250 MB usam single-shot PUT; > 250 MB usam multipart R2 real)
