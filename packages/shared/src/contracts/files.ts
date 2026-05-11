@@ -76,3 +76,10 @@ export const DeleteFileResponse = z.object({
 export const RenameFileRequest = z.object({
   name: z.string().min(1).max(255),
 })
+
+export const PreviewUrlResponse = z.object({
+  signedUrl: z.string().url(),
+  expiresAt: z.string().datetime(),
+  fileName: z.string(),
+  mimeType: z.string(),
+})

@@ -9,6 +9,7 @@ import {
   ArrowRightLeft,
   Star,
   Tags,
+  Eye,
 } from "lucide-react"
 
 interface FileContextMenuProps {
@@ -16,6 +17,7 @@ interface FileContextMenuProps {
   itemType: "file" | "folder"
   children: React.ReactNode
   onOpen?: () => void
+  onPreview?: () => void
   onDownload?: () => void
   onRename?: () => void
   onDelete?: () => void
@@ -36,6 +38,7 @@ export function FileContextMenu({
   itemType,
   children,
   onOpen,
+  onPreview,
   onDownload,
   onRename,
   onDelete,
@@ -61,6 +64,19 @@ export function FileContextMenu({
             Open
             <span className="ml-auto text-xs text-text-tertiary">Enter</span>
           </ContextMenu.Item>
+
+          {itemType === "file" && onPreview && (
+            <ContextMenu.Item
+              className={menuItemClass}
+              onClick={() => {
+                onPreview()
+              }}
+            >
+              <Eye className="h-4 w-4 text-text-tertiary" />
+              Preview
+              <span className="ml-auto text-xs text-text-tertiary">Space</span>
+            </ContextMenu.Item>
+          )}
 
           {itemType === "file" && onDownload && (
             <ContextMenu.Item

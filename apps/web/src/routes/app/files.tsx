@@ -31,6 +31,7 @@ import { FileList } from "@/components/features/file-list"
 import { FileGrid } from "@/components/features/file-grid"
 import { Breadcrumbs } from "@/components/features/breadcrumbs"
 import { ShareModal } from "@/components/features/share-modal"
+import { FilePreview } from "@/components/features/file-preview"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
 import { DndContext, DragOverlay } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
@@ -61,6 +62,8 @@ export function FilesPage() {
     selectedFileIds,
     selectedFolderIds,
     clearSelection,
+    previewFileId,
+    setPreviewFileId,
   } = useExplorerStore()
   const dashboardSearch = useSearchStore((state) => state.dashboard)
   const setDashboardType = useSearchStore((state) => state.setDashboardType)
@@ -239,6 +242,40 @@ export function FilesPage() {
     [files, handleContextDownload, navigateTo],
   )
 
+  const handlePreviewItem = useCallback(
+    (id: string) => {
+      const file = files.find((candidate) => candidate.id === id)
+      if (file) {
+        setPreviewFileId(file.id)
+      }
+    },
+    [files, setPreviewFileId],
+  )
+
+  const handlePreviewNext = useCallback(() => {
+    if (!previewFileId) return
+    const fileIds = files.map((f) => f.id)
+    const currentIndex = fileIds.indexOf(previewFileId)
+    if (currentIndex >= 0 && currentIndex < fileIds.length - 1) {
+      const nextId = fileIds[currentIndex + 1]
+      if (nextId) setPreviewFileId(nextId)
+    }
+  }, [previewFileId, files, setPreviewFileId])
+
+  const handlePreviewPrev = useCallback(() => {
+    if (!previewFileId) return
+    const fileIds = files.map((f) => f.id)
+    const currentIndex = fileIds.indexOf(previewFileId)
+    if (currentIndex > 0) {
+      const prevId = fileIds[currentIndex - 1]
+      if (prevId) setPreviewFileId(prevId)
+    }
+  }, [previewFileId, files, setPreviewFileId])
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewFileId(null)
+  }, [setPreviewFileId])
+
   const handleDeleteSelected = useCallback(() => {
     const fileCount = selectedFileIds.length
     const folderCount = selectedFolderIds.length
@@ -293,6 +330,7 @@ export function FilesPage() {
     items,
     containerRef,
     onOpenItem: handleOpenItem,
+    onPreviewItem: handlePreviewItem,
     onDeleteSelected: handleDeleteSelected,
     onNavigateParent: handleNavigateParent,
     onRenameItem: handleRenameItem,
@@ -629,6 +667,7 @@ export function FilesPage() {
                 onFolderClick={handleFolderClick}
                 onItemClick={handleItemClick}
                 onContextOpen={handleOpenItem}
+                onContextPreview={handlePreviewItem}
                 onContextDownload={handleContextDownload}
                 onContextRename={handleRenameItem}
                 onContextDelete={(id, type) => {
@@ -665,6 +704,7 @@ export function FilesPage() {
                 onFolderClick={handleFolderClick}
                 onItemClick={handleItemClick}
                 onContextOpen={handleOpenItem}
+                onContextPreview={handlePreviewItem}
                 onContextDownload={handleContextDownload}
                 onContextRename={handleRenameItem}
                 onContextDelete={(id, type) => {
@@ -710,6 +750,25 @@ export function FilesPage() {
         </div>
 
         {workspaceId && <UploadQueue workspaceId={workspaceId} />}
+
+        {previewFileId && (() => {
+          const previewFile = files.find((f) => f.id === previewFileId)
+          if (!previewFile || !workspaceId) return null
+          const fileIds = files.map((f) => f.id)
+          const currentIndex = fileIds.indexOf(previewFileId)
+          return (
+            <FilePreview
+              file={previewFile}
+              workspaceId={workspaceId}
+              hasNext={currentIndex >= 0 && currentIndex < fileIds.length - 1}
+              hasPrev={currentIndex > 0}
+              onNext={handlePreviewNext}
+              onPrev={handlePreviewPrev}
+              onClose={handleClosePreview}
+              onDownload={handleContextDownload}
+            />
+          )
+        })()}
 
         <ShareModal
           open={shareModal.open}

@@ -222,6 +222,7 @@ interface FileListRowProps {
   isFocused: boolean
   onItemClick: (id: string, type: "file" | "folder", index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => void
   onContextOpen?: (id: string, type: "file" | "folder") => void
+  onContextPreview?: (id: string) => void
   onContextDownload?: (id: string) => void
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
@@ -239,6 +240,7 @@ function FileListRow({
   isFocused,
   onItemClick,
   onContextOpen,
+  onContextPreview,
   onContextDownload,
   onContextRename,
   onContextDelete,
@@ -261,6 +263,7 @@ function FileListRow({
       itemId={file.id}
       itemType="file"
       onOpen={() => onContextOpen?.(file.id, "file")}
+      onPreview={() => onContextPreview?.(file.id)}
       onDownload={() => onContextDownload?.(file.id)}
       onRename={() => onContextRename?.(file.id, "file")}
       onDelete={() => onContextDelete?.(file.id, "file")}
@@ -285,6 +288,7 @@ function FileListRow({
         onClick={(e) => {
           if (!dndEnabled || !isDragging) onItemClick(file.id, "file", index, e)
         }}
+        onDoubleClick={() => onContextPreview?.(file.id)}
         {...attributes}
         {...listeners}
         className={`${rowClass} ${
@@ -357,6 +361,13 @@ function FileListRow({
                 }}>
                   Open
                 </DropdownMenu.Item>
+                {onContextPreview && (
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
+                    onContextPreview(file.id)
+                  }}>
+                    Preview
+                  </DropdownMenu.Item>
+                )}
                 <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
                   onContextDownload?.(file.id)
                 }}>
@@ -405,6 +416,7 @@ interface FileListProps {
   onFolderClick: (folderId: string) => void
   onItemClick: (id: string, type: "file" | "folder", index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => void
   onContextOpen?: (id: string, type: "file" | "folder") => void
+  onContextPreview?: (id: string) => void
   onContextDownload?: (id: string) => void
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
@@ -422,6 +434,7 @@ export function FileList({
   onFolderClick,
   onItemClick,
   onContextOpen,
+  onContextPreview,
   onContextDownload,
   onContextRename,
   onContextDelete,
@@ -511,6 +524,7 @@ export function FileList({
                 isFocused={focusedItemId === file.id}
                 onItemClick={onItemClick}
                 onContextOpen={onContextOpen}
+                onContextPreview={onContextPreview}
                 onContextDownload={onContextDownload}
             onContextRename={onContextRename}
             onContextDelete={onContextDelete}

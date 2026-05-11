@@ -151,6 +151,13 @@ interface DownloadUrlResponse {
   fileName: string
 }
 
+interface PreviewUrlResponse {
+  signedUrl: string
+  expiresAt: string
+  fileName: string
+  mimeType: string
+}
+
 interface ListFoldersResponse {
   data: Folder[]
   meta: PaginationMeta
@@ -377,6 +384,21 @@ export function useDownloadUrl(
         buildWorkspacePath(workspaceId, `/files/${requireId(fileId, "fileId")}/download`),
       ),
     enabled: workspaceId !== null && fileId !== null,
+  })
+}
+
+export function usePreviewUrl(
+  workspaceId: string | null,
+  fileId: string | null,
+): UseQueryResult<PreviewUrlResponse, ApiRequestError> {
+  return useQuery<PreviewUrlResponse, ApiRequestError>({
+    queryKey: ["preview", workspaceId, fileId],
+    queryFn: () =>
+      api.get<PreviewUrlResponse>(
+        buildWorkspacePath(workspaceId, `/files/${requireId(fileId, "fileId")}/preview`),
+      ),
+    enabled: workspaceId !== null && fileId !== null,
+    staleTime: 60_000,
   })
 }
 

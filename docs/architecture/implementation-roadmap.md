@@ -27,7 +27,7 @@ verifiable result.
 | 14 | Search | FTS5 full-text with filters | ✅ `50e2e7b` |
 | 15 | Tags & favorites | Color-coded tags, star favorites | ✅ `50e2e7b` |
 | 16 | Command palette | Ctrl+K with search + commands | ✅ `fa94bd8` |
-| 17 | Preview | Space to preview files inline | ⬜ |
+| 17 | Preview | Space to preview files inline | ✅ |
 | 18 | Dark mode | Theme toggle, system detection, persistence | ⬜ |
 | 19 | Admin dashboard | Analytics, members, audit, settings | PARTIAL `5f8ed5e` |
 | 20 | Testing foundation | Unit tests, type system, build health | PARTIAL |
@@ -916,9 +916,20 @@ git commit -m "feat: command palette with search and keyboard navigation"
 
 ---
 
-## Day 17 - Inline Preview (Space)
+## Day 17 - Inline Preview (Space) DONE
 
-> **Gap vs docs:** `docs/frontend/interactions.md` and `docs/features/file-sharing.md` mandate Space-to-preview with slide-in panel, mime-type renderers, arrow navigation, and signed URLs. **Not implemented.**
+> **Notes from implementation:**
+> - Added `PreviewUrlResponse` contract to `packages/shared/src/contracts/files.ts`
+> - Created `GET /api/workspaces/:workspaceId/files/:fileId/preview` endpoint returning signed URL with 5-minute expiry and `mimeType`
+> - Added `previewFileId` state and `setPreviewFileId` action to `explorer-store.ts`
+> - Created `usePreviewUrl` TanStack Query hook in `lib/api.ts`
+> - Built `FilePreview` component (`file-preview.tsx`) with slide-in panel (400px desktop, full-width mobile), dark overlay, header with filename/type/size, prev/next navigation, download button, and keyboard hints footer
+> - MIME-type renderers: `image/*` (img with object-contain), `video/*` (video controls), `audio/*` (audio controls + filename), `application/pdf` (iframe), `text/markdown` (simple HTML rendering), `text/*` and JSON/CSV (pre-formatted monospace), unknown (metadata card with size, dates, checksum)
+> - `FileContextMenu` gained `onPreview` prop and "Preview" item with Space shortcut label
+> - `FileGrid` and `FileList` both support `onContextPreview` prop; double-click on file triggers preview
+> - `use-explorer-shortcuts.ts` wired `Space` key to open preview for focused/selected files; preview panel itself handles `ArrowLeft`/`ArrowRight` for file navigation and `Escape` to close
+> - Explorer route (`files.tsx`) integrates preview panel conditionally, computes `hasNext`/`hasPrev` from current file list, and provides navigation handlers
+> - Validation: `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** Press Space to preview file contents without leaving the explorer.
 

@@ -22,6 +22,7 @@ interface ExplorerState {
   lastClickedItemId: string | null
   lastClickedItemIndex: number | null
   clipboard: ClipboardState | null
+  previewFileId: string | null
 
   setViewMode: (mode: ViewMode) => void
   setCurrentFolderId: (id: string | null) => void
@@ -37,6 +38,7 @@ interface ExplorerState {
   clearSelection: () => void
   setFocusedItem: (id: string | null, type: "file" | "folder" | null) => void
   setClipboard: (clipboard: ClipboardState | null) => void
+  setPreviewFileId: (id: string | null) => void
 }
 
 export const useExplorerStore = create<ExplorerState>((set) => ({
@@ -51,6 +53,7 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
   lastClickedItemId: null,
   lastClickedItemIndex: null,
   clipboard: null,
+  previewFileId: null,
 
   setViewMode: (mode) => {
     set({ viewMode: mode })
@@ -150,6 +153,10 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
 
   setClipboard: (clipboard) => {
     set({ clipboard })
+  },
+
+  setPreviewFileId: (id) => {
+    set({ previewFileId: id })
   },
 }))
 

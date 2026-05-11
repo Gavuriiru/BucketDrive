@@ -11,6 +11,7 @@ interface UseExplorerShortcutsOptions {
   items: ExplorerItem[]
   containerRef: React.RefObject<HTMLElement | null>
   onOpenItem: (id: string, type: "file" | "folder") => void
+  onPreviewItem?: (id: string) => void
   onDeleteSelected: () => void
   onNavigateParent: () => void
   onRenameItem: (id: string, type: "file" | "folder") => void
@@ -29,6 +30,7 @@ export function useExplorerShortcuts({
   items,
   containerRef,
   onOpenItem,
+  onPreviewItem,
   onDeleteSelected,
   onNavigateParent,
   onRenameItem,
@@ -38,6 +40,7 @@ export function useExplorerShortcuts({
     selectedFileIds,
     selectedFolderIds,
     focusedItemId,
+    previewFileId,
     selectItem,
     selectAll,
     clearSelection,
@@ -143,6 +146,22 @@ export function useExplorerShortcuts({
         return
       }
 
+      if (e.key === " " && !previewFileId) {
+        e.preventDefault()
+        const itemToPreview =
+          allSelected === 1
+            ? items.find(
+                (item) =>
+                  item.id === selectedFileIds[0] ||
+                  item.id === selectedFolderIds[0],
+              )
+            : focusedItem
+        if (itemToPreview && itemToPreview.type === "file" && onPreviewItem) {
+          onPreviewItem(itemToPreview.id)
+        }
+        return
+      }
+
       if (e.key === "Delete" || e.key === "Backspace") {
         if (allSelected > 0) {
           e.preventDefault()
@@ -212,6 +231,7 @@ export function useExplorerShortcuts({
   }, [
     items,
     focusedItemId,
+    previewFileId,
     viewMode,
     selectedFileIds,
     selectedFolderIds,
@@ -220,6 +240,7 @@ export function useExplorerShortcuts({
     moveFocus,
     moveFocusGrid,
     onOpenItem,
+    onPreviewItem,
     onDeleteSelected,
     onNavigateParent,
     onRenameItem,

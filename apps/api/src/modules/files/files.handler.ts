@@ -178,6 +178,32 @@ files.get("/:fileId", requirePermission("files.read"), async (c) => {
   return c.json(hydrated ?? file)
 })
 
+files.get("/:fileId/preview", requirePermission("files.read"), async (c) => {
+  const fileId = c.req.param("fileId")
+  const db = getDB()
+
+  const file = await db
+    .select()
+    .from(fileObject)
+    .where(eq(fileObject.id, fileId))
+    .get()
+
+  if (!file || file.isDeleted) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  }
+
+  const storage = createStorageProvider(c.env)
+  const signedUrl = await storage.generateSignedDownloadUrl(file.storageKey, 300)
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+
+  return c.json({
+    signedUrl,
+    expiresAt,
+    fileName: file.originalName,
+    mimeType: file.mimeType,
+  })
+})
+
 files.get("/:fileId/download", requirePermission("files.read"), async (c) => {
   const fileId = c.req.param("fileId")
   const db = getDB()
