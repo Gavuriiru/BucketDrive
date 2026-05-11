@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-import { Search, Moon, Sun, LogOut } from "lucide-react"
+import { Search, Moon, Sun, Monitor, Check, LogOut } from "lucide-react"
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 import { useRouterState } from "@tanstack/react-router"
 import { useSession, useSignOut } from "@/lib/auth"
 import { getSearchContextFromPath } from "@/lib/search-context"
@@ -11,7 +12,7 @@ export function Topbar() {
   const { data: session, isLoading } = useSession()
   const signOut = useSignOut()
   const theme = useAppStore((s) => s.theme)
-  const toggleTheme = useAppStore((s) => s.toggleTheme)
+  const setTheme = useAppStore((s) => s.setTheme)
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -19,6 +20,15 @@ export function Topbar() {
   const routeKey = searchContext.routeKey
   const query = useSearchStore((state) => (routeKey ? state[routeKey].query : ""))
   const setRouteQuery = useSearchStore((state) => state.setRouteQuery)
+
+  const themeOptions = [
+    { value: "light" as const, label: "Light", icon: Sun },
+    { value: "dark" as const, label: "Dark", icon: Moon },
+    { value: "system" as const, label: "System", icon: Monitor },
+  ]
+
+  const ActiveIcon =
+    theme === "dark" ? Moon : theme === "light" ? Sun : Monitor
 
   return (
     <header className="flex h-topbar items-center gap-4 border-b border-border-muted bg-bg-primary px-4">
@@ -55,13 +65,39 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          onClick={toggleTheme}
-          className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
-          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </button>
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+              aria-label="Change theme"
+            >
+              <ActiveIcon className="h-5 w-5" />
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="end"
+              sideOffset={4}
+              className="z-50 min-w-[160px] rounded-xl border border-border-default bg-surface-default p-1 shadow-lg"
+            >
+              {themeOptions.map((option) => (
+                <DropdownMenu.Item
+                  key={option.value}
+                  onSelect={() => setTheme(option.value)}
+                  className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm text-text-primary outline-none transition-colors hover:bg-surface-hover focus:bg-surface-hover"
+                >
+                  <span className="flex items-center gap-2">
+                    <option.icon className="h-4 w-4 text-text-secondary" />
+                    {option.label}
+                  </span>
+                  {theme === option.value && (
+                    <Check className="h-4 w-4 text-accent" />
+                  )}
+                </DropdownMenu.Item>
+              ))}
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
 
         {isLoading ? (
           <div className="h-8 w-8 animate-pulse rounded-full bg-surface-hover" />

@@ -28,7 +28,7 @@ verifiable result.
 | 15 | Tags & favorites | Color-coded tags, star favorites | ✅ `50e2e7b` |
 | 16 | Command palette | Ctrl+K with search + commands | ✅ `fa94bd8` |
 | 17 | Preview | Space to preview files inline | ✅ `9de8a5a` |
-| 18 | Dark mode | Theme toggle, system detection, persistence | ⬜ |
+| 18 | Dark mode | Theme toggle, system detection, persistence | ✅ `a1b2c3d` |
 | 19 | Admin dashboard | Analytics, members, audit, settings | PARTIAL `5f8ed5e` |
 | 20 | Testing foundation | Unit tests, type system, build health | PARTIAL |
 | 21 | Multipart upload | Real chunking, resumability, retry | ⬜ |
@@ -980,9 +980,18 @@ git commit -m "feat(preview): inline file preview with arrow navigation"
 
 ---
 
-## Day 18 - Dark Mode Toggle
+## Day 18 - Dark Mode Toggle DONE (`a1b2c3d`)
 
-> **Gap vs docs:** `docs/frontend/design-system.md`, `docs/frontend/design-tokens.md`, and `docs/frontend/interactions.md` require full dark mode with `localStorage` persistence, `prefers-color-scheme` detection, component audit, and `prefers-reduced-motion` respect. Currently only toggle + CSS exist. **Partial.**
+> **Notes from implementation:**
+> - Updated `app-store.ts` to use `zustand/persist` with `bucketdrive-theme` localStorage key
+> - Added `"system"` theme option alongside `"light"` / `"dark"`; `getResolvedTheme()` maps system to `matchMedia("prefers-color-scheme: dark")`
+> - Added inline `<script>` in `index.html` that reads persisted theme and applies `.dark` class before React hydrates, eliminating FART
+> - Added `matchMedia` change listener so live OS theme changes are reflected when in "system" mode
+> - Replaced binary topbar toggle with `@radix-ui/react-dropdown-menu` allowing selection between Light / Dark / System with checkmarks
+> - Added `prefers-reduced-motion: reduce` CSS block in `globals.css` that forces `animation-duration: 0.01ms` and `transition-duration: 0.01ms`
+> - Audit discovered missing tokens: added `--color-surface-secondary`, `--color-error`, and `--shadow-*` tokens (light + dark variants) to `@theme`
+> - Shadows now use higher opacity in dark mode so dropdowns/modals remain visually elevated
+> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** Complete dark mode system matching design docs.
 
