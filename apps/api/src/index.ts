@@ -16,6 +16,8 @@ import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 interface Env {
   BETTER_AUTH_SECRET?: string
   BETTER_AUTH_URL?: string
+  APP_URL?: string
+  API_URL?: string
   DB: D1Database
   GITHUB_CLIENT_ID?: string
   GITHUB_CLIENT_SECRET?: string
@@ -44,7 +46,8 @@ app.use("*", async (c, next) => {
 })
 
 app.all("/api/auth/*", (c) => {
-  const auth = createAuth(c.env)
+  const origin = c.req.header("origin") ?? undefined
+  const auth = createAuth(c.env, origin)
   return auth.handler(c.req.raw)
 })
 

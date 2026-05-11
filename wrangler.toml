@@ -30,8 +30,8 @@ APP_URL = "https://staging.bucketdrive.dev"
 API_URL = "https://staging-api.bucketdrive.dev"
 
 [env.production.vars]
-APP_URL = "https://bucketdrive.app"
-API_URL = "https://api.bucketdrive.app"
+APP_URL = "https://drive.nekomata.moe"
+API_URL = "https://drive.nekomata.moe/api"
 
 # Workers (background jobs)
 [env.production.workers]
