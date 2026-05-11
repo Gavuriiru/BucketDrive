@@ -5,6 +5,7 @@ import { useSession, useSignOut } from "@/lib/auth"
 import { getSearchContextFromPath } from "@/lib/search-context"
 import { useAppStore } from "@/stores/app-store"
 import { useSearchStore } from "@/stores/search-store"
+import { useCommandPaletteStore } from "@/stores/command-palette-store"
 
 export function Topbar() {
   const { data: session, isLoading } = useSession()
@@ -42,9 +43,14 @@ export function Topbar() {
             disabled={!searchContext.enabled}
             className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-tertiary disabled:cursor-not-allowed disabled:text-text-tertiary"
           />
-          <kbd className="rounded-md border border-border-default bg-surface-default px-1.5 py-0.5 text-xs text-text-tertiary">
+          <button
+            type="button"
+            onClick={() => useCommandPaletteStore.getState().open()}
+            className="rounded-md border border-border-default bg-surface-default px-1.5 py-0.5 text-xs text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-secondary"
+            aria-label="Open command palette"
+          >
             ⌘K
-          </kbd>
+          </button>
         </div>
       </div>
 

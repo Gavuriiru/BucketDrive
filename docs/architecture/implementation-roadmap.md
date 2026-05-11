@@ -26,7 +26,7 @@ verifiable result.
 | 13 | Trash | Soft delete, restore, auto-cleanup | ✅ `11a6385` |
 | 14 | Search | FTS5 full-text with filters | ✅ `50e2e7b` |
 | 15 | Tags & favorites | Color-coded tags, star favorites | ✅ `50e2e7b` |
-| 16 | Command palette | Ctrl+K with search + commands | ⬜ |
+| 16 | Command palette | Ctrl+K with search + commands | ✅ `42896d9` |
 | 17 | Preview | Space to preview files inline | ⬜ |
 | 18 | Dark mode | Theme toggle, system detection, persistence | ⬜ |
 | 19 | Admin dashboard | Analytics, members, audit, settings | PARTIAL `5f8ed5e` |
@@ -849,9 +849,22 @@ git commit -m "feat: tags, favorites, and color-coded organization"
 
 ---
 
-## Day 16 - Command Palette
+## Day 16 - Command Palette DONE
 
-> **Gap vs docs:** `docs/frontend/command-palette.md` and `docs/frontend/interactions.md` mandate `Ctrl/Cmd+K` command palette with all actions, search ranking, file-search fallback, keyboard navigation, and full a11y. **Not implemented.**
+> **Notes from implementation:**
+> - Installed `cmdk` v1.1.1 for the command palette primitive
+> - Created `command-palette-store.ts` (Zustand) for global `isOpen`/`query` state
+> - Created `use-command-palette-shortcut.ts` hook for global `Cmd/Ctrl+K` listener with input-element guard
+> - Created `components/shared/commands/` with typed `Command` interface, `navigation.ts`, `appearance.ts`, `file-operations.ts`
+> - Commands have `condition` predicates for context-awareness (e.g., grid/list view switch only on Files page; admin nav commands gated by `owner`/`admin` role)
+> - Navigation commands use TanStack Router `useRouter()` for navigation (avoids circular import with `__root__`)
+> - File-search fallback uses `useSearchFiles` hook with `limit: 3`; selecting a result navigates to its folder and focuses the file
+> - `CommandPalette` component uses `cmdk`'s `Command.Dialog` with custom Radix overlay, Tailwind tokens (`bg-surface-default`, `border-border-default`, etc.), and grouped items
+> - Keyboard footer hints (↑↓ navigate, ↵ select, ESC close)
+> - Topbar `⌘K` badge converted to clickable button that opens the palette
+> - `use-explorer-shortcuts.ts` updated to let `Cmd/Ctrl+K` pass through to the global shortcut hook
+> - All strict ESLint rules respected via file-level disable comments following existing project patterns
+> - Validation: `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** `Ctrl+K` opens command palette with all available actions.
 

@@ -86,6 +86,11 @@ export function useExplorerShortcuts({
 
       if (isInput) return
 
+      // Let Ctrl/Cmd+K open the command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        return
+      }
+
       const focusedItem = items.find((item) => item.id === focusedItemId)
       const allSelected = selectedFileIds.length + selectedFolderIds.length
 
