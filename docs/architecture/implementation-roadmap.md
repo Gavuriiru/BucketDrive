@@ -28,7 +28,7 @@ verifiable result.
 | 15 | Tags & favorites | Color-coded tags, star favorites | ✅ `50e2e7b` |
 | 16 | Command palette | Ctrl+K with search + commands | ✅ `fa94bd8` |
 | 17 | Preview | Space to preview files inline | ✅ `9de8a5a` |
-| 18 | Dark mode | Theme toggle, system detection, persistence | ✅ `a1b2c3d` |
+| 18 | Dark mode | Theme toggle, system detection, persistence | ✅ `e9e10a6` |
 | 19 | Admin dashboard | Analytics, members, audit, settings | PARTIAL `5f8ed5e` |
 | 20 | Testing foundation | Unit tests, type system, build health | PARTIAL |
 | 21 | Multipart upload | Real chunking, resumability, retry | ⬜ |
@@ -980,7 +980,7 @@ git commit -m "feat(preview): inline file preview with arrow navigation"
 
 ---
 
-## Day 18 - Dark Mode Toggle DONE (`a1b2c3d`)
+## Day 18 - Dark Mode Toggle DONE (`e9e10a6`)
 
 > **Notes from implementation:**
 > - Updated `app-store.ts` to use `zustand/persist` with `bucketdrive-theme` localStorage key
