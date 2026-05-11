@@ -32,7 +32,7 @@ verifiable result.
 | 19 | Admin dashboard | Analytics, members, audit, settings | ✅ `5f8ed5e` |
 | 20 | Testing foundation | Unit tests, type system, build health | ✅ — infra ready, real tests Days 30-31 |
 | 21 | Multipart upload | Real chunking, resumability, retry | ✅ `bb9aec4` |
-| 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ✅ `TBD` |
+| 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ✅ `61477e0` |
 | 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ⬜ |
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ⬜ |
 | 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ⬜ |
@@ -1182,7 +1182,7 @@ git commit -m "feat(upload): multipart chunking, resumability, and retry"
 
 ---
 
-## Day 22 - Undo / Redo System DONE (`TBD`)
+## Day 22 - Undo / Redo System DONE (`61477e0`)
 
 > **Notes from implementation:**
 > - Built a global toast system on top of `@radix-ui/react-toast` with `ToastProvider`, `ToastContainer`, and an imperative `toast()` / `dismissToast()` API
