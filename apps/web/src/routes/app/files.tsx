@@ -6,23 +6,17 @@ import {
   useFolders,
   useBreadcrumbs,
   useWorkspaces,
-  useRenameFile,
-  useDeleteFile,
   useCreateFolder,
-  useUpdateFolder,
-  useDeleteFolder,
-  api,
-  useMoveFile,
   useSearchFiles,
   useTags,
   useToggleFavorite,
   type BreadcrumbItem,
 } from "@/lib/api"
+import { useUndoableMutations } from "@/hooks/use-undoable-mutations"
 import { getTagColorClasses } from "@/lib/tag-colors"
 import { TagPickerDialog } from "@/components/features/tag-picker-dialog"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
-import { useQueryClient } from "@tanstack/react-query"
 import { useUploadStore } from "@/stores/upload-store"
 import { useExplorerStore } from "@/stores/explorer-store"
 import { UploadDropZone } from "@/components/features/upload-drop-zone"
@@ -49,7 +43,6 @@ const typeFilterOptions = [
 export function FilesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const queryClient = useQueryClient()
   const addFiles = useUploadStore((s) => s.addFiles)
   const {
     viewMode,
@@ -131,12 +124,8 @@ export function FilesPage() {
   const isLoading = isSearchActive ? searchLoading : filesLoading || foldersLoading
   const allTags = tagsData?.data ?? []
 
-  const renameMutation = useRenameFile(workspaceId)
-  const deleteFileMutation = useDeleteFile(workspaceId)
+  const undoable = useUndoableMutations(workspaceId)
   const createFolderMutation = useCreateFolder(workspaceId)
-  const updateFolderMutation = useUpdateFolder(workspaceId)
-  const deleteFolderMutation = useDeleteFolder(workspaceId)
-  const moveFileMutation = useMoveFile(workspaceId)
   const toggleFavoriteMutation = useToggleFavorite(workspaceId)
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -176,12 +165,12 @@ export function FilesPage() {
       if (target.type !== "folder") return
 
       if (source.type === "file") {
-        moveFileMutation.mutate({ fileId: source.id, folderId: target.id })
+        void undoable.moveFile(source.id, target.id, currentFolderId)
       } else {
-        updateFolderMutation.mutate({ folderId: source.id, parentFolderId: target.id })
+        void undoable.moveFolder(source.id, target.id, currentFolderId)
       }
     },
-    [moveFileMutation, updateFolderMutation],
+    [undoable, currentFolderId],
   )
 
   const activeDragItem = useMemo(() => {
@@ -289,14 +278,14 @@ export function FilesPage() {
     )
     if (confirmed) {
       for (const fileId of selectedFileIds) {
-        deleteFileMutation.mutate({ fileId })
+        void undoable.deleteFile(fileId)
       }
       for (const folderId of selectedFolderIds) {
-        deleteFolderMutation.mutate({ folderId })
+        void undoable.deleteFolder(folderId)
       }
       clearSelection()
     }
-  }, [selectedFileIds, selectedFolderIds, deleteFileMutation, deleteFolderMutation, clearSelection])
+  }, [selectedFileIds, selectedFolderIds, undoable, clearSelection])
 
   const handleNavigateParent = useCallback(() => {
     if (currentFolderId && breadcrumbsData && breadcrumbsData.length > 1) {
@@ -317,13 +306,13 @@ export function FilesPage() {
       const newName = window.prompt("Rename to:", currentName)
       if (newName && newName.trim() && newName !== currentName) {
         if (type === "file") {
-          renameMutation.mutate({ fileId: id, name: newName.trim() })
+          void undoable.renameFile(id, newName.trim(), currentName)
         } else {
-          updateFolderMutation.mutate({ folderId: id, name: newName.trim() })
+          void undoable.renameFolder(id, newName.trim(), currentName)
         }
       }
     },
-    [files, folders, renameMutation, updateFolderMutation],
+    [files, folders, undoable],
   )
 
   const { handleItemClick } = useExplorerShortcuts({
@@ -334,6 +323,7 @@ export function FilesPage() {
     onDeleteSelected: handleDeleteSelected,
     onNavigateParent: handleNavigateParent,
     onRenameItem: handleRenameItem,
+    onUndo: undoable.undo,
   })
 
   const handleFileSelect = () => {
@@ -356,18 +346,12 @@ export function FilesPage() {
       if (destFolderId === null) return
       const targetId = destFolderId.trim() || null
       if (type === "file") {
-        void api.patch(`/api/workspaces/${workspaceId}/files/${id}`, { folderId: targetId })
-          .then(() => {
-            void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
-            void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
-            void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
-          })
-          .catch(console.error)
+        void undoable.moveFile(id, targetId, currentFolderId)
       } else {
-        updateFolderMutation.mutate({ folderId: id, parentFolderId: targetId })
+        void undoable.moveFolder(id, targetId, currentFolderId)
       }
     },
-    [queryClient, workspaceId, updateFolderMutation],
+    [undoable, currentFolderId],
   )
 
   const handleContextShare = useCallback(
@@ -672,9 +656,9 @@ export function FilesPage() {
                 onContextRename={handleRenameItem}
                 onContextDelete={(id, type) => {
                   if (type === "folder") {
-                    deleteFolderMutation.mutate({ folderId: id })
+                    void undoable.deleteFolder(id)
                   } else {
-                    deleteFileMutation.mutate({ fileId: id })
+                    void undoable.deleteFile(id)
                   }
                   clearSelection()
                 }}
@@ -709,9 +693,9 @@ export function FilesPage() {
                 onContextRename={handleRenameItem}
                 onContextDelete={(id, type) => {
                   if (type === "folder") {
-                    deleteFolderMutation.mutate({ folderId: id })
+                    void undoable.deleteFolder(id)
                   } else {
-                    deleteFileMutation.mutate({ fileId: id })
+                    void undoable.deleteFile(id)
                   }
                   clearSelection()
                 }}

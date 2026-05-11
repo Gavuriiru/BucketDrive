@@ -32,7 +32,7 @@ verifiable result.
 | 19 | Admin dashboard | Analytics, members, audit, settings | ✅ `5f8ed5e` |
 | 20 | Testing foundation | Unit tests, type system, build health | ✅ — infra ready, real tests Days 30-31 |
 | 21 | Multipart upload | Real chunking, resumability, retry | ✅ `bb9aec4` |
-| 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ⬜ |
+| 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ✅ `TBD` |
 | 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ⬜ |
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ⬜ |
 | 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ⬜ |
@@ -1182,9 +1182,19 @@ git commit -m "feat(upload): multipart chunking, resumability, and retry"
 
 ---
 
-## Day 22 - Undo / Redo System
+## Day 22 - Undo / Redo System DONE (`TBD`)
 
-> **Gap vs docs:** `docs/frontend/interactions.md` explicitly requires `Ctrl/Cmd + Z` for undoing move, rename, and soft delete. **Not implemented.**
+> **Notes from implementation:**
+> - Built a global toast system on top of `@radix-ui/react-toast` with `ToastProvider`, `ToastContainer`, and an imperative `toast()` / `dismissToast()` API
+> - Created `undo-store.ts` (Zustand) holding a typed stack of `UndoAction` objects capped at 50 entries; supports `push`, `pop`, `peek`, `clear`
+> - Created `useUndoableMutations` hook that wraps `moveFile`, `renameFile`, `deleteFile`, `moveFolder`, `renameFolder`, and `deleteFolder`
+> - Each undoable mutation executes the forward request, then on success pushes an inverse record to the stack and shows a toast with an **Undo** button
+> - `undo()` pops the last action and runs the inverse mutation (e.g., `restoreFile` for soft delete, `moveFile` back to original folder, `renameFile` with original name)
+> - Wired `Ctrl+Z` into `use-explorer-shortcuts.ts` (guarded by `!e.shiftKey` so `Ctrl+Shift+Z` remains free for future redo)
+> - Integrated `ToastProvider` into `Layout` so toasts are global across all authenticated routes
+> - Replaced all direct mutation calls in `files.tsx` (drag-drop move, context-menu move/rename/delete, bulk delete, inline rename) with undoable versions
+> - Toast animations (`animate-slide-in`, `animate-swipe-out`, `animate-fade-out`) added to `globals.css`
+> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** Users can undo destructive or mutating actions.
 

@@ -15,6 +15,7 @@ interface UseExplorerShortcutsOptions {
   onDeleteSelected: () => void
   onNavigateParent: () => void
   onRenameItem: (id: string, type: "file" | "folder") => void
+  onUndo?: () => void
 }
 
 function getGridCols(container: HTMLElement): number {
@@ -34,6 +35,7 @@ export function useExplorerShortcuts({
   onDeleteSelected,
   onNavigateParent,
   onRenameItem,
+  onUndo,
 }: UseExplorerShortcutsOptions) {
   const {
     viewMode,
@@ -181,6 +183,12 @@ export function useExplorerShortcuts({
         const fileIds = items.filter((i) => i.type === "file").map((i) => i.id)
         const folderIds = items.filter((i) => i.type === "folder").map((i) => i.id)
         selectAll(fileIds, folderIds)
+        return
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault()
+        onUndo?.()
         return
       }
 
