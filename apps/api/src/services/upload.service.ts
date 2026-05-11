@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm"
+import { eq, and, inArray } from "drizzle-orm"
 import { getDB } from "../lib/db"
 import {
   fileObject,
@@ -7,10 +7,13 @@ import {
   bucket,
   auditLog,
   workspace,
+  workspaceSettings,
 } from "@bucketdrive/shared/db/schema"
 import type { StorageProvider } from "./storage"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024
+const MULTIPART_THRESHOLD = 250 * 1024 * 1024
+const MIN_PART_SIZE = 5 * 1024 * 1024
 const BLOCKED_EXTENSIONS = [".exe", ".bat", ".sh", ".msi", ".app", ".dmg"]
 const BLOCKED_MIME_PREFIXES = [
   "application/x-msdownload",
@@ -40,9 +43,12 @@ export interface InitiateUploadParams {
 
 export interface InitiateUploadResult {
   uploadId: string
-  signedUrl: string
+  signedUrl?: string
+  sessionId?: string
   expiresAt: string
   storageKey: string
+  partSize?: number
+  totalParts?: number
 }
 
 export interface CompleteUploadParams {
@@ -53,6 +59,24 @@ export interface CompleteUploadParams {
   mimeType: string
   folderId?: string | null
   parts?: Array<{ partNumber: number; etag: string; sizeBytes: number }>
+}
+
+export interface GetUploadSessionResult {
+  uploadId: string
+  sessionId: string
+  status: string
+  totalParts: number
+  partSize: number
+  partsCompleted: number
+  completedParts: Array<{ partNumber: number; etag: string; sizeBytes: number }>
+  storageKey: string
+  expiresAt: string
+}
+
+export interface GetPartSignedUrlsResult {
+  uploadId: string
+  sessionId: string
+  signedUrls: Array<{ partNumber: number; signedUrl: string; expiresAt: string }>
 }
 
 export class UploadService {
@@ -106,9 +130,52 @@ export class UploadService {
 
     const uploadId = crypto.randomUUID()
     const storeKey = `workspace/${params.workspaceId}/files/${crypto.randomUUID()}`
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+
+    const isMultipart = params.sizeBytes > MULTIPART_THRESHOLD
+
+    if (isMultipart) {
+      const settingsRow = await db
+        .select({ uploadChunkSizeBytes: workspaceSettings.uploadChunkSizeBytes })
+        .from(workspaceSettings)
+        .where(eq(workspaceSettings.workspaceId, params.workspaceId))
+        .get()
+
+      const configuredChunkSize = settingsRow?.uploadChunkSizeBytes ?? MIN_PART_SIZE
+      const partSize = Math.max(configuredChunkSize, MIN_PART_SIZE)
+      const totalParts = Math.ceil(params.sizeBytes / partSize)
+
+      const multipart = await this.storage.createMultipartUpload(storeKey)
+      const sessionId = multipart.uploadId
+
+      await db
+        .insert(uploadSession)
+        .values({
+          id: uploadId,
+          workspaceId: params.workspaceId,
+          userId: params.userId,
+          bucketId: wsBucket.id,
+          status: "initiated",
+          uploadType: "multipart",
+          totalSize: params.sizeBytes,
+          storageKey: storeKey,
+          totalParts,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .run()
+
+      return {
+        uploadId,
+        sessionId,
+        expiresAt,
+        storageKey: storeKey,
+        partSize,
+        totalParts,
+      }
+    }
 
     const signedUrl = await this.storage.generateSignedUploadUrl(storeKey)
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
     await db
       .insert(uploadSession)
@@ -118,13 +185,10 @@ export class UploadService {
         userId: params.userId,
         bucketId: wsBucket.id,
         status: "initiated",
-        uploadType: params.sizeBytes <= 5 * 1024 * 1024 ? "single" : "multipart",
+        uploadType: "single",
         totalSize: params.sizeBytes,
         storageKey: storeKey,
-        totalParts:
-          params.sizeBytes <= 5 * 1024 * 1024
-            ? 1
-            : Math.ceil(params.sizeBytes / (5 * 1024 * 1024)),
+        totalParts: 1,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
@@ -135,6 +199,101 @@ export class UploadService {
       signedUrl,
       expiresAt,
       storageKey: storeKey,
+    }
+  }
+
+  async getUploadSession(sessionId: string): Promise<GetUploadSessionResult> {
+    const db = getDB()
+
+    const session = await db
+      .select()
+      .from(uploadSession)
+      .where(eq(uploadSession.id, sessionId))
+      .get()
+
+    if (!session) {
+      throw new UploadError("NOT_FOUND", "Upload session not found")
+    }
+
+    const parts = await db
+      .select()
+      .from(uploadPart)
+      .where(eq(uploadPart.uploadSessionId, sessionId))
+      .all()
+
+    return {
+      uploadId: session.id,
+      sessionId: session.id,
+      status: session.status,
+      totalParts: session.totalParts,
+      partSize: Math.ceil(session.totalSize / session.totalParts),
+      partsCompleted: parts.length,
+      completedParts: parts.map((p) => ({
+        partNumber: p.partNumber,
+        etag: p.etag,
+        sizeBytes: p.sizeBytes,
+      })),
+      storageKey: session.storageKey ?? "",
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    }
+  }
+
+  async generatePartSignedUrls(
+    sessionId: string,
+    partNumbers: number[],
+  ): Promise<GetPartSignedUrlsResult> {
+    const db = getDB()
+
+    const session = await db
+      .select()
+      .from(uploadSession)
+      .where(eq(uploadSession.id, sessionId))
+      .get()
+
+    if (!session) {
+      throw new UploadError("NOT_FOUND", "Upload session not found")
+    }
+
+    if (session.status === "completed" || session.status === "cancelled") {
+      throw new UploadError("CONFLICT", `Upload session is ${session.status}`)
+    }
+
+    const existingParts = await db
+      .select()
+      .from(uploadPart)
+      .where(
+        and(
+          eq(uploadPart.uploadSessionId, sessionId),
+          inArray(
+            uploadPart.partNumber,
+            partNumbers,
+          ),
+        ),
+      )
+      .all()
+
+    const completedPartNumbers = new Set(existingParts.map((p) => p.partNumber))
+    const pendingPartNumbers = partNumbers.filter((n) => !completedPartNumbers.has(n))
+
+    const signedUrls = await Promise.all(
+      pendingPartNumbers.map(async (partNumber) => {
+        const signedUrl = await this.storage.generateSignedUploadPartUrl(
+          session.id,
+          partNumber,
+          session.storageKey ?? "",
+        )
+        return {
+          partNumber,
+          signedUrl,
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        }
+      }),
+    )
+
+    return {
+      uploadId: session.id,
+      sessionId: session.id,
+      signedUrls,
     }
   }
 
@@ -166,6 +325,28 @@ export class UploadService {
     const fileId = crypto.randomUUID()
     const now = new Date().toISOString()
     const storedKey = session.storageKey ?? `workspace/${params.workspaceId}/files/${fileId}`
+
+    if (session.uploadType === "multipart") {
+      const parts = await db
+        .select()
+        .from(uploadPart)
+        .where(eq(uploadPart.uploadSessionId, session.id))
+        .all()
+
+      if (parts.length !== session.totalParts) {
+        throw new UploadError(
+          "INCOMPLETE_UPLOAD",
+          `Expected ${String(session.totalParts)} parts, but only ${String(parts.length)} were uploaded`,
+        )
+      }
+
+      const sortedParts = [...parts].sort((a, b) => a.partNumber - b.partNumber)
+      await this.storage.completeMultipartUpload(
+        session.id,
+        storedKey,
+        sortedParts.map((p) => ({ partNumber: p.partNumber, etag: p.etag })),
+      )
+    }
 
     if (params.parts && params.parts.length > 0) {
       for (const part of params.parts) {
@@ -236,6 +417,41 @@ export class UploadService {
     }
 
     return created
+  }
+
+  async cancelUpload(uploadId: string): Promise<void> {
+    const db = getDB()
+
+    const session = await db
+      .select()
+      .from(uploadSession)
+      .where(eq(uploadSession.id, uploadId))
+      .get()
+
+    if (!session) {
+      throw new UploadError("NOT_FOUND", "Upload session not found")
+    }
+
+    if (session.status === "completed") {
+      throw new UploadError("CONFLICT", "Upload already completed")
+    }
+
+    if (session.uploadType === "multipart" && session.storageKey) {
+      try {
+        await this.storage.abortMultipartUpload(uploadId, session.storageKey)
+      } catch {
+        // Ignore abort errors — the multipart may already be cleaned up
+      }
+    }
+
+    await db
+      .update(uploadSession)
+      .set({
+        status: "cancelled",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(uploadSession.id, uploadId))
+      .run()
   }
 
   private validateFileType(fileName: string, mimeType: string): void {

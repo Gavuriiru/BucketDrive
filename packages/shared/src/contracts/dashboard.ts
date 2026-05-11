@@ -74,6 +74,7 @@ export const UpdateDashboardSettingsRequest = WorkspaceSettingsSchema.pick({
   enablePublicSignup: true,
   trashRetentionDays: true,
   maxFileSizeBytes: true,
+  uploadChunkSizeBytes: true,
   storageQuotaBytes: true,
   allowedMimeTypes: true,
   brandingLogoUrl: true,

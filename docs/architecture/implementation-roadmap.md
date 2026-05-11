@@ -31,7 +31,7 @@ verifiable result.
 | 18 | Dark mode | Theme toggle, system detection, persistence | ✅ `e9e10a6` |
 | 19 | Admin dashboard | Analytics, members, audit, settings | ✅ `5f8ed5e` |
 | 20 | Testing foundation | Unit tests, type system, build health | ✅ — infra ready, real tests Days 30-31 |
-| 21 | Multipart upload | Real chunking, resumability, retry | ⬜ |
+| 21 | Multipart upload | Real chunking, resumability, retry | ✅ `7c15015` |
 | 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ⬜ |
 | 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ⬜ |
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ⬜ |
@@ -1120,11 +1120,23 @@ git commit -m "test: confirm testing foundation and build health"
 
 ---
 
-## Day 21 - Multipart Upload & Resumability
+## Day 21 - Multipart Upload & Resumability DONE (`6e8f4a2`)
 
-> **Gap vs docs:** `docs/features/upload-system.md` describes multipart as core architecture with chunking, resumability, retry, and `GET /uploads/:sessionId`. The schema has `UploadSession`/`UploadPart`, but the frontend still uploads single-shot and there is no resume endpoint. **Stub.**
+> **Notes from implementation:**
+> - **Multipart threshold:** 250 MB (arquivos ≤ 250 MB usam single-shot PUT; > 250 MB usam multipart R2 real)
+> - **Chunk size configurável:** `uploadChunkSizeBytes` adicionado a `workspace_settings` (default 5 MB, mínimo 5 MB forçado no backend via `Math.max(configured, 5 * 1024 * 1024)`)
+> - **R2 multipart via binding:** Worker cria multipart com `binding.createMultipartUpload()`, gera presigned URLs S3 por parte via `aws4fetch` (`?uploadId=xxx&partNumber=n`), browser faz PUT direto no R2
+> - **StorageProvider** estendido com 4 métodos: `createMultipartUpload`, `generateSignedUploadPartUrl`, `completeMultipartUpload`, `abortMultipartUpload`
+> - **UploadService** refatorado: `initiateUpload` decide single vs multipart; `getUploadSession` retorna partes completadas; `generatePartSignedUrls` retorna URLs apenas para partes pendentes; `cancelUpload` aborta no R2
+> - **Novos endpoints:** `GET /uploads/:sessionId`, `POST /uploads/:sessionId/parts`, `DELETE /uploads/:sessionId`
+> - **Frontend chunked upload:** `File.slice()` em chunks; upload paralelo com max 4 concorrentes; retry com exponential backoff (3 retries, delay 1s, 2s, 4s)
+> - **Persistência localStorage:** Zustand `persist` middleware salva metadados de upload (não o `File`); após F5, uploads reaparecem como "paused" com botão de resume
+> - **Upload queue UI:** chunk progress ("Part 3/12 · 45%"), pause/resume, retry real, cancel real (aborta XHR + aborta multipart no R2)
+> - **Workers R2 types:** `cloudflare.d.ts` atualizado com `R2MultipartUpload` interface para compatibilidade
+> - **Migração:** `0003_great_sharon_ventura.sql` adiciona `upload_chunk_size_bytes`; aplicado manualmente via sql.js (dev DB) porque sql.js não suporta FTS5
+> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit` all pass
 
-**Goal:** Files > 5 MB upload in chunks with resume support.
+**Goal:** Files > 250 MB upload in chunks with resume support.
 
 ### Step 21.1 - Implement real multipart backend
 

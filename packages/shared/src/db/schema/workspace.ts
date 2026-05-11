@@ -27,6 +27,7 @@ export const workspaceSettings = sqliteTable("workspace_settings", {
   enablePublicSignup: integer("enable_public_signup", { mode: "boolean" }).notNull().default(false),
   trashRetentionDays: integer("trash_retention_days").notNull().default(30),
   maxFileSizeBytes: integer("max_file_size_bytes").notNull().default(5 * 1024 * 1024 * 1024),
+  uploadChunkSizeBytes: integer("upload_chunk_size_bytes").notNull().default(5 * 1024 * 1024),
   allowedMimeTypes: text("allowed_mime_types"),
   brandingLogoUrl: text("branding_logo_url"),
   brandingName: text("branding_name"),

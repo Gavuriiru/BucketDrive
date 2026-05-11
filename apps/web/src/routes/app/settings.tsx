@@ -11,6 +11,7 @@ export function SettingsPage() {
 
   const [quotaGb, setQuotaGb] = useState("10")
   const [maxFileSizeMb, setMaxFileSizeMb] = useState("5120")
+  const [chunkSizeMb, setChunkSizeMb] = useState("5")
   const [defaultShareExpirationDays, setDefaultShareExpirationDays] = useState("30")
   const [trashRetentionDays, setTrashRetentionDays] = useState("30")
   const [enablePublicSignup, setEnablePublicSignup] = useState(false)
@@ -24,6 +25,7 @@ export function SettingsPage() {
 
     setQuotaGb(String(settings.storageQuotaBytes / (1024 * 1024 * 1024)))
     setMaxFileSizeMb(String(settings.maxFileSizeBytes / (1024 * 1024)))
+    setChunkSizeMb(String(settings.uploadChunkSizeBytes / (1024 * 1024)))
     setDefaultShareExpirationDays(String(settings.defaultShareExpirationDays))
     setTrashRetentionDays(String(settings.trashRetentionDays))
     setEnablePublicSignup(settings.enablePublicSignup)
@@ -70,6 +72,7 @@ export function SettingsPage() {
             ...settings,
             storageQuotaBytes: Math.max(Number(quotaGb) || 0, 1) * 1024 * 1024 * 1024,
             maxFileSizeBytes: Math.max(Number(maxFileSizeMb) || 0, 1) * 1024 * 1024,
+            uploadChunkSizeBytes: Math.max(Number(chunkSizeMb) || 0, 1) * 1024 * 1024,
             defaultShareExpirationDays: Math.max(Number(defaultShareExpirationDays) || 1, 1),
             trashRetentionDays: Math.max(Number(trashRetentionDays) || 1, 1),
             enablePublicSignup,
@@ -94,6 +97,13 @@ export function SettingsPage() {
             <input
               value={maxFileSizeMb}
               onChange={(event) => setMaxFileSizeMb(event.target.value)}
+              className={inputClasses}
+            />
+          </Field>
+          <Field label="Upload chunk size (MB)">
+            <input
+              value={chunkSizeMb}
+              onChange={(event) => setChunkSizeMb(event.target.value)}
               className={inputClasses}
             />
           </Field>

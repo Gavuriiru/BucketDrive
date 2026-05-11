@@ -1,0 +1,1 @@
+ALTER TABLE `workspace_settings` ADD `upload_chunk_size_bytes` integer DEFAULT 5242880 NOT NULL;

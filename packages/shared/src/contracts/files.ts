@@ -24,7 +24,7 @@ export const InitiateUploadRequest = z.object({
 export const InitiateUploadResponse = z.object({
   uploadId: z.string().uuid(),
   sessionId: z.string().uuid().optional(),
-  signedUrl: z.string().url(),
+  signedUrl: z.string().url().optional(),
   expiresAt: z.string().datetime(),
   storageKey: z.string(),
   partSize: z.number().optional(),
@@ -82,4 +82,43 @@ export const PreviewUrlResponse = z.object({
   expiresAt: z.string().datetime(),
   fileName: z.string(),
   mimeType: z.string(),
+})
+
+export const GetUploadSessionResponse = z.object({
+  uploadId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  status: z.enum(["initiated", "uploading", "completed", "cancelled"]),
+  totalParts: z.number().int(),
+  partSize: z.number().int(),
+  partsCompleted: z.number().int(),
+  completedParts: z.array(
+    z.object({
+      partNumber: z.number().int(),
+      etag: z.string(),
+      sizeBytes: z.number().int(),
+    }),
+  ),
+  storageKey: z.string(),
+  expiresAt: z.string().datetime(),
+})
+
+export const GetUploadPartSignedUrlRequest = z.object({
+  partNumbers: z.array(z.number().int().min(1)),
+})
+
+export const GetUploadPartSignedUrlResponse = z.object({
+  uploadId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  signedUrls: z.array(
+    z.object({
+      partNumber: z.number().int(),
+      signedUrl: z.string().url(),
+      expiresAt: z.string().datetime(),
+    }),
+  ),
+})
+
+export const CancelUploadResponse = z.object({
+  success: z.boolean(),
+  message: z.string(),
 })

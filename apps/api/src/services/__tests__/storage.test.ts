@@ -59,8 +59,21 @@ function createMockR2Bucket() {
       return Promise.resolve()
     }),
     head: vi.fn(),
-    createMultipartUpload: vi.fn(),
-    resumeMultipartUpload: vi.fn(),
+    createMultipartUpload: vi.fn().mockImplementation((key: string) => {
+      return Promise.resolve({ uploadId: `upload-${key}`, key })
+    }),
+    resumeMultipartUpload: vi.fn().mockImplementation((_key: string, uploadId: string) => {
+      return {
+        uploadId,
+        uploadPart: vi.fn().mockImplementation((partNumber: number, _value: unknown) => {
+          return Promise.resolve({ partNumber, etag: `etag-${String(partNumber)}` })
+        }),
+        complete: vi.fn().mockImplementation((parts: Array<{ partNumber: number; etag: string }>) => {
+          return Promise.resolve({ etag: `completed-${String(parts.length)}`, key: _key, version: "1" })
+        }),
+        abort: vi.fn().mockResolvedValue(undefined),
+      }
+    }),
     list: vi.fn(),
   } as unknown as R2Bucket
 }
@@ -132,6 +145,50 @@ describe("R2StorageProvider", () => {
       await expect(provider.copy("missing-key", "dest-key")).rejects.toThrow(
         "Source object not found: missing-key",
       )
+    })
+  })
+
+  describe("createMultipartUpload", () => {
+    it("returns an uploadId from R2", async () => {
+      const result = await provider.createMultipartUpload("test-key")
+      expect(result.uploadId).toBe("upload-test-key")
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockBucket.createMultipartUpload).toHaveBeenCalledWith("test-key")
+    })
+  })
+
+  describe("generateSignedUploadPartUrl", () => {
+    it("returns a signed URL with uploadId and partNumber", async () => {
+      const url = await provider.generateSignedUploadPartUrl("upload-123", 3, "test-key")
+      expect(url).toContain("https://test.r2.cloudflarestorage.com/test-bucket/test-key")
+      expect(url).toContain("uploadId=upload-123")
+      expect(url).toContain("partNumber=3")
+      expect(url).toContain("X-Amz-Algorithm=AWS4-HMAC-SHA256")
+      expect(url).toContain("X-Amz-Signature=mock-signature")
+    })
+
+    it("adds expiration to the URL", async () => {
+      const url = await provider.generateSignedUploadPartUrl("upload-123", 1, "key", 600)
+      expect(url).toContain("X-Amz-Expires=600")
+    })
+  })
+
+  describe("completeMultipartUpload", () => {
+    it("calls R2 resumeMultipartUpload and complete", async () => {
+      await provider.completeMultipartUpload("upload-123", "test-key", [
+        { partNumber: 1, etag: "etag-1" },
+        { partNumber: 2, etag: "etag-2" },
+      ])
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockBucket.resumeMultipartUpload).toHaveBeenCalledWith("test-key", "upload-123")
+    })
+  })
+
+  describe("abortMultipartUpload", () => {
+    it("calls R2 resumeMultipartUpload and abort", async () => {
+      await provider.abortMultipartUpload("upload-123", "test-key")
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockBucket.resumeMultipartUpload).toHaveBeenCalledWith("test-key", "upload-123")
     })
   })
 })

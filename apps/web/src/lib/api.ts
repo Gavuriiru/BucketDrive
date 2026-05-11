@@ -132,9 +132,12 @@ interface InitiateUploadRequest {
 
 interface InitiateUploadResponse {
   uploadId: string
-  signedUrl: string
+  sessionId?: string
+  signedUrl?: string
   expiresAt: string
   storageKey: string
+  partSize?: number
+  totalParts?: number
 }
 
 interface CompleteUploadRequest {
@@ -370,6 +373,72 @@ export function useCompleteUpload(): UseMutationResult<
       void queryClient.invalidateQueries({ queryKey: ["files", data.workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", data.workspaceId] })
     },
+  })
+}
+
+interface GetUploadSessionResponse {
+  uploadId: string
+  sessionId: string
+  status: "initiated" | "uploading" | "completed" | "cancelled"
+  totalParts: number
+  partSize: number
+  partsCompleted: number
+  completedParts: Array<{ partNumber: number; etag: string; sizeBytes: number }>
+  storageKey: string
+  expiresAt: string
+}
+
+interface GetPartSignedUrlsRequest {
+  partNumbers: number[]
+}
+
+interface GetPartSignedUrlsResponse {
+  uploadId: string
+  sessionId: string
+  signedUrls: Array<{ partNumber: number; signedUrl: string; expiresAt: string }>
+}
+
+interface CancelUploadResponse {
+  success: boolean
+  message: string
+}
+
+export function useGetUploadSession(
+  workspaceId: string | null,
+  sessionId: string | null,
+): UseQueryResult<GetUploadSessionResponse, ApiRequestError> {
+  return useQuery<GetUploadSessionResponse, ApiRequestError>({
+    queryKey: ["upload-session", workspaceId, sessionId],
+    queryFn: () =>
+      api.get<GetUploadSessionResponse>(
+        buildWorkspacePath(workspaceId, `/files/uploads/${requireId(sessionId, "sessionId")}`),
+      ),
+    enabled: workspaceId !== null && sessionId !== null,
+    staleTime: 30_000,
+  })
+}
+
+export function useGetPartSignedUrls(
+  workspaceId: string | null,
+  sessionId: string | null,
+): UseMutationResult<GetPartSignedUrlsResponse, ApiRequestError, GetPartSignedUrlsRequest> {
+  return useMutation<GetPartSignedUrlsResponse, ApiRequestError, GetPartSignedUrlsRequest>({
+    mutationFn: (body) =>
+      api.post<GetPartSignedUrlsResponse>(
+        buildWorkspacePath(workspaceId, `/files/uploads/${requireId(sessionId, "sessionId")}/parts`),
+        body,
+      ),
+  })
+}
+
+export function useCancelUpload(
+  workspaceId: string | null,
+): UseMutationResult<CancelUploadResponse, ApiRequestError, { sessionId: string }> {
+  return useMutation<CancelUploadResponse, ApiRequestError, { sessionId: string }>({
+    mutationFn: ({ sessionId }) =>
+      api.delete<CancelUploadResponse>(
+        buildWorkspacePath(workspaceId, `/files/uploads/${sessionId}`),
+      ),
   })
 }
 

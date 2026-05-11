@@ -15,6 +15,7 @@ import {
   ToggleFavoriteResponse,
   UpdateFileRequest,
   UpdateFileTagsRequest,
+  GetUploadPartSignedUrlRequest,
 } from "@bucketdrive/shared"
 
 interface FilesEnv {
@@ -495,6 +496,96 @@ files.delete("/:fileId/permanent", async (c) => {
   } catch (err) {
     if (err instanceof TrashServiceError) {
       return c.json({ code: err.code, message: err.message }, err.status as never)
+    }
+    throw err
+  }
+})
+
+files.get("/uploads/:sessionId", requirePermission("files.upload"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const sessionId = c.req.param("sessionId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!sessionId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
+  }
+
+  const storage = createStorageProvider(c.env)
+  const service = new UploadService(storage)
+
+  try {
+    const result = await service.getUploadSession(sessionId)
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof UploadError) {
+      const statusMap: Record<string, number> = {
+        NOT_FOUND: 404,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
+    }
+    throw err
+  }
+})
+
+files.post("/uploads/:sessionId/parts", requirePermission("files.upload"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const sessionId = c.req.param("sessionId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!sessionId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
+  }
+
+  const body = GetUploadPartSignedUrlRequest.parse(await c.req.json())
+  const storage = createStorageProvider(c.env)
+  const service = new UploadService(storage)
+
+  try {
+    const result = await service.generatePartSignedUrls(sessionId, body.partNumbers)
+    return c.json(result)
+  } catch (err) {
+    if (err instanceof UploadError) {
+      const statusMap: Record<string, number> = {
+        NOT_FOUND: 404,
+        CONFLICT: 409,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
+    }
+    throw err
+  }
+})
+
+files.delete("/uploads/:sessionId", requirePermission("files.upload"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const sessionId = c.req.param("sessionId")
+
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+  if (!sessionId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "sessionId is required" }, 400)
+  }
+
+  const storage = createStorageProvider(c.env)
+  const service = new UploadService(storage)
+
+  try {
+    await service.cancelUpload(sessionId)
+    return c.json({ success: true, message: "Upload cancelled" })
+  } catch (err) {
+    if (err instanceof UploadError) {
+      const statusMap: Record<string, number> = {
+        NOT_FOUND: 404,
+        CONFLICT: 409,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
     }
     throw err
   }
