@@ -2,8 +2,49 @@ import { useCallback, useState, type DragEvent } from "react"
 import { Upload } from "lucide-react"
 
 interface UploadDropZoneProps {
-  onFilesDrop: (files: File[]) => void
+  onFilesDrop: (entries: Array<{ file: File; relativePath: string }>, emptyFolders: string[]) => void
   className?: string
+}
+
+async function readEntriesAsync(
+  reader: FileSystemDirectoryReader,
+): Promise<FileSystemEntry[]> {
+  return new Promise((resolve, reject) => {
+    reader.readEntries(resolve, reject)
+  })
+}
+
+async function traverseEntry(
+  entry: FileSystemEntry,
+  path: string,
+  result: Array<{ file: File; relativePath: string }>,
+  emptyFolders: string[],
+  depth: number,
+): Promise<void> {
+  if (depth > 50) return
+  if (entry.isFile) {
+    const fileEntry = entry as FileSystemFileEntry
+    const file = await new Promise<File>((resolve, reject) => {
+      fileEntry.file(resolve, reject)
+    })
+    result.push({ file, relativePath: path ? `${path}/${entry.name}` : entry.name })
+  } else if (entry.isDirectory) {
+    const dirEntry = entry as FileSystemDirectoryEntry
+    const dirPath = path ? `${path}/${entry.name}` : entry.name
+    const reader = dirEntry.createReader()
+    let entries: FileSystemEntry[] = []
+    try {
+      entries = await readEntriesAsync(reader)
+    } catch {
+      // ignore read errors
+    }
+    if (entries.length === 0) {
+      emptyFolders.push(dirPath)
+    }
+    for (const child of entries) {
+      await traverseEntry(child, dirPath, result, emptyFolders, depth + 1)
+    }
+  }
 }
 
 export function UploadDropZone({ onFilesDrop, className = "" }: UploadDropZoneProps) {
@@ -22,14 +63,44 @@ export function UploadDropZone({ onFilesDrop, className = "" }: UploadDropZonePr
   }, [])
 
   const handleDrop = useCallback(
-    (e: DragEvent) => {
+    async (e: DragEvent) => {
       e.preventDefault()
       e.stopPropagation()
       setIsDragging(false)
 
-      const files = Array.from(e.dataTransfer.files)
-      if (files.length > 0) {
-        onFilesDrop(files)
+      const dtItems = e.dataTransfer.items
+      if (dtItems.length === 0) {
+        // Fallback to flat files if items API is not available
+        const files = Array.from(e.dataTransfer.files)
+        if (files.length > 0) {
+          onFilesDrop(
+            files.map((file) => ({ file, relativePath: file.name })),
+            [],
+          )
+        }
+        return
+      }
+
+      const entries: Array<{ file: File; relativePath: string }> = []
+      const emptyFolders: string[] = []
+
+      for (const item of Array.from(dtItems)) {
+        const entry =
+          typeof item.webkitGetAsEntry === "function"
+            ? item.webkitGetAsEntry()
+            : null
+        if (entry) {
+          await traverseEntry(entry, "", entries, emptyFolders, 0)
+        } else {
+          const file = item.getAsFile()
+          if (file) {
+            entries.push({ file, relativePath: file.name })
+          }
+        }
+      }
+
+      if (entries.length > 0 || emptyFolders.length > 0) {
+        onFilesDrop(entries, emptyFolders)
       }
     },
     [onFilesDrop],
@@ -50,7 +121,7 @@ export function UploadDropZone({ onFilesDrop, className = "" }: UploadDropZonePr
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-text-primary">
-            {isDragging ? "Drop files to upload" : "Drag files here to upload"}
+            {isDragging ? "Drop files to upload" : "Drag files or folders here to upload"}
           </p>
           <p className="mt-1 text-xs text-text-tertiary">or click the Upload button</p>
         </div>

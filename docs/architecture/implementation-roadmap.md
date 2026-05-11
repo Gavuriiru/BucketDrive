@@ -33,7 +33,7 @@ verifiable result.
 | 20 | Testing foundation | Unit tests, type system, build health | ✅ — infra ready, real tests Days 30-31 |
 | 21 | Multipart upload | Real chunking, resumability, retry | ✅ `bb9aec4` |
 | 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ✅ `61477e0` |
-| 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ⬜ |
+| 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ✅ |
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ⬜ |
 | 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ⬜ |
 | 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ⬜ |
@@ -1238,9 +1238,18 @@ git commit -m "feat: undo/redo system for move, rename, and soft delete"
 
 ---
 
-## Day 23 - Clipboard Paste & Folder Upload
+## Day 23 - Clipboard Paste & Folder Upload DONE
 
-> **Gap vs docs:** `docs/features/upload-system.md` and `docs/frontend/interactions.md` require `Ctrl+V` pasting files/images from clipboard, and OS folder drag preserving directory structure. **Not implemented.**
+> **Notes from implementation:**
+> - Added `BatchUploadRequest`, `BatchUploadResponse`, `BatchUploadItemRequest`, `BatchUploadFolderCreated`, `BatchUploadItemResponse` contracts to `packages/shared/src/contracts/files.ts`
+> - Implemented `POST /api/workspaces/:workspaceId/files/batch-upload` in `files.handler.ts` with full folder hierarchy creation, empty-folder support, and per-file upload initiation
+> - Backend folder creation is idempotent: reuses existing folders by `(workspaceId, parentFolderId, name)` match, creates missing ones with correct materialized `path`
+> - Upload drop zone (`upload-drop-zone.tsx`) rewritten to use `DataTransfer.items` + `webkitGetAsEntry()` with recursive `FileSystemDirectoryReader` traversal (max depth 50)
+> - Added global `paste` event listener in `files.tsx` that reads `e.clipboardData.files` and feeds into the batch upload flow
+> - Upload store extended with `relativePath`, `targetFolderId`, `signedUrl`, and `addItems` action for pre-populated uploads
+> - Upload processor (`use-upload.ts`) updated to skip `initiateUpload` when `uploadId` + `signedUrl`/`sessionId` are already present (batch pre-initiated), and passes `folderId` to `completeUpload`
+> - Frontend `files.tsx` generates upload IDs upfront, calls `batchUpload.mutateAsync`, then updates store items with server-returned upload metadata so the queue processor handles data transfer only
+> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** Paste files from clipboard; drag folders from OS maintaining hierarchy.
 

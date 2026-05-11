@@ -6,8 +6,8 @@ import { UploadService, UploadError } from "../../services/upload.service"
 import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import { getDB } from "../../lib/db"
 import { hydrateFiles } from "./file-query"
-import { auditLog, favorite, fileObject, fileObjectTag, fileTag } from "@bucketdrive/shared/db/schema"
-import { and, eq, inArray } from "drizzle-orm"
+import { auditLog, favorite, fileObject, fileObjectTag, fileTag, folder } from "@bucketdrive/shared/db/schema"
+import { and, eq, inArray, isNull } from "drizzle-orm"
 import {
   InitiateUploadRequest,
   CompleteUploadRequest,
@@ -16,6 +16,8 @@ import {
   UpdateFileRequest,
   UpdateFileTagsRequest,
   GetUploadPartSignedUrlRequest,
+  BatchUploadRequest,
+  BatchUploadResponse,
 } from "@bucketdrive/shared"
 
 interface FilesEnv {
@@ -158,6 +160,234 @@ files.post("/upload/complete", requirePermission("files.upload"), async (c) => {
     }
     throw err
   }
+})
+
+files.post("/batch-upload", requirePermission("files.upload"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+
+  const user = c.get("user")
+  const body = BatchUploadRequest.parse(await c.req.json())
+  const db = getDB()
+  const storage = createStorageProvider(c.env)
+  const service = new UploadService(storage)
+
+  // Resolve base parent folder
+  const baseParentId: string | null = body.parentFolderId ?? null
+  let basePath = ""
+  if (baseParentId) {
+    const parent = await db
+      .select()
+      .from(folder)
+      .where(and(eq(folder.id, baseParentId), eq(folder.workspaceId, workspaceId)))
+      .get()
+    if (!parent || parent.isDeleted) {
+      return c.json({ code: "PARENT_NOT_FOUND", message: "Parent folder not found" }, 404)
+    }
+    basePath = parent.path
+  }
+
+  // Collect all folder paths needed
+  const folderPaths = new Set<string>()
+  const emptyFolderPaths = new Set<string>(body.emptyFolders ?? [])
+
+  for (const item of body.items) {
+    const lastSlash = item.relativePath.lastIndexOf("/")
+    const dir = lastSlash > 0 ? item.relativePath.slice(0, lastSlash) : ""
+    if (dir) folderPaths.add(dir)
+  }
+
+  for (const dir of emptyFolderPaths) {
+    folderPaths.add(dir)
+    const parts = dir.split("/")
+    for (let i = 1; i < parts.length; i++) {
+      folderPaths.add(parts.slice(0, i).join("/"))
+    }
+  }
+
+  for (const dir of Array.from(folderPaths)) {
+    const parts = dir.split("/")
+    for (let i = 1; i < parts.length; i++) {
+      folderPaths.add(parts.slice(0, i).join("/"))
+    }
+  }
+
+  const sortedPaths = Array.from(folderPaths).sort(
+    (a, b) => a.split("/").length - b.split("/").length,
+  )
+
+  const folderMap = new Map<string, string>()
+  const foldersCreated: Array<{ id: string; path: string }> = []
+  const now = new Date().toISOString()
+
+  for (const path of sortedPaths) {
+    const parts = path.split("/")
+    const name = parts[parts.length - 1]
+    if (!name) continue
+    const parentRelPath = parts.slice(0, -1).join("/") || null
+
+    let parentId: string | null
+    let parentPathStr: string
+
+    if (parentRelPath) {
+      parentId = folderMap.get(parentRelPath) ?? null
+      const parentRow = parentId
+        ? await db.select({ path: folder.path }).from(folder).where(eq(folder.id, parentId)).get()
+        : null
+      parentPathStr = parentRow?.path ?? ""
+    } else {
+      parentId = baseParentId
+      parentPathStr = basePath
+    }
+
+    const existingConditions = [
+      eq(folder.workspaceId, workspaceId),
+      eq(folder.name, name),
+      eq(folder.isDeleted, false),
+    ]
+    if (parentId === null) {
+      existingConditions.push(isNull(folder.parentFolderId))
+    } else {
+      existingConditions.push(eq(folder.parentFolderId, parentId))
+    }
+
+    const existing = await db
+      .select()
+      .from(folder)
+      .where(and(...existingConditions))
+      .get()
+
+    if (existing) {
+      folderMap.set(path, existing.id)
+      continue
+    }
+
+    const newId = crypto.randomUUID()
+    const newPath = parentPathStr ? `${parentPathStr}/${name}` : `/${name}`
+
+    await db
+      .insert(folder)
+      .values({
+        id: newId,
+        workspaceId,
+        parentFolderId: parentId,
+        name,
+        path: newPath,
+        createdBy: user.id,
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run()
+
+    folderMap.set(path, newId)
+    foldersCreated.push({ id: newId, path: newPath })
+  }
+
+  // Create empty folders that were only in emptyFolders and not created yet
+  for (const dir of emptyFolderPaths) {
+    if (!folderMap.has(dir)) {
+      const parts = dir.split("/")
+      const name = parts[parts.length - 1]
+      if (!name) continue
+      const parentRelPath = parts.slice(0, -1).join("/") || null
+
+      let parentId: string | null
+      let parentPathStr: string
+
+      if (parentRelPath) {
+        parentId = folderMap.get(parentRelPath) ?? null
+        const parentRow = parentId
+          ? await db.select({ path: folder.path }).from(folder).where(eq(folder.id, parentId)).get()
+          : null
+        parentPathStr = parentRow?.path ?? ""
+      } else {
+        parentId = baseParentId
+        parentPathStr = basePath
+      }
+
+      const newId = crypto.randomUUID()
+      const newPath = parentPathStr ? `${parentPathStr}/${name}` : `/${name}`
+
+      await db
+        .insert(folder)
+        .values({
+          id: newId,
+          workspaceId,
+          parentFolderId: parentId,
+          name,
+          path: newPath,
+          createdBy: user.id,
+          isDeleted: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run()
+
+      folderMap.set(dir, newId)
+      foldersCreated.push({ id: newId, path: newPath })
+    }
+  }
+
+  const results: Array<{
+    clientId: string
+    fileId: string
+    folderId: string
+    uploadId: string
+    sessionId?: string
+    signedUrl?: string
+    expiresAt: string
+    storageKey: string
+    partSize?: number
+    totalParts?: number
+  }> = []
+
+  for (const item of body.items) {
+    const lastSlash = item.relativePath.lastIndexOf("/")
+    const dir = lastSlash > 0 ? item.relativePath.slice(0, lastSlash) : ""
+    const folderId = dir ? (folderMap.get(dir) ?? null) : baseParentId
+    const fileName = lastSlash >= 0 ? item.relativePath.slice(lastSlash + 1) : item.relativePath
+
+    try {
+      const initiate = await service.initiateUpload({
+        workspaceId,
+        userId: user.id,
+        folderId,
+        fileName,
+        mimeType: item.mimeType,
+        sizeBytes: item.sizeBytes,
+        checksum: item.checksum,
+      })
+
+      results.push({
+        clientId: item.clientId,
+        fileId: crypto.randomUUID(),
+        folderId: folderId ?? "",
+        uploadId: initiate.uploadId,
+        sessionId: initiate.sessionId,
+        signedUrl: initiate.signedUrl,
+        expiresAt: initiate.expiresAt,
+        storageKey: initiate.storageKey,
+        partSize: initiate.partSize,
+        totalParts: initiate.totalParts,
+      })
+    } catch (err) {
+      if (err instanceof UploadError) {
+        return c.json({ code: err.code, message: err.message }, 400 as never)
+      }
+      throw err
+    }
+  }
+
+  return c.json(
+    BatchUploadResponse.parse({
+      folders: foldersCreated,
+      items: results,
+    }),
+    201,
+  )
 })
 
 files.get("/:fileId", requirePermission("files.read"), async (c) => {

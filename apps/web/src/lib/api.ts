@@ -403,6 +403,37 @@ interface CancelUploadResponse {
   message: string
 }
 
+interface BatchUploadItemRequest {
+  clientId: string
+  relativePath: string
+  mimeType: string
+  sizeBytes: number
+  checksum?: string
+}
+
+interface BatchUploadFolderCreated {
+  id: string
+  path: string
+}
+
+interface BatchUploadItemResponse {
+  clientId: string
+  fileId: string
+  folderId: string
+  uploadId: string
+  sessionId?: string
+  signedUrl?: string
+  expiresAt: string
+  storageKey: string
+  partSize?: number
+  totalParts?: number
+}
+
+interface BatchUploadResponse {
+  folders: BatchUploadFolderCreated[]
+  items: BatchUploadItemResponse[]
+}
+
 export function useGetUploadSession(
   workspaceId: string | null,
   sessionId: string | null,
@@ -439,6 +470,35 @@ export function useCancelUpload(
       api.delete<CancelUploadResponse>(
         buildWorkspacePath(workspaceId, `/files/uploads/${sessionId}`),
       ),
+  })
+}
+
+export function useBatchUpload(workspaceId: string | null): UseMutationResult<
+  BatchUploadResponse,
+  ApiRequestError,
+  {
+    items: BatchUploadItemRequest[]
+    parentFolderId?: string | null
+    emptyFolders?: string[]
+  }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<BatchUploadResponse, ApiRequestError, {
+    items: BatchUploadItemRequest[]
+    parentFolderId?: string | null
+    emptyFolders?: string[]
+  }>({
+    mutationFn: (body) =>
+      api.post<BatchUploadResponse>(
+        buildWorkspacePath(workspaceId, "/files/batch-upload"),
+        body,
+      ),
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["files", variables.parentFolderId ?? workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+    },
   })
 }
 

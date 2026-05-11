@@ -229,6 +229,7 @@ export function useUploadProcessor(workspaceId: string) {
           uploadId,
           fileName: item.fileName,
           mimeType: item.mimeType,
+          folderId: item.targetFolderId ?? null,
           parts: sortedParts,
         })
 
@@ -282,6 +283,7 @@ export function useUploadProcessor(workspaceId: string) {
           uploadId: initiate.uploadId,
           fileName: item.fileName,
           mimeType: item.mimeType,
+          folderId: item.targetFolderId ?? null,
         })
 
         updateItem(item.id, { status: "completed", progress: 100 })
@@ -310,11 +312,30 @@ export function useUploadProcessor(workspaceId: string) {
       updateItem(item.id, { status: "uploading", progress: 0, error: undefined })
 
       try {
+        if (item.uploadId && item.sessionId && item.totalChunks && item.chunkSize) {
+          return await processMultipartUpload(item, {
+            uploadId: item.uploadId,
+            sessionId: item.sessionId,
+            partSize: item.chunkSize,
+            totalParts: item.totalChunks,
+            storageKey: item.storageKey ?? "",
+          })
+        }
+
+        if (item.uploadId && item.signedUrl) {
+          return await processSingleUpload(item, {
+            uploadId: item.uploadId,
+            signedUrl: item.signedUrl,
+            storageKey: item.storageKey ?? "",
+          })
+        }
+
         const initiate = await initiateMutation.mutateAsync({
           workspaceId,
           fileName: item.fileName,
           mimeType: item.mimeType,
           sizeBytes: item.fileSize,
+          folderId: item.targetFolderId ?? null,
         })
 
         if (initiate.sessionId && initiate.totalParts && initiate.partSize) {

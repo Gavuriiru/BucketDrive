@@ -20,12 +20,15 @@ export interface UploadItem {
   status: UploadStatus
   uploadId?: string
   sessionId?: string
+  signedUrl?: string
   storageKey?: string
   totalChunks?: number
   chunkSize?: number
   chunks: UploadChunk[]
   retryCount: number
   error?: string
+  relativePath?: string
+  targetFolderId?: string
 }
 
 interface PersistedUploadItem {
@@ -37,18 +40,22 @@ interface PersistedUploadItem {
   status: UploadStatus
   uploadId?: string
   sessionId?: string
+  signedUrl?: string
   storageKey?: string
   totalChunks?: number
   chunkSize?: number
   chunks: UploadChunk[]
   retryCount: number
   error?: string
+  relativePath?: string
+  targetFolderId?: string
 }
 
 interface UploadState {
   items: UploadItem[]
   isOpen: boolean
-  addFiles: (files: File[]) => void
+  addFiles: (entries: Array<File | { file: File; relativePath?: string; targetFolderId?: string }>) => void
+  addItems: (items: UploadItem[]) => void
   removeItem: (id: string) => void
   updateItem: (id: string, updates: Partial<UploadItem>) => void
   setOpen: (open: boolean) => void
@@ -64,8 +71,16 @@ export const useUploadStore = create<UploadState>()(
       items: [],
       isOpen: false,
 
-      addFiles: (files: File[]) => {
-        const newItems: UploadItem[] = files.map((file) => {
+      addFiles: (
+        entries: Array<
+          | File
+          | { file: File; relativePath?: string; targetFolderId?: string }
+        >,
+      ) => {
+        const newItems: UploadItem[] = entries.map((entry) => {
+          const file = entry instanceof File ? entry : entry.file
+          const relativePath = entry instanceof File ? undefined : entry.relativePath
+          const targetFolderId = entry instanceof File ? undefined : entry.targetFolderId
           idCounter++
           return {
             id: `upload-${String(Date.now())}-${String(idCounter)}`,
@@ -77,8 +92,17 @@ export const useUploadStore = create<UploadState>()(
             status: "queued" as const,
             chunks: [],
             retryCount: 0,
+            relativePath,
+            targetFolderId,
           }
         })
+        set((state) => ({
+          items: [...state.items, ...newItems],
+          isOpen: true,
+        }))
+      },
+
+      addItems: (newItems: UploadItem[]) => {
         set((state) => ({
           items: [...state.items, ...newItems],
           isOpen: true,
@@ -140,12 +164,15 @@ export const useUploadStore = create<UploadState>()(
           status: item.status,
           uploadId: item.uploadId,
           sessionId: item.sessionId,
+          signedUrl: item.signedUrl,
           storageKey: item.storageKey,
           totalChunks: item.totalChunks,
           chunkSize: item.chunkSize,
           chunks: item.chunks,
           retryCount: item.retryCount,
           error: item.error,
+          relativePath: item.relativePath,
+          targetFolderId: item.targetFolderId,
         })),
       }),
       onRehydrateStorage: () => (state) => {

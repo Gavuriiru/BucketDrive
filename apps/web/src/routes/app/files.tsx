@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands, @typescript-eslint/restrict-template-expressions */
-import { useRef, useMemo, useCallback, useState } from "react"
+import { useRef, useMemo, useCallback, useState, useEffect } from "react"
 import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X } from "lucide-react"
 import {
   useFiles,
@@ -10,6 +10,7 @@ import {
   useSearchFiles,
   useTags,
   useToggleFavorite,
+  useBatchUpload,
   type BreadcrumbItem,
 } from "@/lib/api"
 import { useUndoableMutations } from "@/hooks/use-undoable-mutations"
@@ -127,6 +128,7 @@ export function FilesPage() {
   const undoable = useUndoableMutations(workspaceId)
   const createFolderMutation = useCreateFolder(workspaceId)
   const toggleFavoriteMutation = useToggleFavorite(workspaceId)
+  const batchUpload = useBatchUpload(workspaceId)
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [tagDialogFileId, setTagDialogFileId] = useState<string | null>(null)
@@ -367,16 +369,102 @@ export function FilesPage() {
   const handleFilesChosen = (event: React.ChangeEvent<HTMLInputElement>) => {
     const chosenFiles = Array.from(event.target.files ?? [])
     if (chosenFiles.length > 0) {
-      addFiles(chosenFiles)
+      addFiles(
+        chosenFiles.map((file) => ({
+          file,
+          targetFolderId: currentFolderId ?? undefined,
+        })),
+      )
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
   }
 
-  const handleFilesDrop = (droppedFiles: File[]) => {
-    addFiles(droppedFiles)
-  }
+  const handleFilesDrop = useCallback(
+    async (entries: Array<{ file: File; relativePath: string }>, emptyFolders: string[]) => {
+      const hasStructure = entries.some((e) => e.relativePath.includes("/")) || emptyFolders.length > 0
+      if (!hasStructure) {
+        addFiles(
+          entries.map((e) => ({
+            file: e.file,
+            targetFolderId: currentFolderId ?? undefined,
+          })),
+        )
+        return
+      }
+
+      const now = Date.now()
+      const uploadItems: Array<{
+        id: string
+        file: File
+        relativePath: string
+        targetFolderId?: string
+      }> = entries.map((e, idx) => ({
+        id: `upload-${String(now)}-${String(idx)}`,
+        file: e.file,
+        relativePath: e.relativePath,
+        targetFolderId: currentFolderId ?? undefined,
+      }))
+
+      const store = useUploadStore.getState()
+      store.addItems(
+        uploadItems.map((u) => ({
+          id: u.id,
+          file: u.file,
+          fileName: u.file.name,
+          fileSize: u.file.size,
+          mimeType: u.file.type || "application/octet-stream",
+          progress: 0,
+          status: "queued" as const,
+          chunks: [],
+          retryCount: 0,
+          relativePath: u.relativePath,
+          targetFolderId: u.targetFolderId,
+        })),
+      )
+
+      try {
+        const result = await batchUpload.mutateAsync({
+          items: uploadItems.map((u) => ({
+            clientId: u.id,
+            relativePath: u.relativePath,
+            mimeType: u.file.type || "application/octet-stream",
+            sizeBytes: u.file.size,
+          })),
+          parentFolderId: currentFolderId,
+          emptyFolders,
+        })
+
+        for (const res of result.items) {
+          store.updateItem(res.clientId, {
+            uploadId: res.uploadId,
+            sessionId: res.sessionId,
+            signedUrl: res.signedUrl,
+            storageKey: res.storageKey,
+            totalChunks: res.totalParts,
+            chunkSize: res.partSize,
+            targetFolderId: res.folderId,
+          })
+        }
+      } catch {
+        // Already in store as queued; processor will handle normally (initiateUpload per file)
+      }
+    },
+    [addFiles, currentFolderId, batchUpload],
+  )
+
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const files = e.clipboardData?.files ? Array.from(e.clipboardData.files) : []
+      if (files.length === 0) return
+      e.preventDefault()
+      const entries = files.map((file) => ({ file, relativePath: file.name }))
+      await handleFilesDrop(entries, [])
+    }
+    document.addEventListener("paste", handlePaste)
+    return () => document.removeEventListener("paste", handlePaste)
+  }, [handleFilesDrop])
 
   const handleFolderClick = (folderId: string) => {
     navigateTo(folderId)

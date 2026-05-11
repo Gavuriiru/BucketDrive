@@ -122,3 +122,40 @@ export const CancelUploadResponse = z.object({
   success: z.boolean(),
   message: z.string(),
 })
+
+export const BatchUploadItemRequest = z.object({
+  clientId: z.string().min(1),
+  relativePath: z.string().min(1),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().positive(),
+  checksum: z.string().optional(),
+})
+
+export const BatchUploadRequest = z.object({
+  items: z.array(BatchUploadItemRequest).min(1).max(100),
+  parentFolderId: z.string().uuid().nullable().optional(),
+  emptyFolders: z.array(z.string().min(1)).max(100).optional(),
+})
+
+export const BatchUploadFolderCreated = z.object({
+  id: z.string().uuid(),
+  path: z.string(),
+})
+
+export const BatchUploadItemResponse = z.object({
+  clientId: z.string(),
+  fileId: z.string().uuid(),
+  folderId: z.string().uuid(),
+  uploadId: z.string().uuid(),
+  sessionId: z.string().uuid().optional(),
+  signedUrl: z.string().url().optional(),
+  expiresAt: z.string().datetime(),
+  storageKey: z.string(),
+  partSize: z.number().optional(),
+  totalParts: z.number().optional(),
+})
+
+export const BatchUploadResponse = z.object({
+  folders: z.array(BatchUploadFolderCreated),
+  items: z.array(BatchUploadItemResponse),
+})
