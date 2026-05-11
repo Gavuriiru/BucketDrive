@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
+    "test:contracts": "vitest run --config vitest.config.ts src/__tests__/contracts",
     "test:watch": "vitest"
   },
   "dependencies": {

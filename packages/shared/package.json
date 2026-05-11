@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc",
     "test:unit": "vitest run",
+    "test:contracts": "vitest run --config vitest.config.ts src/__tests__/contracts",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio"
   },
