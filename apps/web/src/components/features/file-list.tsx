@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+import { useRef, useEffect, useCallback, useMemo } from "react"
 import { Folder, FolderOpen, MoreVertical, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 import { FileContextMenu } from "./file-context-menu"
 import { getTagColorClasses } from "@/lib/tag-colors"
@@ -71,7 +73,9 @@ const dropdownItemClass =
   "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-text-primary outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-surface-active data-[highlighted]:text-text-primary data-[disabled]:text-text-tertiary"
 
 const rowClass =
-  "cursor-pointer border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover focus:outline-none"
+  "flex items-center border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover focus:outline-none"
+
+const ROW_HEIGHT = 56
 
 interface FolderListRowProps {
   folder: FolderType
@@ -105,10 +109,13 @@ function FolderListRow({
   const draggable = useDraggable({ id: dragId, disabled: !dndEnabled })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
 
-  const setRefs = (node: HTMLTableRowElement | null) => {
-    draggable.setNodeRef(node)
-    droppable.setNodeRef(node)
-  }
+  const setRefs = useCallback(
+    (node: HTMLDivElement | null) => {
+      draggable.setNodeRef(node)
+      droppable.setNodeRef(node)
+    },
+    [draggable, droppable],
+  )
 
   return (
     <FileContextMenu
@@ -128,13 +135,14 @@ function FolderListRow({
         })
       }}
     >
-      <tr
+      <div
         ref={setRefs}
         data-item-id={folder.id}
         data-item-type="folder"
         data-item-index={index}
         onClick={(e) => {
-          if (!dndEnabled || !draggable.isDragging) onItemClick(folder.id, "folder", index, e)
+          if (!dndEnabled || !draggable.isDragging)
+            onItemClick(folder.id, "folder", index, e)
         }}
         onDoubleClick={() => onFolderClick(folder.id)}
         {...draggable.attributes}
@@ -150,23 +158,18 @@ function FolderListRow({
                   ? "bg-surface-hover"
                   : ""
         }`}
+        style={{ height: ROW_HEIGHT }}
       >
-        <td className="px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <FolderOpen className="h-5 w-5 text-text-tertiary" />
-            <span className="truncate text-sm font-medium text-text-primary">{folder.name}</span>
-          </div>
-        </td>
-        <td className="hidden px-4 py-2.5 text-sm text-text-tertiary md:table-cell">
-          —
-        </td>
-        <td className="hidden px-4 py-2.5 text-sm text-text-tertiary lg:table-cell">
-          —
-        </td>
-        <td className="hidden px-4 py-2.5 text-sm text-text-tertiary sm:table-cell">
+        <div className="flex flex-1 items-center gap-3 px-4 py-2.5">
+          <FolderOpen className="h-5 w-5 text-text-tertiary" />
+          <span className="truncate text-sm font-medium text-text-primary">{folder.name}</span>
+        </div>
+        <div className="hidden px-4 py-2.5 text-sm text-text-tertiary md:block w-24">—</div>
+        <div className="hidden px-4 py-2.5 text-sm text-text-tertiary lg:block w-40">—</div>
+        <div className="hidden px-4 py-2.5 text-sm text-text-tertiary sm:block w-32">
           {formatDate(folder.updatedAt)}
-        </td>
-        <td className="px-4 py-2.5">
+        </div>
+        <div className="px-4 py-2.5 w-10">
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button
@@ -178,39 +181,33 @@ function FolderListRow({
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
-              <DropdownMenu.Content className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg" side="bottom" align="end">
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onFolderClick(folder.id)
-                }}>
+              <DropdownMenu.Content
+                className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg"
+                side="bottom"
+                align="end"
+              >
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onFolderClick(folder.id)}>
                   Open
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextRename?.(folder.id, "folder")
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename?.(folder.id, "folder")}>
                   Rename
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextMove?.(folder.id, "folder")
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove?.(folder.id, "folder")}>
                   Move
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextShare?.(folder.id, "folder")
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare?.(folder.id, "folder")}>
                   Share
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextDelete?.(folder.id, "folder")
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete?.(folder.id, "folder")}>
                   Delete
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
-        </td>
-      </tr>
+        </div>
+      </div>
     </FileContextMenu>
   )
 }
@@ -280,7 +277,7 @@ function FileListRow({
         })
       }}
     >
-      <tr
+      <div
         ref={setNodeRef}
         data-item-id={file.id}
         data-item-type="file"
@@ -300,23 +297,22 @@ function FileListRow({
                 ? "bg-surface-hover"
                 : ""
         }`}
+        style={{ height: ROW_HEIGHT }}
       >
-        <td className="px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <span className="text-lg">{getFileIcon(file.mimeType)}</span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-sm text-text-primary">{file.originalName}</span>
-                {file.isFavorited && <Star className="h-3.5 w-3.5 fill-warning text-warning" />}
-              </div>
-              {renderTagPreview(file)}
+        <div className="flex flex-1 items-center gap-3 px-4 py-2.5 min-w-0">
+          <span className="text-lg">{getFileIcon(file.mimeType)}</span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="truncate text-sm text-text-primary">{file.originalName}</span>
+              {file.isFavorited && <Star className="h-3.5 w-3.5 fill-warning text-warning" />}
             </div>
+            {renderTagPreview(file)}
           </div>
-        </td>
-        <td className="hidden px-4 py-2.5 text-sm text-text-tertiary md:table-cell">
+        </div>
+        <div className="hidden px-4 py-2.5 text-sm text-text-tertiary md:block w-24">
           {formatSize(file.sizeBytes)}
-        </td>
-        <td className="hidden px-4 py-2.5 lg:table-cell">
+        </div>
+        <div className="hidden px-4 py-2.5 lg:block w-40">
           {file.tags && file.tags.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {file.tags.slice(0, 2).map((tag) => (
@@ -339,11 +335,11 @@ function FileListRow({
           ) : (
             <span className="text-xs text-text-tertiary">No tags</span>
           )}
-        </td>
-        <td className="hidden px-4 py-2.5 text-sm text-text-tertiary sm:table-cell">
+        </div>
+        <div className="hidden px-4 py-2.5 text-sm text-text-tertiary sm:block w-32">
           {formatDate(file.updatedAt)}
-        </td>
-        <td className="px-4 py-2.5">
+        </div>
+        <div className="px-4 py-2.5 w-10">
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button
@@ -355,56 +351,44 @@ function FileListRow({
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
-              <DropdownMenu.Content className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg" side="bottom" align="end">
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextOpen?.(file.id, "file")
-                }}>
+              <DropdownMenu.Content
+                className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg"
+                side="bottom"
+                align="end"
+              >
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextOpen?.(file.id, "file")}>
                   Open
                 </DropdownMenu.Item>
                 {onContextPreview && (
-                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                    onContextPreview(file.id)
-                  }}>
+                  <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextPreview(file.id)}>
                     Preview
                   </DropdownMenu.Item>
                 )}
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextDownload?.(file.id)
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDownload?.(file.id)}>
                   Download
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextRename?.(file.id, "file")
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextRename?.(file.id, "file")}>
                   Rename
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextFavorite?.(file.id)
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextFavorite?.(file.id)}>
                   Favorite
                 </DropdownMenu.Item>
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextMove?.(file.id, "file")
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextMove?.(file.id, "file")}>
                   Move
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextShare?.(file.id, "file")
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextShare?.(file.id, "file")}>
                   Share
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border-muted" />
-                <DropdownMenu.Item className={dropdownItemClass} onClick={() => {
-                  onContextDelete?.(file.id, "file")
-                }}>
+                <DropdownMenu.Item className={dropdownItemClass} onClick={() => onContextDelete?.(file.id, "file")}>
                   Delete
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
-        </td>
-      </tr>
+        </div>
+      </div>
     </FileContextMenu>
   )
 }
@@ -449,14 +433,39 @@ export function FileList({
   const focusedItemId = useExplorerStore((s) => s.focusedItemId)
   const dndEnabled = !!onItemDrop
 
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  const allItems = useMemo(
+    () => [
+      ...folders.map((f) => ({ type: "folder" as const, data: f })),
+      ...files.map((f) => ({ type: "file" as const, data: f })),
+    ],
+    [folders, files],
+  )
+
+  const virtualizer = useVirtualizer({
+    count: allItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 5,
+  })
+
+  const focusedIndex = useMemo(
+    () => allItems.findIndex((item) => item.data.id === focusedItemId),
+    [allItems, focusedItemId],
+  )
+
+  useEffect(() => {
+    if (focusedIndex >= 0) {
+      virtualizer.scrollToIndex(focusedIndex, { align: "center" })
+    }
+  }, [focusedIndex, virtualizer])
+
   if (isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5"
-          >
+          <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5">
             <div className="h-5 w-5 animate-pulse rounded bg-surface-hover" />
             <div className="h-4 flex-1 animate-pulse rounded bg-surface-hover" />
             <div className="h-4 w-16 animate-pulse rounded bg-surface-hover" />
@@ -476,68 +485,96 @@ export function FileList({
     )
   }
 
+  const virtualItems = virtualizer.getVirtualItems()
+
   return (
     <div className="overflow-hidden rounded-xl border border-border-default">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-border-muted bg-surface-default">
-            <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">
-              Name
-            </th>
-            <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary md:table-cell">
-              Size
-            </th>
-            <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary lg:table-cell">
-              Tags
-            </th>
-            <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary sm:table-cell">
-              Modified
-            </th>
-            <th className="w-10 px-4 py-2.5" />
-          </tr>
-        </thead>
-        <tbody>
-          {folders.map((folder, index) => (
-            <FolderListRow
-              key={folder.id}
-              folder={folder}
-              index={index}
-              isSelected={selectedFolderIds.includes(folder.id)}
-              isFocused={focusedItemId === folder.id}
-              onFolderClick={onFolderClick}
-              onItemClick={onItemClick}
-              onContextRename={onContextRename}
-              onContextDelete={onContextDelete}
-              onContextMove={onContextMove}
-              onContextShare={onContextShare}
-              dndEnabled={dndEnabled}
-            />
-          ))}
-          {files.map((file, index) => {
-            const globalIndex = folders.length + index
+      {/* Header */}
+      <div className="flex border-b border-border-muted bg-surface-default">
+        <div className="flex-1 px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">Name</div>
+        <div className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary md:block w-24">
+          Size
+        </div>
+        <div className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary lg:block w-40">
+          Tags
+        </div>
+        <div className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary sm:block w-32">
+          Modified
+        </div>
+        <div className="w-10 px-4 py-2.5" />
+      </div>
+
+      {/* Virtualized body */}
+      <div ref={parentRef} className="overflow-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
+        <div style={{ height: `${String(virtualizer.getTotalSize())}px`, position: "relative", width: "100%" }}>
+          {virtualItems.map((virtualItem) => {
+            const item = allItems[virtualItem.index]
+            if (!item) return null
+
+            if (item.type === "folder") {
+              const folder = item.data
+              return (
+                <div
+                  key={folder.id}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${String(virtualItem.start)}px)`,
+                  }}
+                >
+                  <FolderListRow
+                    folder={folder}
+                    index={virtualItem.index}
+                    isSelected={selectedFolderIds.includes(folder.id)}
+                    isFocused={focusedItemId === folder.id}
+                    onFolderClick={onFolderClick}
+                    onItemClick={onItemClick}
+                    onContextRename={onContextRename}
+                    onContextDelete={onContextDelete}
+                    onContextMove={onContextMove}
+                    onContextShare={onContextShare}
+                    dndEnabled={dndEnabled}
+                  />
+                </div>
+              )
+            }
+
+            const file = item.data
             return (
-              <FileListRow
+              <div
                 key={file.id}
-                file={file}
-                index={globalIndex}
-                isSelected={selectedFileIds.includes(file.id)}
-                isFocused={focusedItemId === file.id}
-                onItemClick={onItemClick}
-                onContextOpen={onContextOpen}
-                onContextPreview={onContextPreview}
-                onContextDownload={onContextDownload}
-            onContextRename={onContextRename}
-            onContextDelete={onContextDelete}
-            onContextFavorite={onContextFavorite}
-            onContextTags={onContextTags}
-            onContextMove={onContextMove}
-            onContextShare={onContextShare}
-            dndEnabled={dndEnabled}
-              />
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${String(virtualItem.start)}px)`,
+                }}
+              >
+                <FileListRow
+                  file={file}
+                  index={virtualItem.index}
+                  isSelected={selectedFileIds.includes(file.id)}
+                  isFocused={focusedItemId === file.id}
+                  onItemClick={onItemClick}
+                  onContextOpen={onContextOpen}
+                  onContextPreview={onContextPreview}
+                  onContextDownload={onContextDownload}
+                  onContextRename={onContextRename}
+                  onContextDelete={onContextDelete}
+                  onContextFavorite={onContextFavorite}
+                  onContextTags={onContextTags}
+                  onContextMove={onContextMove}
+                  onContextShare={onContextShare}
+                  dndEnabled={dndEnabled}
+                />
+              </div>
             )
           })}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   )
 }

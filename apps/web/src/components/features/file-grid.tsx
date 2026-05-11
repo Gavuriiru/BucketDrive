@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+import { useRef, useEffect, useState, useMemo, useCallback } from "react"
 import { Folder, FolderOpen, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 import { FileContextMenu } from "./file-context-menu"
 import { getTagColorClasses } from "@/lib/tag-colors"
@@ -69,6 +71,16 @@ function renderTagPreview(file: FileObject) {
 const gridClass =
   "group flex cursor-pointer flex-col items-center rounded-xl border bg-surface-default p-4 text-center transition-colors hover:border-border-default hover:bg-surface-hover focus:outline-none"
 
+const ROW_HEIGHT = 172
+
+function getGridCols(width: number): number {
+  if (width >= 1280) return 6
+  if (width >= 1024) return 5
+  if (width >= 768) return 4
+  if (width >= 640) return 3
+  return 2
+}
+
 interface FolderGridCardProps {
   folder: FolderType
   index: number
@@ -102,10 +114,13 @@ function FolderGridCard({
   const droppable = useDroppable({ id: dragId, disabled: !dndEnabled })
   const draggable = useDraggable({ id: dragId, disabled: !dndEnabled })
 
-  const setRefs = (node: HTMLDivElement | null) => {
-    draggable.setNodeRef(node)
-    droppable.setNodeRef(node)
-  }
+  const setRefs = useCallback(
+    (node: HTMLDivElement | null) => {
+      draggable.setNodeRef(node)
+      droppable.setNodeRef(node)
+    },
+    [draggable, droppable],
+  )
   const setClipboard = useExplorerStore((state) => state.setClipboard)
 
   const isDragging = draggable.isDragging
@@ -308,14 +323,62 @@ export function FileGrid({
   const focusedItemId = useExplorerStore((s) => s.focusedItemId)
   const dndEnabled = !!onItemDrop
 
+  const parentRef = useRef<HTMLDivElement>(null)
+  const [cols, setCols] = useState(2)
+
+  useEffect(() => {
+    const el = parentRef.current
+    if (!el) return
+
+    const updateCols = () => {
+      setCols(getGridCols(el.clientWidth))
+    }
+
+    updateCols()
+
+    const observer = new ResizeObserver(updateCols)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const allItems = useMemo(
+    () => [
+      ...folders.map((f) => ({ type: "folder" as const, data: f })),
+      ...files.map((f) => ({ type: "file" as const, data: f })),
+    ],
+    [folders, files],
+  )
+
+  const rowCount = useMemo(
+    () => Math.ceil(allItems.length / cols),
+    [allItems.length, cols],
+  )
+
+  const virtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 2,
+    lanes: cols,
+  })
+
+  const focusedIndex = useMemo(
+    () => allItems.findIndex((item) => item.data.id === focusedItemId),
+    [allItems, focusedItemId],
+  )
+
+  useEffect(() => {
+    if (focusedIndex >= 0) {
+      const rowIndex = Math.floor(focusedIndex / cols)
+      virtualizer.scrollToIndex(rowIndex, { align: "center" })
+    }
+  }, [focusedIndex, cols, virtualizer])
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="animate-pulse rounded-xl border border-border-muted bg-surface-default p-4"
-          >
+          <div key={i} className="animate-pulse rounded-xl border border-border-muted bg-surface-default p-4">
             <div className="mx-auto mb-3 h-12 w-12 rounded-lg bg-surface-hover" />
             <div className="mx-auto mb-2 h-3 w-20 rounded bg-surface-hover" />
             <div className="mx-auto h-2.5 w-14 rounded bg-surface-hover" />
@@ -334,48 +397,87 @@ export function FileGrid({
     )
   }
 
+  const virtualItems = virtualizer.getVirtualItems()
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-      {folders.map((folder, index) => (
-        <FolderGridCard
-          key={folder.id}
-          folder={folder}
-          index={index}
-          isSelected={selectedFolderIds.includes(folder.id)}
-          isFocused={focusedItemId === folder.id}
-          onFolderClick={onFolderClick}
-          onItemClick={onItemClick}
-          onContextOpen={onContextOpen}
-          onContextRename={onContextRename}
-          onContextDelete={onContextDelete}
-          onContextMove={onContextMove}
-          onContextShare={onContextShare}
-          dndEnabled={dndEnabled}
-        />
-      ))}
-      {files.map((file, index) => {
-        const globalIndex = folders.length + index
-        return (
-          <FileGridCard
-            key={file.id}
-            file={file}
-            index={globalIndex}
-            isSelected={selectedFileIds.includes(file.id)}
-            isFocused={focusedItemId === file.id}
-            onItemClick={onItemClick}
-            onContextOpen={onContextOpen}
-            onContextPreview={onContextPreview}
-            onContextDownload={onContextDownload}
-            onContextRename={onContextRename}
-            onContextDelete={onContextDelete}
-            onContextFavorite={onContextFavorite}
-            onContextTags={onContextTags}
-            onContextMove={onContextMove}
-            onContextShare={onContextShare}
-            dndEnabled={dndEnabled}
-          />
-        )
-      })}
+    <div ref={parentRef} className="overflow-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
+      <div
+        style={{
+          height: `${String(virtualizer.getTotalSize())}px`,
+          position: "relative",
+          width: "100%",
+        }}
+      >
+        {virtualItems.map((virtualItem) => {
+          const rowIndex = virtualItem.index
+          const startIndex = rowIndex * cols
+
+          return (
+            <div
+              key={rowIndex}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${String(virtualItem.start)}px)`,
+                display: "grid",
+                gridTemplateColumns: `repeat(${String(cols)}, minmax(0, 1fr))`,
+                gap: "0.75rem",
+              }}
+            >
+              {Array.from({ length: cols }).map((_, colIndex) => {
+                const itemIndex = startIndex + colIndex
+                const item = allItems[itemIndex]
+                if (!item) return <div key={`empty-${String(colIndex)}`} />
+
+                if (item.type === "folder") {
+                  const folder = item.data
+                  return (
+                    <FolderGridCard
+                      key={folder.id}
+                      folder={folder}
+                      index={itemIndex}
+                      isSelected={selectedFolderIds.includes(folder.id)}
+                      isFocused={focusedItemId === folder.id}
+                      onFolderClick={onFolderClick}
+                      onItemClick={onItemClick}
+                      onContextOpen={onContextOpen}
+                      onContextRename={onContextRename}
+                      onContextDelete={onContextDelete}
+                      onContextMove={onContextMove}
+                      onContextShare={onContextShare}
+                      dndEnabled={dndEnabled}
+                    />
+                  )
+                }
+
+                const file = item.data
+                return (
+                  <FileGridCard
+                    key={file.id}
+                    file={file}
+                    index={itemIndex}
+                    isSelected={selectedFileIds.includes(file.id)}
+                    isFocused={focusedItemId === file.id}
+                    onItemClick={onItemClick}
+                    onContextOpen={onContextOpen}
+                    onContextPreview={onContextPreview}
+                    onContextDownload={onContextDownload}
+                    onContextRename={onContextRename}
+                    onContextDelete={onContextDelete}
+                    onContextFavorite={onContextFavorite}
+                    onContextTags={onContextTags}
+                    onContextMove={onContextMove}
+                    onContextShare={onContextShare}
+                    dndEnabled={dndEnabled}
+                  />
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

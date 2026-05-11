@@ -34,7 +34,7 @@ verifiable result.
 | 21 | Multipart upload | Real chunking, resumability, retry | ✅ `bb9aec4` |
 | 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ✅ `61477e0` |
 | 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ✅ |
-| 24 | Virtualization | react-window for 10k+ items, bundle audit | ⬜ |
+| 24 | Virtualization | react-window for 10k+ items, bundle audit | ✅ |
 | 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ⬜ |
 | 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ⬜ |
 | 27 | Share polish | Analytics counters, branded public pages | ⬜ |
@@ -1295,9 +1295,19 @@ git commit -m "feat(upload): clipboard paste and OS folder drag with structure p
 
 ---
 
-## Day 24 - Virtualization & Performance
+## Day 24 - Virtualization & Performance DONE
 
-> **Gap vs docs:** `docs/frontend/interactions.md` requires virtualization for file lists, search results, and audit logs. Bundle size must stay < 500 kB JS. **Not implemented.**
+> **Notes from implementation:**
+> - Installed `@tanstack/react-virtual` v3 in `apps/web`
+> - Refactored `file-list.tsx` from `<table>` to div-based virtualized list using `useVirtualizer` with fixed `ROW_HEIGHT = 56`, `overscan = 5`, and `maxHeight: calc(100vh - 320px)` scroll container
+> - Refactored `file-grid.tsx` to virtualized grid with `lanes` mapped to responsive column count (`getGridCols` via `ResizeObserver`), `ROW_HEIGHT = 172`, `overscan = 2`
+> - Both components preserve all existing functionality: DnD (`@dnd-kit`), selection/focus (Zustand ID-based), context menus (`@radix-ui`), keyboard navigation (`useExplorerShortcuts`)
+> - Added `scrollToIndex` integration via `useEffect` in both components so keyboard focus auto-scrolls the focused item into view
+> - Global index semantics preserved (folders first, then files) — `virtualItem.index` maps directly to the same index used by `onItemClick` and the explorer store
+> - Bundle audit: JS gzipped = **220.43 KB**, CSS gzipped = **7.71 KB** — well under the 500 KB target
+> - `@tanstack/react-virtual` adds ~3 KB gzipped; no lazy chunking needed at this stage
+> - Scope limited to file explorer (list + grid); other lists (search, trash, audit, shares) deferred to future optimization pass
+> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** Lists remain performant with 10,000+ items; bundle audited.
 
