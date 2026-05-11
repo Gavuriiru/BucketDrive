@@ -1,4 +1,4 @@
-# Implementation Roadmap
+# Implementation Roadmap v2.0
 
 Step-by-step guide organized by daily sessions. Each step is self-contained and ends with a
 verifiable result.
@@ -28,9 +28,21 @@ verifiable result.
 | 15 | Tags & favorites | Color-coded tags, star favorites | ✅ `50e2e7b` |
 | 16 | Command palette | Ctrl+K with search + commands | ⬜ |
 | 17 | Preview | Space to preview files inline | ⬜ |
-| 18 | Dark mode | Theme toggle, system detection | PARTIAL |
-| 19 | Dashboard | Admin analytics + settings | PARTIAL |
-| 20 | Testing | Contracts, units, a11y, staging deploy | ⬜ |
+| 18 | Dark mode | Theme toggle, system detection, persistence | ⬜ |
+| 19 | Admin dashboard | Analytics, members, audit, settings | PARTIAL `5f8ed5e` |
+| 20 | Testing foundation | Unit tests, type system, build health | PARTIAL |
+| 21 | Multipart upload | Real chunking, resumability, retry | ⬜ |
+| 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ⬜ |
+| 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ⬜ |
+| 24 | Virtualization | react-window for 10k+ items, bundle audit | ⬜ |
+| 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ⬜ |
+| 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ⬜ |
+| 27 | Share polish | Analytics counters, branded public pages | ⬜ |
+| 28 | Notifications | In-app notification system + toast integration | ⬜ |
+| 29 | Thumbnails & processing | Async preview generation via workers | ⬜ |
+| 30 | Contract tests | API contract validation against test D1 | ⬜ |
+| 31 | E2E & a11y | Playwright journeys, axe-core compliance | ⬜ |
+| 32 | Staging & final polish | Deploy pipeline, Lighthouse CI, docs sync | ⬜ |
 
 ---
 
@@ -42,7 +54,6 @@ verifiable result.
 > - Added `tsx`, `sql.js`, `uuid` as root devDependencies
 > - Updated `turbo.json` `pipeline` -> `tasks` for Turbo v2 compat
 > - `db:studio` requires `@libsql/client` which is ESM-only (not critical)
-
 
 **Goal:** Database schema generated, migrated, and working locally.
 
@@ -313,6 +324,8 @@ git commit -m "feat: end-to-end file upload with progress"
 > - Updated `dashboard.tsx` with breadcrumbs bar, grid/list toggle, folder navigation, combined files + folders display
 > - `ListFoldersRequest` supports `parentFolderId` param; `parentFolderId=null` filters root-level folders
 
+**Goal:** Explorer displays files and folders in grid and list views.
+
 ### Step 6.1 - Implement list files handler
 
 Update `GET /api/workspaces/:id/files`:
@@ -371,6 +384,8 @@ git commit -m "feat(explorer): grid and list views with breadcrumbs"
 > - Added `useRenameFile` and `useDeleteFile` mutation hooks to `api.ts` with cache invalidation
 > - Current limitations: Move/Copy/Share/Favorite actions are stubs (console.log or pending); folder operations (rename/delete) use file endpoint (folder CRUD comes in Day 8); no inline rename input yet (uses `window.prompt`)
 
+**Goal:** Desktop-like keyboard and mouse interactions.
+
 ### Step 7.1 - Implement context menu
 
 Create `apps/web/src/components/features/file-context-menu.tsx`:
@@ -416,8 +431,6 @@ git commit -m "feat(explorer): keyboard navigation, context menus, multi-selecti
 ---
 
 ## Day 8 - Folder CRUD & Drag-Drop Move DONE (`70f64d0`)
-
-**Goal:** Users can create, rename, move, delete folders. Drag files between folders.
 
 > **Notes from implementation:**
 > - Added `CreateFolderRequest`, `UpdateFolderRequest`, `DeleteFolderResponse` contracts to `packages/shared/src/contracts/folders.ts`
@@ -473,8 +486,6 @@ git commit -m "feat: folder CRUD, folder tree, drag-drop to move"
 
 ## Day 9 - RBAC Engine DONE (`e780c23`)
 
-**Goal:** Permission system enforces access control.
-
 > **Notes from implementation:**
 > - Created `packages/shared/src/rbac/permissions.ts` with `Permission` Zod enum (30 permissions) and `ROLE_PERMISSIONS` mapping per role
 > - Created `packages/shared/src/rbac/can.ts` with `can(role, permission, resourceOwnerId?, userId?)` - pure function, no DB dependency
@@ -485,6 +496,8 @@ git commit -m "feat: folder CRUD, folder tree, drag-drop to move"
 > - 19 unit tests in `packages/shared/src/rbac/__tests__/can.test.ts` - all passing
 > - Seed now creates 4 members (owner, admin, editor, viewer) for multi-role testing
 > - Added `vitest` devDependency and `test:unit` script to shared package
+
+**Goal:** Permission system enforces access control.
 
 ### Step 9.1 - Implement permission engine
 
@@ -576,8 +589,6 @@ git commit -m "feat(shares): internal file sharing between workspace members"
 
 ## Day 11 - External Sharing DONE (`47a6000`)
 
-**Goal:** Anyone with a link can view/download shared files (optional password).
-
 > **Notes from implementation:**
 > - Rate limiting uses existing `shareAccessAttempt` table - 5 failed attempts per IP in 15 min -> `SHARE_PASSWORD_RATE_LIMITED` (429), 10+ total failures in 30 min -> `SHARE_LOCKED` (423). No migration needed.
 > - Added `GET /api/shares/:shareId` for public share metadata (no password needed, used by frontend to render) and `GET /api/shares/:shareId/browse?folderId=x&password=y` for navigating shared folders.
@@ -586,6 +597,8 @@ git commit -m "feat(shares): internal file sharing between workspace members"
 > - Updated `ShareModal` with share type selector (Internal / External Direct / External Explorer), password input, expiration dropdown. Link format differs: `/shared/:id` for internal, `/share/:id` for external.
 > - Added `useShareInfo`, `useAccessShare`, `useBrowseShare` hooks to `lib/api.ts`.
 > - Seed data now includes an external_direct share with password "test123" for testing.
+
+**Goal:** Anyone with a link can view/download shared files (optional password).
 
 ### Step 11.1 - Implement external share creation
 
@@ -678,7 +691,7 @@ git commit -m "feat(shares): management dashboard with admin oversight"
 
 ---
 
-## Day 13 - Trash System DONE
+## Day 13 - Trash System DONE (`11a6385`)
 
 > **Notes from implementation:**
 > - Added shared trash contracts with combined file/folder trash items, restore responses, and permanent delete responses
@@ -731,7 +744,7 @@ git commit -m "feat(trash): soft delete, restore, and permanent purge"
 
 ---
 
-## Day 14 - Search & Filters DONE
+## Day 14 - Search & Filters DONE (`50e2e7b`)
 
 > **Notes from implementation:**
 > - Added `0002_gentle_raven.sql` with a standalone FTS5 index, sync triggers, backfill, and supporting indexes for file search, tags, and favorites
@@ -784,7 +797,7 @@ git commit -m "feat(search): FTS5 full-text search with filters"
 
 ---
 
-## Day 15 - Tags, Favorites & Colors DONE
+## Day 15 - Tags, Favorites & Colors DONE (`50e2e7b`)
 
 > **Notes from implementation:**
 > - Added tag contracts and workspace tag CRUD endpoints under `/api/workspaces/:workspaceId/tags`
@@ -838,16 +851,20 @@ git commit -m "feat: tags, favorites, and color-coded organization"
 
 ## Day 16 - Command Palette
 
-**Goal:** Ctrl+K opens command palette with all available actions.
+> **Gap vs docs:** `docs/frontend/command-palette.md` and `docs/frontend/interactions.md` mandate `Ctrl/Cmd+K` command palette with all actions, search ranking, file-search fallback, keyboard navigation, and full a11y. **Not implemented.**
+
+**Goal:** `Ctrl+K` opens command palette with all available actions.
 
 ### Step 16.1 - Implement command palette component
 
 Create `apps/web/src/components/shared/command-palette.tsx`:
-- `Ctrl/Cmd + K` toggle
+- `Ctrl/Cmd + K` toggle (global listener)
+- Centered modal with backdrop blur, fade + scale-up animation (150ms)
 - Search input with debounce
-- Results: commands grouped by category
-- Keyboard: Up/Down select, Enter execute, Esc close
-- Animations: fade + scale (150ms)
+- Results grouped by category
+- Keyboard: Up/Down select, Enter execute, Esc close, Tab cycle
+- Focus trap and focus restoration
+- Width: 560px, max-height: 400px, scrollable
 
 ### Step 16.2 - Define all commands
 
@@ -855,14 +872,22 @@ Create `apps/web/src/components/shared/commands/`:
 - `navigation.ts`: Go to Files, Go to Shares, Go to Trash, Go to Settings
 - `file-operations.ts`: Rename, Move, Copy, Delete, Share, Favorite, Tag
 - `appearance.ts`: Toggle dark mode, Switch grid/list view
+- Export unified `Command[]` array with `condition` predicates for context-awareness
 
-### Step 16.3 - Wire up keyboard handlers
+### Step 16.3 - Add file-search fallback
 
-- Ctrl+K always opens palette (global listener)
-- Esc always closes palette
-- Focus returns to previously focused element on close
+When query doesn't match any command:
+- Fall back to workspace file search
+- Show top 3 file matches
+- "Search files for 'query'" entry opens explorer pre-filled
 
-### Step 16.4 - Verify
+### Step 16.4 - Wire keyboard handlers
+
+- `Ctrl+K` always opens
+- `Ctrl+F` opens palette pre-filled for file search
+- `Esc` closes and restores focus
+
+### Step 16.5 - Verify
 
 1. Press Ctrl+K -> palette opens
 2. Type "dark" -> "Toggle dark mode" appears
@@ -870,7 +895,7 @@ Create `apps/web/src/components/shared/commands/`:
 4. Press Ctrl+K -> type "files" -> Press Enter -> navigates to files
 5. Esc -> palette closes, focus restored
 
-### Step 16.5 - Commit
+### Step 16.6 - Commit
 
 ```bash
 git commit -m "feat: command palette with search and keyboard navigation"
@@ -880,28 +905,42 @@ git commit -m "feat: command palette with search and keyboard navigation"
 
 ## Day 17 - Inline Preview (Space)
 
+> **Gap vs docs:** `docs/frontend/interactions.md` and `docs/features/file-sharing.md` mandate Space-to-preview with slide-in panel, mime-type renderers, arrow navigation, and signed URLs. **Not implemented.**
+
 **Goal:** Press Space to preview file contents without leaving the explorer.
 
-### Step 17.1 - Implement preview panel
+### Step 17.1 - Implement preview API
+
+- `GET /api/workspaces/:id/files/:fileId/preview` -> returns signed URL (5 min expiry, read-only)
+- Content fetch for text/code/markdown via Worker (not direct R2)
+
+### Step 17.2 - Implement preview panel
 
 Create `apps/web/src/components/features/file-preview.tsx`:
-- Slide-in panel (right side, 400px)
-- Shows based on mime type:
-  - Images: rendered directly
+- Slide-in panel on right (400px), modal on narrow screens
+- Does NOT change URL
+- Supported types:
+  - Images: rendered directly with zoom
   - PDF: embedded viewer
-  - Video: HTML5 player
-  - Markdown: rendered
+  - Video/Audio: HTML5 player
+  - Markdown: rendered with syntax highlighting
   - Code: syntax-highlighted
-  - Unknown: metadata card (size, type, date)
-- Left/Right arrows: navigate between files
-- Esc: close preview
+  - Text/CSV: plain text with line numbers
+  - Unknown: metadata card (size, type, date, checksum)
+- Skeleton loader while content loads
 
-### Step 17.2 - Implement preview API
+### Step 17.3 - Wire keyboard navigation
 
-- `GET /api/workspaces/:id/files/:fileId/preview` -> returns signed URL for preview
-- Short-lived (5 min), scope: read-only
+- `Space` on selected file -> open preview
+- `Left/Right arrows` -> previous/next file in folder
+- `Esc` -> close preview, focus back to explorer
 
-### Step 17.3 - Verify
+### Step 17.4 - Integrate with explorer
+
+- `file-grid.tsx` and `file-list.tsx` trigger preview on Space and double-click
+- Preview state in Zustand explorer store
+
+### Step 17.5 - Verify
 
 1. Select a file in explorer
 2. Press Space -> preview panel opens on the right
@@ -909,7 +948,7 @@ Create `apps/web/src/components/features/file-preview.tsx`:
 4. Press Right arrow -> next file's preview loads
 5. Press Esc -> preview closes, focus back to explorer
 
-### Step 17.4 - Commit
+### Step 17.6 - Commit
 
 ```bash
 git commit -m "feat(preview): inline file preview with arrow navigation"
@@ -919,39 +958,48 @@ git commit -m "feat(preview): inline file preview with arrow navigation"
 
 ## Day 18 - Dark Mode Toggle
 
-> **Current state audit (2026-05-09):**
-> - The topbar already exposes a light/dark toggle wired to Zustand
-> - Theme state currently defaults to `dark` and toggles the `.dark` class on `document.documentElement`
-> - Persistence to `localStorage`, `prefers-color-scheme` bootstrapping, and a full component audit are still missing
-> - This day remains `PARTIAL` and must not be treated as complete
+> **Gap vs docs:** `docs/frontend/design-system.md`, `docs/frontend/design-tokens.md`, and `docs/frontend/interactions.md` require full dark mode with `localStorage` persistence, `prefers-color-scheme` detection, component audit, and `prefers-reduced-motion` respect. Currently only toggle + CSS exist. **Partial.**
 
-**Goal:** Users can switch between light and dark themes.
+**Goal:** Complete dark mode system matching design docs.
 
-### Step 18.1 - Implement theme toggle
+### Step 18.1 - Add persistence and system detection
 
-The dark mode foundation already exists in `globals.css` with `.dark` class.
-Wire up the toggle:
-- Button in Topbar (sun/moon icon)
-- Zustand store `theme` state (already stubbed)
-- Persist preference in localStorage
-- Respect `prefers-color-scheme` for default
+Update `apps/web/src/stores/app-store.ts`:
+- On init: read `localStorage.theme`, fallback to `prefers-color-scheme`
+- Default to system preference if no stored value
+- `toggleTheme()` persists to `localStorage`
+- Apply `.dark` class on bootstrap before first paint (avoid flash)
 
-### Step 18.2 - Verify all components
+### Step 18.2 - Audit all components
 
-Go through every component and fix dark mode issues:
-- Text contrast, border visibility
-- Shadows adjusted for dark backgrounds
+Verify every component has dark mode classes:
+- Text contrast (no `text-gray-900` without dark variant)
+- Border visibility in dark
+- Shadows adjusted (docs specify dark shadow tokens)
 - Focus rings visible in both modes
+- `bg-card` / `bg-surface` layering correct
 
-### Step 18.3 - Commit
+### Step 18.3 - Respect reduced motion
+
+- Wrap animations in `prefers-reduced-motion` media query
+- Palette, modals, and transitions must disable motion when requested
+
+### Step 18.4 - Verify
+
+1. Fresh browser (no localStorage) -> respects OS theme
+2. Toggle -> persists after refresh
+3. Delete localStorage -> falls back to OS theme
+4. `prefers-reduced-motion: reduce` -> no animations
+
+### Step 18.5 - Commit
 
 ```bash
-git commit -m "feat(theme): dark/light mode toggle with system preference"
+git commit -m "feat(theme): dark mode persistence, system detection, and a11y audit"
 ```
 
 ---
 
-## Day 19 - Admin Dashboard
+## Day 19 - Admin Dashboard PARTIAL (`5f8ed5e`)
 
 > **Notes from implementation (2026-05-10):**
 > - Reframed `/dashboard` as the admin home and moved the explorer to `/dashboard/files`
@@ -960,9 +1008,9 @@ git commit -m "feat(theme): dark/light mode toggle with system preference"
 > - Added `dashboard` API module with overview metrics, 7-day storage trend, recent audit activity, and workspace settings read/update
 > - Added `members` API module with direct-add by existing email, role updates, removals, owner guards, and member audit events
 > - Introduced Better Auth membership unification helpers using `organization.id === workspace.id`, backfilling `organization/member` rows from `workspace/workspaceMember` when possible while keeping the legacy table synced
-> - Seed now creates Better Auth `user`, `organization`, and `member` records for the dev workspace fixtures
+> - Seed now creates Better Auth `user`, `organization`, `member` records for the dev workspace fixtures
 > - Frontend admin pages, route guards, and sidebar gating are wired and `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` pass
-> - Remaining gap before marking this day fully DONE: dedicated contract/E2E coverage for the new admin endpoints and UI flows
+> - **Remaining gap before marking fully DONE:** dedicated contract/E2E coverage for the new admin endpoints and UI flows (scoped to Days 30-31)
 
 **Goal:** Workspace owners/admins see analytics and manage settings.
 
@@ -994,42 +1042,637 @@ git commit -m "feat(dashboard): admin analytics and workspace settings"
 
 ---
 
-## Day 20 - Testing & Polish
+## Day 20 - Testing Foundation PARTIAL
 
-> **Current state audit (2026-05-09):**
-> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` pass after the Windows dependency fix
-> - `pnpm test:contracts` currently executes zero tasks, so contract coverage is still a placeholder in this repo
-> - `pnpm test:e2e` remains planned work; this roadmap section should not be considered implemented yet
+> **Current state audit:**
+> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` pass
+> - `pnpm test:contracts` currently executes zero tasks — contract coverage is still a placeholder
+> - `pnpm test:e2e` remains planned work — no Playwright config or tests exist yet
+> - This day remains `PARTIAL` until contract and E2E tests are implemented (Days 30-31)
 
-**Goal:** Tests pass, UI feels polished, ready for staging.
+> **Gap vs docs:** `docs/architecture/testing-strategy.md` requires a full pyramid (type > unit > contract > E2E > a11y). Currently only unit tests pass. Contract and E2E directories don't exist.
 
-### Step 20.1 - Write contract tests
+**Goal:** Ensure existing tests pass, build is green, and test infrastructure is ready.
+
+### Step 20.1 - Confirm current health
+
+```bash
+pnpm build
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+```
+
+All must pass before proceeding.
+
+### Step 20.2 - Add missing test scripts to package.json
+
+Ensure root `package.json` has:
+- `test:unit`
+- `test:contracts` (placeholder)
+- `test:e2e` (placeholder)
+- `test:a11y` (placeholder)
+- `test:all`
+
+### Step 20.3 - Verify vitest configs
+
+- `packages/shared/vitest.config.ts` exists and runs
+- `apps/api/vitest.config.ts` exists and runs
+
+### Step 20.4 - Commit
+
+```bash
+git commit -m "test: confirm testing foundation and build health"
+```
+
+---
+
+## Day 21 - Multipart Upload & Resumability
+
+> **Gap vs docs:** `docs/features/upload-system.md` describes multipart as core architecture with chunking, resumability, retry, and `GET /uploads/:sessionId`. The schema has `UploadSession`/`UploadPart`, but the frontend still uploads single-shot and there is no resume endpoint. **Stub.**
+
+**Goal:** Files > 5 MB upload in chunks with resume support.
+
+### Step 21.1 - Implement real multipart backend
+
+Update `apps/api/src/services/upload.service.ts`:
+- `initiateUpload()`: for files > 5 MB, create multipart R2 session, return `sessionId` + `partSize` + `totalParts`
+- `getUploadSession(sessionId)`: return completed parts + remaining parts
+- `completeUpload()`: accept parts array, verify ETags, complete multipart in R2
+- `cancelUpload()`: abort multipart in R2, mark session cancelled
+
+### Step 21.2 - Add resume endpoint
+
+- `GET /api/workspaces/:id/uploads/:sessionId` -> session state with part statuses
+
+### Step 21.3 - Implement chunked frontend upload
+
+Update upload queue logic:
+- Slice file into 5 MB chunks
+- Upload parts in parallel (max concurrency: 3)
+- Track ETags from R2 responses
+- Resume: query session state, skip completed parts
+
+### Step 21.4 - Add retry with backoff
+
+```ts
+const MAX_RETRIES = 3
+const RETRY_BASE_DELAY = 1000
+```
+
+Exponential backoff on chunk upload failures.
+
+### Step 21.5 - Verify
+
+1. Upload a 15 MB file -> shows 3 parts uploading
+2. Disconnect network mid-upload -> retry kicks in
+3. Refresh page -> resume from last completed part
+4. Cancel -> session aborted, parts cleaned
+
+### Step 21.6 - Commit
+
+```bash
+git commit -m "feat(upload): multipart chunking, resumability, and retry"
+```
+
+---
+
+## Day 22 - Undo / Redo System
+
+> **Gap vs docs:** `docs/frontend/interactions.md` explicitly requires `Ctrl/Cmd + Z` for undoing move, rename, and soft delete. **Not implemented.**
+
+**Goal:** Users can undo destructive or mutating actions.
+
+### Step 22.1 - Design undo stack
+
+Zustand store `undo-stack.ts`:
+- Stack of `UndoAction` objects (max 50)
+- Each action: `type`, `payload`, `inverse()` function
+- Actions: `move`, `rename`, `delete` (soft), `folder.move`, `folder.rename`
+
+### Step 22.2 - Implement undoable mutations
+
+Wrap existing mutations:
+- `moveFile` -> push `inverse: move back to original folder`
+- `renameFile` -> push `inverse: restore original name`
+- `softDelete` -> push `inverse: restore from trash`
+
+### Step 22.3 - Wire keyboard shortcut
+
+- `Ctrl+Z` -> pop last action, call `inverse()`, show toast "Undo: action restored"
+- `Ctrl+Shift+Z` -> redo (if implementing redo stack)
+- Undo invalidates relevant query caches
+
+### Step 22.4 - Add UI affordance
+
+- Toast on undoable action: "File moved to Projects. [Undo]"
+- Command palette: "Undo last action"
+
+### Step 22.5 - Verify
+
+1. Move a file -> press Ctrl+Z -> file returns to original folder
+2. Rename a file -> undo -> original name restored
+3. Delete a file -> undo -> file restored from trash
+4. Undo stack clears on logout
+
+### Step 22.6 - Commit
+
+```bash
+git commit -m "feat: undo/redo system for move, rename, and soft delete"
+```
+
+---
+
+## Day 23 - Clipboard Paste & Folder Upload
+
+> **Gap vs docs:** `docs/features/upload-system.md` and `docs/frontend/interactions.md` require `Ctrl+V` pasting files/images from clipboard, and OS folder drag preserving directory structure. **Not implemented.**
+
+**Goal:** Paste files from clipboard; drag folders from OS maintaining hierarchy.
+
+### Step 23.1 - Implement clipboard paste
+
+Listen to `paste` event on explorer:
+- `e.clipboardData.files` -> add to upload queue
+- Support images copied from browser/screenshot tools
+- Same validation pipeline as drag-drop
+
+### Step 23.2 - Implement folder upload from OS
+
+Handle `drag-drop` with `webkitGetAsEntry()`:
+- Detect `isDirectory` on dropped items
+- Recursively read directory entries
+- Replicate folder structure in workspace (virtual folders)
+- Max depth: 50 levels
+- Empty folders created (not skipped)
+
+### Step 23.3 - Add folder upload API batch endpoint
+
+- `POST /api/workspaces/:id/files/upload/batch` -> accepts array of `{path, fileName, mimeType, sizeBytes}`
+- Creates folder hierarchy first, then returns signed URLs for each file
+- Preserves relative paths
+
+### Step 23.4 - Visual feedback
+
+- Paste: brief flash highlight on explorer area
+- Folder drop: show folder tree being created in upload queue
+- Progress per file within folder upload
+
+### Step 23.5 - Verify
+
+1. Copy image in OS -> Ctrl+V in explorer -> upload starts
+2. Drag folder "Photos/2025/" from Finder -> virtual folders created, files uploaded with correct paths
+3. Empty folder inside dragged folder -> empty folder created in workspace
+
+### Step 23.6 - Commit
+
+```bash
+git commit -m "feat(upload): clipboard paste and OS folder drag with structure preservation"
+```
+
+---
+
+## Day 24 - Virtualization & Performance
+
+> **Gap vs docs:** `docs/frontend/interactions.md` requires virtualization for file lists, search results, and audit logs. Bundle size must stay < 500 kB JS. **Not implemented.**
+
+**Goal:** Lists remain performant with 10,000+ items; bundle audited.
+
+### Step 24.1 - Add virtualization library
+
+```bash
+pnpm add @tanstack/react-virtual
+```
+
+### Step 24.2 - Virtualize file list and grid
+
+Update `file-list.tsx`:
+- Use `useVirtualizer` for row virtualization
+- Estimated row height: 48px (list), 160px (grid)
+- Overscan: 5 rows
+
+Update `file-grid.tsx`:
+- Virtualize grid with column-aware virtualizer
+- Dynamic column count based on container width
+
+### Step 24.3 - Virtualize search results and audit log
+
+Apply same pattern to:
+- Search results page
+- Trash list
+- Audit log table
+- Share management tables
+
+### Step 24.4 - Audit bundle size
+
+```bash
+cd apps/web && pnpm build
+```
+
+- Analyze bundle with `rollup-plugin-visualizer` or `vite-bundle-visualizer`
+- Target: < 500 kB JS total (gzipped)
+- Split heavy dependencies (syntax highlighter, PDF viewer) into async chunks
+
+### Step 24.5 - Verify
+
+1. Seed 10,000 files -> explorer scrolls at 60fps
+2. Bundle report shows < 500 kB
+3. Lazy chunks load on demand (preview types)
+
+### Step 24.6 - Commit
+
+```bash
+git commit -m "perf: list virtualization and bundle size audit"
+```
+
+---
+
+## Day 25 - RBAC v2 (Complete)
+
+> **Gap vs docs:** `docs/backend/rbac.md` defines 6 roles (Owner, Admin, **Manager**, Editor, Viewer, **Guest**), billing/audit permissions, resource policies, and permission inheritance. Only 4 roles and basic permissions exist. **Incomplete.**
+
+**Goal:** Full RBAC matching doc specification.
+
+### Step 25.1 - Add missing roles
+
+Update `packages/shared/src/rbac/permissions.ts`:
+- Add `manager` and `guest` to `WorkspaceRole`
+- Define `ROLE_PERMISSIONS` for both:
+  - `manager`: manage files, folders, shares, view analytics (NOT billing, NOT admin management)
+  - `guest`: limited resource viewing, isolated scope
+
+### Step 25.2 - Add billing and audit permissions
+
+Add to `Permission` enum:
+- `billing.read`, `billing.manage`
+- `audit.read`, `audit.export`
+
+Wire into dashboard handlers:
+- `GET /dashboard/overview` -> requires `billing.read` for billing data
+- `GET /dashboard/audit` -> requires `audit.read`
+
+### Step 25.3 - Implement resource policies
+
+Create `packages/shared/src/rbac/policies.ts`:
+- `FilePolicy.canDelete(user, file)` -> ownership + role + permission
+- `FilePolicy.canShare(user, file)` -> similar
+- Replace scattered inline checks with policy calls
+
+### Step 25.4 - Add permission inheritance
+
+For folder operations:
+- `folders.read` on parent implies `folders.read` on children
+- Apply to breadcrumbs, tree navigation, and search
+
+### Step 25.5 - Update tests
+
+Expand `can.test.ts`:
+- `manager` x all permissions
+- `guest` x all permissions
+- Resource policy tests
+- Inheritance tests
+
+### Step 25.6 - Verify
+
+1. Assign `manager` role -> can manage files/shares, cannot access billing
+2. Assign `guest` role -> limited view only
+3. `FilePolicy.canDelete` correctly handles ownership override
+4. All existing tests still pass
+
+### Step 25.7 - Commit
+
+```bash
+git commit -m "feat(rbac): manager and guest roles, resource policies, billing/audit permissions"
+```
+
+---
+
+## Day 26 - Workspace Invitations & Ownership Transfer
+
+> **Gap vs docs:** `docs/features/workspace-management.md` defines email invitation flow with expiring tokens, acceptance endpoint, and ownership transfer with 7-day timeout. Current implementation only supports "direct add by existing email". **Incomplete.**
+
+**Goal:** Full workspace membership lifecycle.
+
+### Step 26.1 - Add invitation schema
+
+Migration or schema update:
+- `WorkspaceInvitation` table: `id`, `workspaceId`, `email`, `role`, `token`, `expiresAt`, `usedAt`, `createdAt`
+
+### Step 26.2 - Implement invitation backend
+
+- `POST /api/workspaces/:id/invitations` -> create invitation, generate token (7 days expiry)
+- `GET /api/workspaces/join?token=xxx` -> validate token, render join page
+- `POST /api/workspaces/join/accept` -> accept invitation, create member, audit log
+- `GET /api/workspaces/:id/invitations` -> list pending invitations (admin/owner)
+- `DELETE /api/workspaces/:id/invitations/:id` -> revoke invitation
+
+### Step 26.3 - Integrate email delivery
+
+Use Cloudflare Email Routing or Resend:
+- Send invitation email with tokenized link
+- Template: workspace name, inviter name, role, expiry, CTA button
+
+### Step 26.4 - Implement ownership transfer
+
+- `POST /api/workspaces/:id/transfer-ownership` -> create transfer request (pending, 7-day timeout)
+- `POST /api/workspaces/:id/transfer-ownership/accept` -> new owner accepts
+- `POST /api/workspaces/:id/transfer-ownership/decline` -> new owner declines
+- Auto-expire after 7 days
+- Audit log: `ownership.transferred`
+
+### Step 26.5 - Frontend pages
+
+- Members page: "Invite by email" with role selector
+- Join page: `/join?token=xxx` (no auth required, redirects to signup/login if needed)
+- Dashboard settings: ownership transfer button (owner only, with confirmation)
+
+### Step 26.6 - Verify
+
+1. Owner invites `new@example.com` as Editor -> email sent
+2. New user clicks link -> signs up -> joins workspace as Editor
+3. Owner initiates transfer to Admin -> Admin sees notification -> accepts
+4. Old owner becomes Admin, new owner takes over
+
+### Step 26.7 - Commit
+
+```bash
+git commit -m "feat(workspace): email invitations, join flow, and ownership transfer"
+```
+
+---
+
+## Day 27 - Share Analytics & Branded Pages
+
+> **Gap vs docs:** `docs/features/file-sharing.md` requires share analytics (access/download counts) and branded share pages using `brandingLogoUrl`/`brandingName`. Fields exist in DB but are unused in public pages. **Incomplete.**
+
+**Goal:** Shares have analytics and branding.
+
+### Step 27.1 - Add share analytics counters
+
+Update `ShareLink` schema or use aggregation:
+- `accessCount`: increment on each `accessShare`
+- `downloadCount`: increment on each signed download URL generation
+- `lastAccessedAt`: timestamp
+
+### Step 27.2 - Expose analytics in API
+
+- `GET /api/workspaces/:id/shares` -> include `accessCount`, `downloadCount`, `lastAccessedAt`
+- Update shared contract
+
+### Step 27.3 - Show analytics in UI
+
+- Share management dashboard: columns for access count, last accessed
+- Share detail modal: mini analytics card
+
+### Step 27.4 - Implement branded public pages
+
+Update `apps/web/src/routes/share.$shareId.tsx`:
+- Read `brandingLogoUrl` and `brandingName` from share metadata
+- Render custom logo and name at top of public share page
+- Fallback to default BucketDrive branding if not set
+
+### Step 27.5 - Apply branding to external explorer shares
+
+- Branded header on folder browser
+- Consistent color scheme (respect workspace branding)
+
+### Step 27.6 - Verify
+
+1. Create share -> access it 3 times -> dashboard shows accessCount = 3
+2. Download file -> dashboard shows downloadCount incremented
+3. Set branding logo/name in workspace settings -> public share page shows custom branding
+
+### Step 27.7 - Commit
+
+```bash
+git commit -m "feat(shares): access/download analytics and branded public pages"
+```
+
+---
+
+## Day 28 - Notifications System
+
+> **Gap vs docs:** `docs/database/data-model.md` defines `Notification` entity. `docs/features/file-sharing.md` mentions notifications for locked shares. `docs/features/workspace-management.md` mentions invitation emails. **Not implemented.**
+
+**Goal:** In-app notification system for workspace events.
+
+### Step 28.1 - Add notification schema
+
+Migration:
+- `Notification` table: `id`, `userId`, `workspaceId`, `type`, `title`, `message`, `data`, `readAt`, `createdAt`
+- Types: `share.locked`, `member.invited`, `ownership.transfer`, `trash.purged`, `quota.warning`
+
+### Step 28.2 - Implement notification API
+
+- `GET /api/notifications` -> list for current user, paginated
+- `PATCH /api/notifications/:id/read` -> mark as read
+- `POST /api/notifications/read-all` -> mark all as read
+- `GET /api/notifications/unread-count` -> badge count
+
+### Step 28.3 - Emit notifications from events
+
+Update services to create notifications:
+- Share locked -> notify share creator
+- Member invited -> notify invited user (if exists)
+- Ownership transfer requested -> notify target user
+- Trash auto-purge imminent -> notify file owners
+
+### Step 28.4 - Add notification UI
+
+- Bell icon in topbar with unread badge
+- Dropdown panel listing notifications (newest first)
+- Click notification -> navigate to relevant context
+- "Mark all read" button
+
+### Step 28.5 - Verify
+
+1. Trigger 5 failed password attempts on share -> creator sees "Share locked" notification
+2. Invite member -> invited user sees notification
+3. Mark notification as read -> badge count decreases
+
+### Step 28.6 - Commit
+
+```bash
+git commit -m "feat(notifications): in-app notification system for workspace events"
+```
+
+---
+
+## Day 29 - Thumbnails & Async Processing
+
+> **Gap vs docs:** `docs/storage/storage-provider.md` and `docs/features/upload-system.md` list thumbnails, previews, OCR, and metadata extraction as async worker jobs. **Not implemented.**
+
+**Goal:** Uploaded images and videos get thumbnails generated asynchronously.
+
+### Step 29.1 - Add thumbnail storage and schema
+
+- `FileObject.thumbnailKey` column (nullable)
+- Thumbnails stored in R2 under `workspace/{id}/thumbnails/{fileId}.webp`
+
+### Step 29.2 - Implement thumbnail generation worker
+
+Update `apps/workers/src/index.ts`:
+- Queue-based or event-driven processing
+- Trigger: after `completeUpload` for image/video MIME types
+- Use Web APIs or WASM (e.g., `sharp` not available in Workers; use Canvas API or Cloudflare Images)
+- Generate 256x256 WebP thumbnail
+- Upload to R2, update `FileObject.thumbnailKey`
+
+### Step 29.3 - Serve thumbnails in explorer
+
+- `GET /api/workspaces/:id/files/:fileId/thumbnail` -> returns signed thumbnail URL
+- Update file-grid.tsx to show thumbnail images instead of icons for image/video files
+- Fallback to icon if thumbnail not yet generated
+
+### Step 29.4 - Add metadata extraction (optional)
+
+- Extract EXIF from images, dimensions, duration from video
+- Store in `FileObject.metadata` JSON column
+
+### Step 29.5 - Verify
+
+1. Upload image -> thumbnail appears in grid view within seconds
+2. Upload video -> thumbnail frame extracted
+3. Large image -> thumbnail is WebP, significantly smaller
+
+### Step 29.6 - Commit
+
+```bash
+git commit -m "feat(processing): async thumbnail generation for images and videos"
+```
+
+---
+
+## Day 30 - Contract Tests
+
+> **Gap vs docs:** `docs/architecture/testing-strategy.md` requires contract tests in `apps/api/src/__tests__/contracts/` verifying every endpoint against shared Zod schemas using a test D1 database. **Not implemented.**
+
+**Goal:** Every API endpoint has contract test coverage.
+
+### Step 30.1 - Set up contract test infrastructure
 
 Create `apps/api/src/__tests__/contracts/`:
-- Files: list, upload, download, update, delete, restore
-- Shares: create, access, revoke
-- Search: basic query, filters, empty results
-- Auth: required error for each protected endpoint
+- Test D1 database setup (in-memory or seeded SQLite)
+- Hono worker instance per test file
+- Seed helpers for workspaces, users, files, shares
 
-### Step 20.2 - Write unit tests
+### Step 30.2 - Write contract tests for all modules
 
-- RBAC: every role x every permission (from Day 9)
-- Storage provider: signed URLs, delete, error cases
-- Share validation: expired, locked, password, revoked
+Files to create:
+- `files.contract.test.ts`: list, upload initiate, upload complete, download, update, delete, restore
+- `folders.contract.test.ts`: list, create, update, delete, breadcrumbs
+- `shares.contract.test.ts`: create, access, revoke, public access
+- `search.contract.test.ts`: basic query, filters, empty results
+- `tags.contract.test.ts`: create, assign, remove
+- `trash.contract.test.ts`: list, restore, permanent delete
+- `auth.contract.test.ts`: session, protected routes return 401
+- `dashboard.contract.test.ts`: overview, audit, settings
+- `members.contract.test.ts`: list, add, update role, remove
 
-### Step 20.3 - Accessibility pass
+Each test:
+- Success shape validated with Zod `.parse()`
+- Auth required (401 without cookie)
+- RBAC denied (403 with wrong role)
+- Validation error (400 with bad input)
 
-- Run `@axe-core/playwright` on all pages
-- Fix any violations
-- Ensure skip-to-content link exists
-- Verify tab order on explorer page
+### Step 30.3 - Wire test:contracts script
 
-### Step 20.4 - Performance check
+Update root `package.json`:
+```json
+"test:contracts": "vitest run --config apps/api/vitest.config.ts apps/api/src/__tests__/contracts"
+```
 
-- `vite build` -> analyze bundle size (< 500 kB JS total)
-- Verify list virtualization works with 10,000 files (seed script)
+### Step 30.4 - Verify
 
-### Step 20.5 - Staging deploy
+```bash
+pnpm test:contracts
+```
+
+All tests pass.
+
+### Step 30.5 - Commit
+
+```bash
+git commit -m "test(contracts): API contract tests for all endpoints"
+```
+
+---
+
+## Day 31 - E2E & Accessibility
+
+> **Gap vs docs:** `docs/architecture/testing-strategy.md` requires Playwright E2E for critical user journeys and `@axe-core/playwright` for a11y. Directories don't exist. **Not implemented.**
+
+**Goal:** Critical journeys tested end-to-end; a11y violations caught automatically.
+
+### Step 31.1 - Set up Playwright
+
+```bash
+pnpm add -D @playwright/test @axe-core/playwright
+npx playwright install
+```
+
+Create `apps/web/e2e/` and `playwright.config.ts`.
+
+### Step 31.2 - Write critical user journey tests
+
+- `auth.spec.ts`: OAuth login -> session persists -> logout
+- `upload.spec.ts`: Navigate -> drag file -> progress -> file appears
+- `share.spec.ts`: Create password share -> external access -> password validates -> download
+- `rbac.spec.ts`: Viewer tries delete -> API blocks -> UI hides delete
+- `search.spec.ts`: Type query -> results -> filters -> clear
+- `trash.spec.ts`: Delete -> trash -> restore -> original folder
+
+### Step 31.3 - Write accessibility tests
+
+For each page:
+```ts
+import { checkA11y } from "@axe-core/playwright"
+const results = await checkA11y(page)
+expect(results.violations).toEqual([])
+```
+
+Pages: login, explorer, share modal, settings, trash.
+
+### Step 31.4 - Ensure skip-to-content and tab order
+
+- Add `SkipToContent` component to `__root.tsx`
+- Verify tab order on explorer: sidebar -> breadcrumbs -> grid -> pagination
+
+### Step 31.5 - Verify
+
+```bash
+pnpm test:e2e
+pnpm test:a11y
+```
+
+### Step 31.6 - Commit
+
+```bash
+git commit -m "test(e2e): Playwright critical journeys and axe-core a11y compliance"
+```
+
+---
+
+## Day 32 - Staging Deploy & Final Polish
+
+> **Goal:** Production-ready deploy pipeline, performance checks, and docs sync.
+
+### Step 32.1 - Performance check
+
+```bash
+cd apps/web && pnpm build
+```
+
+- Analyze bundle size (< 500 kB JS gzipped)
+- Verify lazy chunks for preview types
+- Lighthouse CI score: Performance > 90, Accessibility > 95, Best Practices > 95
+
+### Step 32.2 - Virtualization benchmark
+
+Seed script: create 10,000 files.
+- Explorer render time < 500ms
+- Scroll remains at 60fps
+
+### Step 32.3 - Staging deploy
 
 ```bash
 # Create staging D1 database
@@ -1045,10 +1688,20 @@ npx wrangler deploy --env staging
 npx wrangler pages deploy apps/web/dist --project-name bucketdrive --branch main
 ```
 
-### Step 20.6 - Final commit
+### Step 32.4 - Smoke tests on staging
+
+Run E2E suite pointing at staging URL.
+
+### Step 32.5 - Final docs sync
+
+- Update all `docs/` to reflect final implementation state
+- Mark roadmap Day 32 as `DONE`
+- Update `AGENTS.md` if build/test commands changed
+
+### Step 32.6 - Final commit
 
 ```bash
-git commit -m "test: contract tests, unit tests, a11y fixes, staging deploy"
+git commit -m "chore: staging deploy, performance audit, and final docs sync"
 ```
 
 ---
@@ -1056,3 +1709,26 @@ git commit -m "test: contract tests, unit tests, a11y fixes, staging deploy"
 # Quick Reference
 
 See [Status Overview](#status-overview) at the top of this file for the latest status of each day.
+
+## Day-to-Day Dependency Graph
+
+```
+1-15  -> DONE foundation
+16    -> depends on 15 (explorer commands)
+17    -> depends on 15 (explorer preview)
+18    -> depends on 3 (theme toggle exists)
+19    -> DONE (admin dashboard)
+20    -> depends on 1-19 (health check)
+21    -> depends on 5 (upload system)
+22    -> depends on 7,8,13 (move/rename/delete)
+23    -> depends on 5,6 (upload + explorer)
+24    -> depends on 6,14 (lists + search)
+25    -> depends on 9 (RBAC v1)
+26    -> depends on 19 (members module)
+27    -> depends on 11,12 (shares)
+28    -> depends on 11,26 (shares + invitations)
+29    -> depends on 5 (upload complete hook)
+30    -> depends on 1-29 (all endpoints stable)
+31    -> depends on 1-29 (all features stable)
+32    -> depends on 30,31 (tests pass)
+```
