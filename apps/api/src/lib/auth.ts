@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { organization } from "better-auth/plugins"
+import { adminAc, memberAc, ownerAc } from "better-auth/plugins/organization/access"
 import * as schema from "@bucketdrive/shared/db/schema"
 import { createD1DB } from "./db"
 
@@ -53,6 +54,16 @@ export function createAuth(env: AuthEnv) {
       "http://localhost:5173",
       "http://localhost:8787",
     ],
-    plugins: [organization()],
+    plugins: [
+      organization({
+        creatorRole: "owner",
+        roles: {
+          owner: ownerAc,
+          admin: adminAc,
+          editor: memberAc,
+          viewer: memberAc,
+        },
+      }),
+    ],
   })
 }

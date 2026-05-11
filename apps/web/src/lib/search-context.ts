@@ -7,7 +7,7 @@ interface SearchContextConfig {
 }
 
 export function getSearchContextFromPath(pathname: string): SearchContextConfig {
-  if (pathname === "/dashboard") {
+  if (pathname === "/dashboard/files") {
     return {
       enabled: true,
       routeKey: "dashboard",

@@ -47,8 +47,11 @@ describe("can() — RBAC permission evaluation", () => {
       "users.read",
       "billing.read",
       "billing.manage",
+      "analytics.read",
       "audit.read",
       "audit.export",
+      "workspace.settings.read",
+      "workspace.settings.update",
       "workspace.delete",
       "workspace.transfer",
     ]
@@ -129,7 +132,9 @@ describe("can() — RBAC permission evaluation", () => {
       expect(can("viewer", "users.invite")).toBe(false)
       expect(can("viewer", "users.read")).toBe(false)
       expect(can("viewer", "billing.read")).toBe(false)
+      expect(can("viewer", "analytics.read")).toBe(false)
       expect(can("viewer", "audit.read")).toBe(false)
+      expect(can("viewer", "workspace.settings.read")).toBe(false)
       expect(can("viewer", "workspace.delete")).toBe(false)
       expect(can("viewer", "workspace.transfer")).toBe(false)
     })
@@ -162,6 +167,7 @@ describe("can() — RBAC permission evaluation", () => {
     it("ownership override does not grant unrelated permissions", () => {
       expect(can("editor", "users.invite", userId, userId)).toBe(false)
       expect(can("editor", "billing.read", userId, userId)).toBe(false)
+      expect(can("editor", "analytics.read", userId, userId)).toBe(false)
     })
 
     it("owner role still has full access (ownership override is irrelevant)", () => {

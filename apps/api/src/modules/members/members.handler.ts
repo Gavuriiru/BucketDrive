@@ -1,0 +1,244 @@
+import { Hono } from "hono"
+import { and, eq } from "drizzle-orm"
+import {
+  AddMemberRequest,
+  ListMembersResponse,
+  RemoveMemberResponse,
+  UpdateMemberRoleRequest,
+} from "@bucketdrive/shared"
+import { auditLog, member, user } from "@bucketdrive/shared/db/schema"
+import { authMiddleware } from "../../middleware/auth"
+import { requirePermission } from "../../middleware/rbac"
+import { getDB } from "../../lib/db"
+import {
+  ensureOrganizationForWorkspace,
+  listWorkspaceMembersWithUsers,
+  removeLegacyWorkspaceMember,
+  syncMemberToLegacyWorkspaceMember,
+  syncWorkspaceMemberships,
+} from "../../lib/workspace-membership"
+
+interface MembersEnv {
+  DB: D1Database
+}
+
+interface MembersVariables {
+  user: { id: string; email: string; name: string }
+  session: { id: string; userId: string; expiresAt: Date }
+}
+
+const members = new Hono<{ Bindings: MembersEnv; Variables: MembersVariables }>()
+
+members.use("*", authMiddleware)
+
+members.get("/", requirePermission("users.read"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+
+  const rows = await listWorkspaceMembersWithUsers(getDB(), workspaceId)
+
+  return c.json(
+    ListMembersResponse.parse({
+      data: rows,
+      meta: {
+        page: 1,
+        limit: rows.length || 1,
+        total: rows.length,
+        totalPages: rows.length > 0 ? 1 : 0,
+      },
+    }),
+  )
+})
+
+members.post("/", requirePermission("users.invite"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  if (!workspaceId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+  }
+
+  const actor = c.get("user")
+  const db = getDB()
+  const body = AddMemberRequest.parse(await c.req.json())
+
+  await Promise.all([ensureOrganizationForWorkspace(db, workspaceId), syncWorkspaceMemberships(db, workspaceId)])
+
+  const invitedUser = await db
+    .select()
+    .from(user)
+    .where(eq(user.email, body.email.toLowerCase()))
+    .get()
+
+  if (!invitedUser) {
+    return c.json({ code: "NOT_FOUND", message: "User not found for this email" }, 404)
+  }
+
+  const existing = await db
+    .select({ id: member.id })
+    .from(member)
+    .where(and(eq(member.organizationId, workspaceId), eq(member.userId, invitedUser.id)))
+    .get()
+
+  if (existing) {
+    return c.json({ code: "USER_ALREADY_MEMBER", message: "User is already a member" }, 409)
+  }
+
+  const createdAt = new Date().toISOString()
+  const createdMember = {
+    id: crypto.randomUUID(),
+    organizationId: workspaceId,
+    userId: invitedUser.id,
+    role: body.role,
+    createdAt,
+  }
+
+  await db.insert(member).values(createdMember).run()
+  await syncMemberToLegacyWorkspaceMember(db, workspaceId, invitedUser.id, body.role)
+  await writeMemberAudit(db, {
+    workspaceId,
+    actorId: actor.id,
+    action: "member.invited",
+    resourceId: createdMember.id,
+    metadata: {
+      email: invitedUser.email,
+      role: body.role,
+      userId: invitedUser.id,
+    },
+  })
+
+  const result = await listWorkspaceMembersWithUsers(db, workspaceId)
+  const created = result.find((entry) => entry.id === createdMember.id)
+  return c.json(created, 201)
+})
+
+members.patch("/:memberId", requirePermission("users.update_roles"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const memberId = c.req.param("memberId")
+  if (!workspaceId || !memberId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and memberId are required" }, 400)
+  }
+
+  const actor = c.get("user")
+  const db = getDB()
+  const body = UpdateMemberRoleRequest.parse(await c.req.json())
+
+  await syncWorkspaceMemberships(db, workspaceId)
+
+  const target = await db
+    .select()
+    .from(member)
+    .where(and(eq(member.id, memberId), eq(member.organizationId, workspaceId)))
+    .get()
+
+  if (!target) {
+    return c.json({ code: "NOT_FOUND", message: "Member not found" }, 404)
+  }
+
+  if (target.role.split(",").includes("owner") && body.role !== "owner") {
+    const ownerCount = await countOwners(db, workspaceId)
+    if (ownerCount <= 1) {
+      return c.json({ code: "FORBIDDEN", message: "Cannot demote the last owner" }, 403)
+    }
+  }
+
+  await db.update(member).set({ role: body.role }).where(eq(member.id, memberId)).run()
+  await syncMemberToLegacyWorkspaceMember(db, workspaceId, target.userId, body.role)
+  await writeMemberAudit(db, {
+    workspaceId,
+    actorId: actor.id,
+    action: "member.role_updated",
+    resourceId: memberId,
+    metadata: {
+      previousRole: target.role,
+      role: body.role,
+      userId: target.userId,
+    },
+  })
+
+  const rows = await listWorkspaceMembersWithUsers(db, workspaceId)
+  const updated = rows.find((entry) => entry.id === memberId)
+  return c.json(updated)
+})
+
+members.delete("/:memberId", requirePermission("users.remove"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const memberId = c.req.param("memberId")
+  if (!workspaceId || !memberId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and memberId are required" }, 400)
+  }
+
+  const actor = c.get("user")
+  const db = getDB()
+
+  await syncWorkspaceMemberships(db, workspaceId)
+
+  const target = await db
+    .select()
+    .from(member)
+    .where(and(eq(member.id, memberId), eq(member.organizationId, workspaceId)))
+    .get()
+
+  if (!target) {
+    return c.json({ code: "NOT_FOUND", message: "Member not found" }, 404)
+  }
+
+  if (target.role.split(",").includes("owner")) {
+    const ownerCount = await countOwners(db, workspaceId)
+    if (ownerCount <= 1) {
+      return c.json({ code: "FORBIDDEN", message: "Cannot remove the last owner" }, 403)
+    }
+  }
+
+  await db.delete(member).where(eq(member.id, memberId)).run()
+  await removeLegacyWorkspaceMember(db, workspaceId, target.userId)
+  await writeMemberAudit(db, {
+    workspaceId,
+    actorId: actor.id,
+    action: "member.removed",
+    resourceId: memberId,
+    metadata: {
+      userId: target.userId,
+      role: target.role,
+    },
+  })
+
+  return c.json(RemoveMemberResponse.parse({ success: true, memberId }))
+})
+
+async function countOwners(db: ReturnType<typeof getDB>, workspaceId: string) {
+  const rows = await db
+    .select({ id: member.id, role: member.role })
+    .from(member)
+    .where(eq(member.organizationId, workspaceId))
+    .all()
+
+  return rows.filter((row) => row.role.split(",").includes("owner")).length
+}
+
+async function writeMemberAudit(
+  db: ReturnType<typeof getDB>,
+  params: {
+    workspaceId: string
+    actorId: string
+    action: string
+    resourceId: string
+    metadata: Record<string, unknown>
+  },
+) {
+  await db
+    .insert(auditLog)
+    .values({
+      id: crypto.randomUUID(),
+      workspaceId: params.workspaceId,
+      actorId: params.actorId,
+      action: params.action,
+      resourceType: "member",
+      resourceId: params.resourceId,
+      metadata: JSON.stringify(params.metadata),
+      createdAt: new Date().toISOString(),
+    })
+    .run()
+}
+
+export const membersHandler = members

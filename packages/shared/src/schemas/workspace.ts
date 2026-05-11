@@ -38,6 +38,7 @@ export const WorkspaceSettingsSchema = z.object({
   trashRetentionDays: z.number().int().min(1).max(90).default(30),
   maxFileSizeBytes: z.number().int().positive().default(5 * 1024 * 1024 * 1024),
   storageQuotaBytes: z.number().int().positive().default(10 * 1024 * 1024 * 1024),
+  allowedMimeTypes: z.array(z.string()).default([]),
   brandingLogoUrl: z.string().url().nullable().default(null),
   brandingName: z.string().nullable().default(null),
 })

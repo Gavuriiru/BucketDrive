@@ -6,6 +6,8 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query"
 import type {
+  DashboardAuditItem,
+  DashboardOverview,
   FileObject,
   Folder,
   ShareDashboardItem,
@@ -13,6 +15,8 @@ import type {
   SharesListScope,
   Tag,
   TrashItem,
+  WorkspaceSettings,
+  WorkspaceMemberListItem,
   WorkspaceRole,
 } from "@bucketdrive/shared"
 
@@ -391,10 +395,154 @@ interface WorkspacesResponse {
   data: WorkspaceData[]
 }
 
+interface DashboardAuditResponse {
+  data: DashboardAuditItem[]
+  meta: PaginationMeta
+}
+
+interface MembersResponse {
+  data: WorkspaceMemberListItem[]
+  meta: PaginationMeta
+}
+
 export function useWorkspaces(): UseQueryResult<WorkspacesResponse, ApiRequestError> {
   return useQuery<WorkspacesResponse, ApiRequestError>({
     queryKey: ["workspaces"],
     queryFn: () => api.get<WorkspacesResponse>("/api/workspaces"),
+  })
+}
+
+export function useDashboardOverview(
+  workspaceId: string | null,
+): UseQueryResult<DashboardOverview, ApiRequestError> {
+  return useQuery<DashboardOverview, ApiRequestError>({
+    queryKey: ["dashboard-overview", workspaceId],
+    queryFn: () => api.get<DashboardOverview>(buildWorkspacePath(workspaceId, "/dashboard/overview")),
+    enabled: workspaceId !== null,
+  })
+}
+
+export interface UseDashboardAuditOptions {
+  actorId?: string
+  action?: string
+  resourceType?: string
+  from?: string
+  to?: string
+  page?: number
+  limit?: number
+}
+
+export function useDashboardAudit(
+  workspaceId: string | null,
+  options?: UseDashboardAuditOptions,
+): UseQueryResult<DashboardAuditResponse, ApiRequestError> {
+  return useQuery<DashboardAuditResponse, ApiRequestError>({
+    queryKey: ["dashboard-audit", workspaceId, options],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (options?.actorId) params.set("actorId", options.actorId)
+      if (options?.action) params.set("action", options.action)
+      if (options?.resourceType) params.set("resourceType", options.resourceType)
+      if (options?.from) params.set("from", options.from)
+      if (options?.to) params.set("to", options.to)
+      if (options?.page !== undefined) params.set("page", String(options.page))
+      if (options?.limit !== undefined) params.set("limit", String(options.limit))
+      const qs = params.toString()
+      return api.get<DashboardAuditResponse>(
+        `${buildWorkspacePath(workspaceId, "/dashboard/audit")}${qs ? `?${qs}` : ""}`,
+      )
+    },
+    enabled: workspaceId !== null,
+  })
+}
+
+export function useDashboardSettings(
+  workspaceId: string | null,
+): UseQueryResult<WorkspaceSettings, ApiRequestError> {
+  return useQuery<WorkspaceSettings, ApiRequestError>({
+    queryKey: ["dashboard-settings", workspaceId],
+    queryFn: () => api.get<WorkspaceSettings>(buildWorkspacePath(workspaceId, "/dashboard/settings")),
+    enabled: workspaceId !== null,
+  })
+}
+
+export function useUpdateDashboardSettings(
+  workspaceId: string | null,
+): UseMutationResult<WorkspaceSettings, ApiRequestError, WorkspaceSettings> {
+  const queryClient = useQueryClient()
+
+  return useMutation<WorkspaceSettings, ApiRequestError, WorkspaceSettings>({
+    mutationFn: (body) => api.patch<WorkspaceSettings>(buildWorkspacePath(workspaceId, "/dashboard/settings"), body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-settings", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+    },
+  })
+}
+
+export function useMembers(
+  workspaceId: string | null,
+): UseQueryResult<MembersResponse, ApiRequestError> {
+  return useQuery<MembersResponse, ApiRequestError>({
+    queryKey: ["members", workspaceId],
+    queryFn: () => api.get<MembersResponse>(buildWorkspacePath(workspaceId, "/members")),
+    enabled: workspaceId !== null,
+  })
+}
+
+export function useAddMember(
+  workspaceId: string | null,
+): UseMutationResult<
+  WorkspaceMemberListItem,
+  ApiRequestError,
+  { email: string; role: Exclude<WorkspaceRole, "owner"> }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    WorkspaceMemberListItem,
+    ApiRequestError,
+    { email: string; role: Exclude<WorkspaceRole, "owner"> }
+  >({
+    mutationFn: (body) => api.post<WorkspaceMemberListItem>(buildWorkspacePath(workspaceId, "/members"), body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
+  })
+}
+
+export function useUpdateMemberRole(
+  workspaceId: string | null,
+): UseMutationResult<
+  WorkspaceMemberListItem,
+  ApiRequestError,
+  { memberId: string; role: WorkspaceRole }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<WorkspaceMemberListItem, ApiRequestError, { memberId: string; role: WorkspaceRole }>({
+    mutationFn: ({ memberId, role }) =>
+      api.patch<WorkspaceMemberListItem>(buildWorkspacePath(workspaceId, `/members/${memberId}`), { role }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
+    },
+  })
+}
+
+export function useRemoveMember(
+  workspaceId: string | null,
+): UseMutationResult<{ success: true; memberId: string }, ApiRequestError, { memberId: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<{ success: true; memberId: string }, ApiRequestError, { memberId: string }>({
+    mutationFn: ({ memberId }) =>
+      api.delete<{ success: true; memberId: string }>(buildWorkspacePath(workspaceId, `/members/${memberId}`)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
   })
 }
 

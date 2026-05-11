@@ -29,8 +29,11 @@ export const Permission = z.enum([
   "users.read",
   "billing.read",
   "billing.manage",
+  "analytics.read",
   "audit.read",
   "audit.export",
+  "workspace.settings.read",
+  "workspace.settings.update",
   "workspace.delete",
   "workspace.transfer",
 ])

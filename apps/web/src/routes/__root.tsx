@@ -3,6 +3,10 @@ import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
 import { LoginPage } from "./login"
 import { DashboardPage } from "./app/dashboard"
+import { FilesPage } from "./app/files"
+import { MembersPage } from "./app/members"
+import { AuditPage } from "./app/audit"
+import { SettingsPage } from "./app/settings"
 import { ShareManagementPage } from "./app/shares"
 import { SharedPage } from "./app/shared"
 import { TrashPage } from "./app/trash"
@@ -61,6 +65,30 @@ const dashboardRoute = createRoute({
   component: DashboardPage,
 })
 
+const filesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard/files",
+  component: FilesPage,
+})
+
+const membersRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard/members",
+  component: MembersPage,
+})
+
+const auditRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard/audit",
+  component: AuditPage,
+})
+
+const settingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard/settings",
+  component: SettingsPage,
+})
+
 const sharedRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/shared",
@@ -88,7 +116,17 @@ const shareAccessRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   shareAccessRoute,
-  appRoute.addChildren([homeRoute, dashboardRoute, sharedRoute, shareManagementRoute, trashRoute]),
+  appRoute.addChildren([
+    homeRoute,
+    dashboardRoute,
+    filesRoute,
+    membersRoute,
+    auditRoute,
+    settingsRoute,
+    sharedRoute,
+    shareManagementRoute,
+    trashRoute,
+  ]),
 ])
 
 export const router = createRouter({

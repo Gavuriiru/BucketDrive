@@ -1,10 +1,8 @@
 import { Hono } from "hono"
-import { eq, and } from "drizzle-orm"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
 import { createStorageProvider } from "../../services/storage"
-import { workspaceMember } from "@bucketdrive/shared/db/schema"
 import {
   CreateShareRequest,
   ListSharesRequest,
@@ -17,6 +15,7 @@ import {
   type WorkspaceRole,
 } from "@bucketdrive/shared"
 import { SharesService, ShareError } from "./shares.service"
+import { getWorkspaceRoleForUser } from "../../lib/workspace-membership"
 
 interface SharesEnv {
   STORAGE: R2Bucket
@@ -42,19 +41,7 @@ shares.get("/", requirePermission("shares.read"), async (c) => {
 
   const user = c.get("user")
   const db = getDB()
-
-  const member = await db
-    .select({ role: workspaceMember.role })
-    .from(workspaceMember)
-    .where(
-      and(
-        eq(workspaceMember.workspaceId, workspaceId),
-        eq(workspaceMember.userId, user.id),
-      ),
-    )
-    .get()
-
-  const role = (member?.role ?? "viewer") as WorkspaceRole
+  const role: WorkspaceRole = (await getWorkspaceRoleForUser(db, workspaceId, user.id)) ?? "viewer"
   const request = ListSharesRequest.parse({
     scope:
       c.req.query("scope") ??

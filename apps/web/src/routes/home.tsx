@@ -11,11 +11,11 @@ export function HomePage() {
       </p>
       <div className="mt-4 flex gap-3">
         <Link
-          to="/dashboard"
+          to="/dashboard/files"
           className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90"
         >
           <Upload className="h-4 w-4" />
-          Go to Dashboard
+          Go to Files
         </Link>
       </div>
     </div>

@@ -29,7 +29,7 @@ verifiable result.
 | 16 | Command palette | Ctrl+K with search + commands | ⬜ |
 | 17 | Preview | Space to preview files inline | ⬜ |
 | 18 | Dark mode | Theme toggle, system detection | PARTIAL |
-| 19 | Dashboard | Admin analytics + settings | ⬜ |
+| 19 | Dashboard | Admin analytics + settings | PARTIAL |
 | 20 | Testing | Contracts, units, a11y, staging deploy | ⬜ |
 
 ---
@@ -952,6 +952,17 @@ git commit -m "feat(theme): dark/light mode toggle with system preference"
 ---
 
 ## Day 19 - Admin Dashboard
+
+> **Notes from implementation (2026-05-10):**
+> - Reframed `/dashboard` as the admin home and moved the explorer to `/dashboard/files`
+> - Added admin routes: `/dashboard/members`, `/dashboard/audit`, and `/dashboard/settings`
+> - Added shared contracts for dashboard and members plus `allowedMimeTypes` + `storageQuotaBytes` support in workspace settings payloads
+> - Added `dashboard` API module with overview metrics, 7-day storage trend, recent audit activity, and workspace settings read/update
+> - Added `members` API module with direct-add by existing email, role updates, removals, owner guards, and member audit events
+> - Introduced Better Auth membership unification helpers using `organization.id === workspace.id`, backfilling `organization/member` rows from `workspace/workspaceMember` when possible while keeping the legacy table synced
+> - Seed now creates Better Auth `user`, `organization`, and `member` records for the dev workspace fixtures
+> - Frontend admin pages, route guards, and sidebar gating are wired and `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` pass
+> - Remaining gap before marking this day fully DONE: dedicated contract/E2E coverage for the new admin endpoints and UI flows
 
 **Goal:** Workspace owners/admins see analytics and manage settings.
 

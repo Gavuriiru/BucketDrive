@@ -5,7 +5,9 @@ import { createAuth } from "./lib/auth"
 import { createD1DB } from "./lib/db"
 import { filesHandler } from "./modules/files/files.handler"
 import { foldersHandler } from "./modules/folders/folders.handler"
+import { membersHandler } from "./modules/members/members.handler"
 import { searchHandler } from "./modules/search/search.handler"
+import { dashboardHandler } from "./modules/dashboard/dashboard.handler"
 import { sharesHandler, publicSharesHandler } from "./modules/shares/shares.handler"
 import { tagsHandler } from "./modules/tags/tags.handler"
 import { trashHandler } from "./modules/trash/trash.handler"
@@ -50,7 +52,9 @@ app.get("/api/health", (c) => c.json({ status: "ok", timestamp: new Date().toISO
 
 app.route("/api/workspaces/:workspaceId/files", filesHandler)
 app.route("/api/workspaces/:workspaceId/folders", foldersHandler)
+app.route("/api/workspaces/:workspaceId/members", membersHandler)
 app.route("/api/workspaces/:workspaceId/search", searchHandler)
+app.route("/api/workspaces/:workspaceId/dashboard", dashboardHandler)
 app.route("/api/workspaces/:workspaceId/shares", sharesHandler)
 app.route("/api/workspaces/:workspaceId/tags", tagsHandler)
 app.route("/api/workspaces/:workspaceId/trash", trashHandler)

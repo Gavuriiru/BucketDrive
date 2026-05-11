@@ -25,6 +25,7 @@ import type {
   RestoreFolderResponse,
   TrashItem,
 } from "@bucketdrive/shared"
+import { getWorkspaceRoleForUser } from "../lib/workspace-membership"
 
 type DB = ReturnType<typeof getDB>
 type FileRow = InferSelectModel<typeof fileObject>
@@ -94,16 +95,7 @@ async function recordAudit(
 }
 
 export async function getWorkspaceRole(db: DB, workspaceId: string, userId: string) {
-  const { workspaceMember } = await import("@bucketdrive/shared/db/schema")
-  const member = await db
-    .select({ role: workspaceMember.role })
-    .from(workspaceMember)
-    .where(
-      and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, userId)),
-    )
-    .get()
-
-  return member?.role ?? null
+  return getWorkspaceRoleForUser(db, workspaceId, userId)
 }
 
 export class TrashService {

@@ -1,12 +1,14 @@
 import { createMiddleware } from "hono/factory"
 import { and, eq } from "drizzle-orm"
-import { fileObject, folder, workspaceMember } from "@bucketdrive/shared/db/schema"
+import { fileObject, folder } from "@bucketdrive/shared/db/schema"
 import { getDB } from "../lib/db"
 import { can, type Permission } from "@bucketdrive/shared"
 import type { WorkspaceRole } from "@bucketdrive/shared"
+import { getWorkspaceRoleForUser } from "../lib/workspace-membership"
 
 interface RbacVariables {
   user: { id: string; email: string; name: string }
+  workspaceRole?: WorkspaceRole
 }
 
 export const requirePermission = (permission: Permission) => {
@@ -19,25 +21,15 @@ export const requirePermission = (permission: Permission) => {
     }
 
     const db = getDB()
-    const member = await db
-      .select({ role: workspaceMember.role })
-      .from(workspaceMember)
-      .where(
-        and(
-          eq(workspaceMember.workspaceId, workspaceId),
-          eq(workspaceMember.userId, user.id),
-        ),
-      )
-      .get()
+    const role = await getWorkspaceRoleForUser(db, workspaceId, user.id)
 
-    if (!member) {
+    if (!role) {
       return c.json(
         { code: "WORKSPACE_ACCESS_DENIED", message: "Not a workspace member" },
         403,
       )
     }
 
-    const role = member.role as WorkspaceRole
     let resourceOwnerId: string | undefined
 
     if (permission === "files.delete" || permission === "files.restore") {
@@ -73,6 +65,7 @@ export const requirePermission = (permission: Permission) => {
       )
     }
 
+    c.set("workspaceRole", role)
     await next()
   })
 }

@@ -50,13 +50,42 @@ async function main() {
   const adminId = uuid()
   const editorId = uuid()
   const viewerId = uuid()
+  const now = new Date().toISOString()
+
+  const users = [
+    { id: ownerId, name: "Owner User", email: "owner@bucketdrive.dev" },
+    { id: adminId, name: "Admin User", email: "admin@bucketdrive.dev" },
+    { id: editorId, name: "Editor User", email: "editor@bucketdrive.dev" },
+    { id: viewerId, name: "Viewer User", email: "viewer@bucketdrive.dev" },
+  ]
+
+  for (const seededUser of users) {
+    db.insert(schema.user).values({
+      id: seededUser.id,
+      name: seededUser.name,
+      email: seededUser.email,
+      emailVerified: true,
+      image: null,
+      createdAt: now,
+      updatedAt: now,
+    }).run()
+  }
+
+  db.insert(schema.organization).values({
+    id: wsId,
+    name: "Development Workspace",
+    slug: "dev",
+    logo: null,
+    metadata: JSON.stringify({ workspaceId: wsId }),
+    createdAt: now,
+  }).run()
 
   db.insert(schema.workspaceMember).values({
     id: uuid(),
     workspaceId: wsId,
     userId: ownerId,
     role: "owner",
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   }).run()
 
   db.insert(schema.workspaceMember).values({
@@ -64,7 +93,7 @@ async function main() {
     workspaceId: wsId,
     userId: adminId,
     role: "admin",
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   }).run()
 
   db.insert(schema.workspaceMember).values({
@@ -72,7 +101,7 @@ async function main() {
     workspaceId: wsId,
     userId: editorId,
     role: "editor",
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   }).run()
 
   db.insert(schema.workspaceMember).values({
@@ -80,8 +109,23 @@ async function main() {
     workspaceId: wsId,
     userId: viewerId,
     role: "viewer",
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   }).run()
+
+  for (const seededMember of [
+    { userId: ownerId, role: "owner" },
+    { userId: adminId, role: "admin" },
+    { userId: editorId, role: "editor" },
+    { userId: viewerId, role: "viewer" },
+  ]) {
+    db.insert(schema.member).values({
+      id: uuid(),
+      organizationId: wsId,
+      userId: seededMember.userId,
+      role: seededMember.role,
+      createdAt: now,
+    }).run()
+  }
 
   db.insert(schema.bucket).values({
     id: bucketId,
