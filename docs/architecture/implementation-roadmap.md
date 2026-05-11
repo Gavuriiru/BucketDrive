@@ -27,7 +27,7 @@ verifiable result.
 | 14 | Search | FTS5 full-text with filters | ✅ `50e2e7b` |
 | 15 | Tags & favorites | Color-coded tags, star favorites | ✅ `50e2e7b` |
 | 16 | Command palette | Ctrl+K with search + commands | ✅ `fa94bd8` |
-| 17 | Preview | Space to preview files inline | ✅ |
+| 17 | Preview | Space to preview files inline | ✅ `9de8a5a` |
 | 18 | Dark mode | Theme toggle, system detection, persistence | ⬜ |
 | 19 | Admin dashboard | Analytics, members, audit, settings | PARTIAL `5f8ed5e` |
 | 20 | Testing foundation | Unit tests, type system, build health | PARTIAL |
