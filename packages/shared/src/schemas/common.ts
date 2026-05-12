@@ -78,5 +78,5 @@ export type ShareType = z.infer<typeof ShareType>
 export const ResourceType = z.enum(["file", "folder"])
 export type ResourceType = z.infer<typeof ResourceType>
 
-export const WorkspaceRole = z.enum(["owner", "admin", "editor", "viewer"])
+export const WorkspaceRole = z.enum(["owner", "admin", "manager", "editor", "viewer", "guest"])
 export type WorkspaceRole = z.infer<typeof WorkspaceRole>

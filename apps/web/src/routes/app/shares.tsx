@@ -30,7 +30,7 @@ export function ShareManagementPage() {
   const { data: workspacesData, isLoading: workspacesLoading } = useWorkspaces()
   const workspace = workspacesData?.data?.[0] ?? null
   const workspaceId = workspace?.id ?? null
-  const canManageAll = workspace?.role === "owner" || workspace?.role === "admin"
+  const canManageAll = workspace?.role === "owner" || workspace?.role === "admin" || workspace?.role === "manager"
   const query = useSearchStore((state) => state.shares.query)
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
 

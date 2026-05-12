@@ -5,7 +5,7 @@ import type { WorkspaceRole } from "@bucketdrive/shared"
 
 type DB = ReturnType<typeof getDB>
 
-const WORKSPACE_ROLES: readonly WorkspaceRole[] = ["owner", "admin", "editor", "viewer"]
+const WORKSPACE_ROLES: readonly WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer", "guest"]
 
 export function normalizeWorkspaceRole(role: string | null | undefined): WorkspaceRole {
   const firstRole = role?.split(",")[0]?.trim()

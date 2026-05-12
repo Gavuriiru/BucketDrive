@@ -35,7 +35,7 @@ verifiable result.
 | 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ✅ `61477e0` |
 | 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ✅ |
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ✅ |
-| 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ⬜ |
+| 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ✅ |
 | 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ⬜ |
 | 27 | Share polish | Analytics counters, branded public pages | ⬜ |
 | 28 | Notifications | In-app notification system + toast integration | ⬜ |
@@ -1360,9 +1360,18 @@ git commit -m "perf: list virtualization and bundle size audit"
 
 ---
 
-## Day 25 - RBAC v2 (Complete)
+## Day 25 - RBAC v2 DONE
 
-> **Gap vs docs:** `docs/backend/rbac.md` defines 6 roles (Owner, Admin, **Manager**, Editor, Viewer, **Guest**), billing/audit permissions, resource policies, and permission inheritance. Only 4 roles and basic permissions exist. **Incomplete.**
+> **Notes from implementation:**
+> - Fixed critical bug in `apps/api/src/lib/workspace-membership.ts`: `WORKSPACE_ROLES` only recognized 4 roles (`owner`, `admin`, `editor`, `viewer`), causing `manager` and `guest` to be downgraded to `viewer` at runtime. Added both missing roles.
+> - `manager` permissions: full file/folder/share CRUD + delete/restore, analytics/audit read, users read, workspace settings read. Denied: billing, users invite/remove/update_roles, workspace delete/transfer, workspace settings update.
+> - `guest` permissions: `files.read` and `folders.read` only — no shares, no write, no admin.
+> - Ownership override now excludes `guest` in addition to `viewer`; `manager` correctly benefits from ownership override.
+> - Added `canWithInheritance()` and `CanContext` to `can.ts`: `folders.read` on parent implies `folders.read` on children. Applies to breadcrumbs, tree navigation, and search.
+> - Exported `FilePolicy`, `FolderPolicy`, and their types from `packages/shared/src/rbac/index.ts` for broader use.
+> - Updated all hardcoded role checks in frontend (`dashboard.tsx`, `shares.tsx`, `navigation.ts`) and backend (`shares.service.ts`) to include `manager` alongside `owner`/`admin`.
+> - Expanded `can.test.ts` from 18 to 33 tests covering: `manager` full suite, `guest` isolation, ownership override for manager/guest, and permission inheritance scenarios.
+> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit` all pass.
 
 **Goal:** Full RBAC matching doc specification.
 

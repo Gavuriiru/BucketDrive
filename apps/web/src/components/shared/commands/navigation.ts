@@ -90,7 +90,7 @@ const navigationDefs: NavigationCommandDef[] = [
 ]
 
 function isAdminRole(role: string | undefined): boolean {
-  return role === "owner" || role === "admin"
+  return role === "owner" || role === "admin" || role === "manager"
 }
 
 export function getNavigationCommands(

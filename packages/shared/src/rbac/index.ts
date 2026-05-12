@@ -1,2 +1,5 @@
 export { Permission, ALL_PERMISSIONS, ROLE_PERMISSIONS } from "./permissions"
-export { can } from "./can"
+export { can, canWithInheritance } from "./can"
+export type { CanContext } from "./can"
+export { FilePolicy, FolderPolicy } from "./policies"
+export type { PolicyUser, PolicyResource } from "./policies"

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest"
-import { can } from "../can"
+import { can, canWithInheritance } from "../can"
 import type { WorkspaceRole } from "../../schemas/common"
 import type { Permission } from "../permissions"
 import { ALL_PERMISSIONS, ROLE_PERMISSIONS } from "../permissions"
 
 describe("can() — RBAC permission evaluation", () => {
-  const roles: WorkspaceRole[] = ["owner", "admin", "editor", "viewer"]
+  const roles: WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer", "guest"]
 
   describe("owner", () => {
     it("has all permissions", () => {
@@ -31,6 +31,73 @@ describe("can() — RBAC permission evaluation", () => {
     it("has at least these permissions", () => {
       for (const permission of adminAllowed) {
         expect(can("admin", permission)).toBe(true)
+      }
+    })
+  })
+
+  describe("manager", () => {
+    const managerAllowed = ROLE_PERMISSIONS.manager
+    const managerDenied: Permission[] = [
+      "billing.read",
+      "billing.manage",
+      "users.invite",
+      "users.remove",
+      "users.update_roles",
+      "workspace.settings.update",
+      "workspace.delete",
+      "workspace.transfer",
+    ]
+
+    it("can read, upload, rename, move, favorite, tag, share files", () => {
+      expect(can("manager", "files.read")).toBe(true)
+      expect(can("manager", "files.upload")).toBe(true)
+      expect(can("manager", "files.rename")).toBe(true)
+      expect(can("manager", "files.move")).toBe(true)
+      expect(can("manager", "files.copy")).toBe(true)
+      expect(can("manager", "files.favorite")).toBe(true)
+      expect(can("manager", "files.tag")).toBe(true)
+      expect(can("manager", "files.share")).toBe(true)
+    })
+
+    it("can create, rename, move, share folders", () => {
+      expect(can("manager", "folders.read")).toBe(true)
+      expect(can("manager", "folders.create")).toBe(true)
+      expect(can("manager", "folders.rename")).toBe(true)
+      expect(can("manager", "folders.move")).toBe(true)
+      expect(can("manager", "folders.share")).toBe(true)
+    })
+
+    it("can delete and restore files and folders", () => {
+      expect(can("manager", "files.delete")).toBe(true)
+      expect(can("manager", "files.restore")).toBe(true)
+      expect(can("manager", "folders.delete")).toBe(true)
+      expect(can("manager", "folders.restore")).toBe(true)
+    })
+
+    it("can manage shares", () => {
+      expect(can("manager", "shares.read")).toBe(true)
+      expect(can("manager", "shares.create")).toBe(true)
+      expect(can("manager", "shares.update")).toBe(true)
+      expect(can("manager", "shares.revoke")).toBe(true)
+    })
+
+    it("can read analytics, audit, users, and workspace settings", () => {
+      expect(can("manager", "analytics.read")).toBe(true)
+      expect(can("manager", "audit.read")).toBe(true)
+      expect(can("manager", "audit.export")).toBe(true)
+      expect(can("manager", "users.read")).toBe(true)
+      expect(can("manager", "workspace.settings.read")).toBe(true)
+    })
+
+    it("cannot manage billing, invite/remove users, or update workspace settings", () => {
+      for (const permission of managerDenied) {
+        expect(can("manager", permission)).toBe(false)
+      }
+    })
+
+    it("matches the defined manager permission set", () => {
+      for (const permission of managerAllowed) {
+        expect(can("manager", permission)).toBe(true)
       }
     })
   })
@@ -140,6 +207,50 @@ describe("can() — RBAC permission evaluation", () => {
     })
   })
 
+  describe("guest", () => {
+    it("can only read files and folders", () => {
+      expect(can("guest", "files.read")).toBe(true)
+      expect(can("guest", "folders.read")).toBe(true)
+    })
+
+    it("cannot access shares, write, or admin features", () => {
+      const deniedPermissions: Permission[] = [
+        "shares.read",
+        "files.upload",
+        "files.rename",
+        "files.move",
+        "files.copy",
+        "files.delete",
+        "files.restore",
+        "files.favorite",
+        "files.tag",
+        "files.share",
+        "folders.create",
+        "folders.rename",
+        "folders.move",
+        "folders.delete",
+        "folders.share",
+        "users.invite",
+        "users.remove",
+        "users.update_roles",
+        "users.read",
+        "billing.read",
+        "billing.manage",
+        "analytics.read",
+        "audit.read",
+        "audit.export",
+        "workspace.settings.read",
+        "workspace.settings.update",
+        "workspace.delete",
+        "workspace.transfer",
+      ]
+
+      for (const permission of deniedPermissions) {
+        expect(can("guest", permission)).toBe(false)
+      }
+    })
+  })
+
   describe("ownership override", () => {
     const userId = "user-123"
     const otherId = "user-456"
@@ -154,6 +265,16 @@ describe("can() — RBAC permission evaluation", () => {
 
     it("owner of a folder can delete it even if role doesn't allow (editor+folder.delete)", () => {
       expect(can("editor", "folders.delete", userId, userId)).toBe(true)
+    })
+
+    it("manager can use ownership override", () => {
+      expect(can("manager", "files.delete", userId, userId)).toBe(true)
+      expect(can("manager", "folders.delete", userId, userId)).toBe(true)
+    })
+
+    it("guest cannot use ownership override", () => {
+      expect(can("guest", "files.delete", userId, userId)).toBe(false)
+      expect(can("guest", "folders.delete", userId, userId)).toBe(false)
     })
 
     it("non-owner cannot use ownership override", () => {
@@ -175,6 +296,24 @@ describe("can() — RBAC permission evaluation", () => {
         expect(can("owner", permission)).toBe(true)
         expect(can("owner", permission, userId, userId)).toBe(true)
       }
+    })
+  })
+
+  describe("permission inheritance", () => {
+    it("grants folders.read on children when parent access exists and role has folders.read", () => {
+      expect(canWithInheritance("viewer", "folders.read", { hasParentReadAccess: true })).toBe(true)
+      expect(canWithInheritance("editor", "folders.read", { hasParentReadAccess: true })).toBe(true)
+    })
+
+    it("falls back to base can() when parent access is absent or context missing", () => {
+      expect(canWithInheritance("viewer", "folders.read", { hasParentReadAccess: false })).toBe(true)
+      expect(canWithInheritance("viewer", "folders.read")).toBe(true)
+      expect(canWithInheritance("viewer", "files.upload")).toBe(false)
+    })
+
+    it("does not inherit non-read permissions via parent access", () => {
+      expect(canWithInheritance("viewer", "folders.create", { hasParentReadAccess: true })).toBe(false)
+      expect(canWithInheritance("editor", "folders.delete", { hasParentReadAccess: true })).toBe(false)
     })
   })
 

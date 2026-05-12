@@ -11,7 +11,7 @@ export function DashboardPage() {
   const workspace = workspacesData?.data?.[0] ?? null
   const workspaceId = workspace?.id ?? null
   const role = workspace?.role ?? null
-  const isAdmin = role === "owner" || role === "admin"
+  const isAdmin = role === "owner" || role === "admin" || role === "manager"
 
   const overviewQuery = useDashboardOverview(workspaceId)
 

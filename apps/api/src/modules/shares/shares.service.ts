@@ -168,7 +168,7 @@ export class SharesService {
 
   async listShares(params: ListSharesParams) {
     const db = getDB()
-    const canManageAll = params.role === "admin" || params.role === "owner"
+    const canManageAll = params.role === "admin" || params.role === "owner" || params.role === "manager"
     const effectiveScope =
       params.scope === "workspace" && !canManageAll ? "mine" : params.scope
 
