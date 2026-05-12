@@ -8,8 +8,8 @@ import {
   useRevokeInvitation,
   useTransferOwnership,
   useUpdateMemberRole,
-  useWorkspaces,
-} from "@/lib/api"
+   } from "@/lib/api"
+import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import type { WorkspaceRole } from "@bucketdrive/shared"
 
 const editableRoles: WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer"]
@@ -18,9 +18,7 @@ const inviteRoles: Array<Exclude<WorkspaceRole, "owner">> = ["admin", "manager",
 type Tab = "members" | "invitations"
 
 export function MembersPage() {
-  const { data: workspacesData, isLoading: workspacesLoading } = useWorkspaces()
-  const workspace = workspacesData?.data?.[0] ?? null
-  const workspaceId = workspace?.id ?? null
+  const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const currentUserRole = workspace?.role ?? "viewer"
   const isOwner = currentUserRole === "owner"
 

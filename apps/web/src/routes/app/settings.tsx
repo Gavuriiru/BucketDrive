@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { useEffect, useState, type ReactNode } from "react"
-import { useDashboardSettings, useUpdateDashboardSettings, useWorkspaces } from "@/lib/api"
+import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
+import { useDashboardSettings, useUpdateDashboardSettings  } from "@/lib/api"
 
 export function SettingsPage() {
-  const { data: workspacesData, isLoading: workspacesLoading } = useWorkspaces()
-  const workspace = workspacesData?.data?.[0] ?? null
-  const workspaceId = workspace?.id ?? null
+  const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const settingsQuery = useDashboardSettings(workspaceId)
   const updateSettings = useUpdateDashboardSettings(workspaceId)
 

@@ -2,15 +2,13 @@
 import { useEffect } from "react"
 import { Link } from "@tanstack/react-router"
 import { BarChart3, Files, FolderTree, HardDrive, Link2, Users } from "lucide-react"
-import { useDashboardOverview, useWorkspaces } from "@/lib/api"
+import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
+import { useDashboardOverview  } from "@/lib/api"
 
 const numberFormatter = new Intl.NumberFormat("en-US")
 
 export function DashboardPage() {
-  const { data: workspacesData, isLoading: workspacesLoading } = useWorkspaces()
-  const workspace = workspacesData?.data?.[0] ?? null
-  const workspaceId = workspace?.id ?? null
-  const role = workspace?.role ?? null
+  const { workspace, workspaceId, role, isLoading: workspacesLoading } = useCurrentWorkspace()
   const isAdmin = role === "owner" || role === "admin" || role === "manager"
 
   const overviewQuery = useDashboardOverview(workspaceId)

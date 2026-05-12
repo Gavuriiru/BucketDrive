@@ -8,6 +8,7 @@ export const workspace = sqliteTable("workspace", {
   ownerId: text("owner_id").notNull(),
   storageQuotaBytes: integer("storage_quota_bytes").notNull().default(10 * 1024 * 1024 * 1024),
   isDeleted: integer("is_deleted", { mode: "boolean" }).notNull().default(false),
+  isPlatformDefault: integer("is_platform_default", { mode: "boolean" }).notNull().default(false),
   deletedAt: text("deleted_at"),
   createdAt: text("created_at")
     .notNull()
@@ -118,10 +119,26 @@ export const workspaceInvitation = sqliteTable("workspace_invitation", {
   email: text("email").notNull(),
   token: text("token").notNull().unique(),
   role: text("role").notNull().default("viewer"),
+  canCreateWorkspaces: integer("can_create_workspaces", { mode: "boolean" }).notNull().default(false),
   invitedBy: text("invited_by").notNull(),
   status: text("status").notNull().default("pending"),
   expiresAt: text("expires_at").notNull(),
   acceptedAt: text("accepted_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+})
+
+export const platformSettings = sqliteTable("platform_settings", {
+  id: text("id").primaryKey(),
+  defaultWorkspaceId: text("default_workspace_id")
+    .references(() => workspace.id, { onDelete: "set null" }),
+  allowUserWorkspaceCreation: integer("allow_user_workspace_creation", { mode: "boolean" }).notNull().default(false),
+  enablePublicSignup: integer("enable_public_signup", { mode: "boolean" }).notNull().default(true),
+  platformName: text("platform_name").notNull().default("BucketDrive"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

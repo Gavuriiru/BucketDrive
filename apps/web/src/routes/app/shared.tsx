@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { Share2, Download } from "lucide-react"
-import { useWorkspaces, useShares, useDownloadUrl } from "@/lib/api"
+import { } from "@/hooks/use-current-workspace"
+import { useWorkspaces, useShares, useDownloadUrl  } from "@/lib/api"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
 import type { ShareDashboardItem } from "@bucketdrive/shared"

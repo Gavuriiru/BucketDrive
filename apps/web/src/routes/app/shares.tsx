@@ -17,9 +17,9 @@ import {
   useDeleteShare,
   useShares,
   useUpdateShare,
-  useWorkspaces,
-  type WorkspaceData,
-} from "@/lib/api"
+    type WorkspaceData,
+ } from "@/lib/api"
+import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
 import type { ShareDashboardItem } from "@bucketdrive/shared"
@@ -27,9 +27,7 @@ import type { ShareDashboardItem } from "@bucketdrive/shared"
 type ShareTab = "mine" | "workspace"
 
 export function ShareManagementPage() {
-  const { data: workspacesData, isLoading: workspacesLoading } = useWorkspaces()
-  const workspace = workspacesData?.data?.[0] ?? null
-  const workspaceId = workspace?.id ?? null
+  const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const canManageAll = workspace?.role === "owner" || workspace?.role === "admin" || workspace?.role === "manager"
   const query = useSearchStore((state) => state.shares.query)
   const debouncedQuery = useDebouncedValue(query.trim(), 300)

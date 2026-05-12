@@ -12,7 +12,8 @@ import {
   useToggleFavorite,
   useBatchUpload,
   type BreadcrumbItem,
-} from "@/lib/api"
+ } from "@/lib/api"
+import { } from "@/hooks/use-current-workspace"
 import { useUndoableMutations } from "@/hooks/use-undoable-mutations"
 import { getTagColorClasses } from "@/lib/tag-colors"
 import { TagPickerDialog } from "@/components/features/tag-picker-dialog"

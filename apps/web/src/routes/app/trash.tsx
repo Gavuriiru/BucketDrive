@@ -7,18 +7,16 @@ import {
   useRestoreFile,
   useRestoreFolder,
   useTrash,
-  useWorkspaces,
-  type TrashItem,
-} from "@/lib/api"
+    type TrashItem,
+ } from "@/lib/api"
+import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
 
 type TrashSort = "deleted_at" | "name" | "location" | "size"
 
 export function TrashPage() {
-  const { data: workspacesData, isLoading: workspacesLoading } = useWorkspaces()
-  const workspace = workspacesData?.data?.[0] ?? null
-  const workspaceId = workspace?.id ?? null
+  const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
 
   const [sort, setSort] = useState<TrashSort>("deleted_at")
   const [order, setOrder] = useState<"asc" | "desc">("desc")

@@ -1372,7 +1372,23 @@ export function useNotifications(
   },
   ApiRequestError
 > {
-  return useQuery({
+  return useQuery<
+    {
+      data: Array<{
+        id: string
+        userId: string
+        workspaceId: string | null
+        type: string
+        title: string
+        message: string
+        data?: string | null
+        isRead: boolean
+        createdAt: string
+      }>
+      meta: PaginationMeta
+    },
+    ApiRequestError
+  >({
     queryKey: ["notifications", page, limit],
     queryFn: () => {
       const params = new URLSearchParams()
@@ -1398,7 +1414,7 @@ export function useNotifications(
 }
 
 export function useUnreadCount(): UseQueryResult<{ count: number }, ApiRequestError> {
-  return useQuery({
+  return useQuery<{ count: number }, ApiRequestError>({
     queryKey: ["notifications", "unread-count"],
     queryFn: () => api.get<{ count: number }>("/api/notifications/unread-count"),
     refetchInterval: 30_000,
@@ -1424,11 +1440,137 @@ export function useMarkRead(): UseMutationResult<
 export function useMarkAllRead(): UseMutationResult<{ success: true; count: number }, ApiRequestError, void> {
   const queryClient = useQueryClient()
 
-  return useMutation<{ success: true; count: number }, ApiRequestError, void>({
+  return useMutation<{ success: true; count: number }, ApiRequestError>({
     mutationFn: () => api.post<{ success: true; count: number }>("/api/notifications/read-all"),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["notifications"] })
       void queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] })
+    },
+  })
+}
+
+// Platform hooks
+
+interface PlatformSettingsData {
+  platformName: string
+  defaultWorkspaceId: string | null
+  allowUserWorkspaceCreation: boolean
+  enablePublicSignup: boolean
+}
+
+export function usePlatformMe(): UseQueryResult<
+  { id: string; email: string; name: string; isPlatformAdmin: boolean; canCreateWorkspaces: boolean },
+  ApiRequestError
+> {
+  return useQuery<
+    { id: string; email: string; name: string; isPlatformAdmin: boolean; canCreateWorkspaces: boolean },
+    ApiRequestError
+  >({
+    queryKey: ["platform-me"],
+    queryFn: () => api.get<{ id: string; email: string; name: string; isPlatformAdmin: boolean; canCreateWorkspaces: boolean }>("/api/platform/me"),
+  })
+}
+
+export function usePlatformSettings(): UseQueryResult<PlatformSettingsData, ApiRequestError> {
+  return useQuery<PlatformSettingsData, ApiRequestError>({
+    queryKey: ["platform-settings"],
+    queryFn: () => api.get<PlatformSettingsData>("/api/platform/settings"),
+  })
+}
+
+export function useUpdatePlatformSettings(): UseMutationResult<
+  { success: true; settings: PlatformSettingsData },
+  ApiRequestError,
+  Partial<PlatformSettingsData>
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body) => api.patch<{ success: true; settings: PlatformSettingsData }>("/api/platform/settings", body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["platform-settings"] })
+    },
+  })
+}
+
+export function useJoinPlatform(): UseMutationResult<
+  { success: true; workspaceId: string; role: string },
+  ApiRequestError,
+  void
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post<{ success: true; workspaceId: string; role: string }>("/api/platform/join"),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+    },
+  })
+}
+
+export function useCreateWorkspace(): UseMutationResult<
+  { id: string; name: string; slug: string; ownerId: string; storageQuotaBytes: number; createdAt: string; updatedAt: string },
+  ApiRequestError,
+  { name: string; slug?: string }
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body) =>
+      api.post<{
+        id: string
+        name: string
+        slug: string
+        ownerId: string
+        storageQuotaBytes: number
+        createdAt: string
+        updatedAt: string
+      }>("/api/workspaces", body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+    },
+  })
+}
+
+interface PlatformInvitationData {
+  id: string
+  email: string
+  role: string
+  canCreateWorkspaces: boolean
+  status: string
+  expiresAt: string
+  createdAt: string
+}
+
+export function usePlatformInvitations(): UseQueryResult<{ data: PlatformInvitationData[] }, ApiRequestError> {
+  return useQuery<{ data: PlatformInvitationData[] }, ApiRequestError>({
+    queryKey: ["platform-invitations"],
+    queryFn: () => api.get<{ data: PlatformInvitationData[] }>("/api/platform/invitations"),
+  })
+}
+
+export function useCreatePlatformInvitation(): UseMutationResult<
+  PlatformInvitationData & { inviteLink: string },
+  ApiRequestError,
+  { email: string; role: string; canCreateWorkspaces: boolean }
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body) => api.post<PlatformInvitationData & { inviteLink: string }>("/api/platform/invitations", body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["platform-invitations"] })
+    },
+  })
+}
+
+export function useAcceptPlatformInvitation(): UseMutationResult<
+  { success: true; workspaceId: string; role: string },
+  ApiRequestError,
+  string
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (token) =>
+      api.post<{ success: true; workspaceId: string; role: string }>(`/api/platform/invitations/${token}/accept`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
     },
   })
 }

@@ -1,28 +1,24 @@
-import initSqlJs from "sql.js"
-import { drizzle } from "drizzle-orm/sql-js"
+import Database from "better-sqlite3"
+import { drizzle } from "drizzle-orm/better-sqlite3"
 import { eq } from "drizzle-orm"
 import * as schema from "@bucketdrive/shared/db/schema"
 import { v4 as uuid } from "uuid"
-import { readFileSync, writeFileSync, existsSync } from "fs"
+import { existsSync } from "fs"
 import { resolve } from "path"
 import { createHash, randomBytes } from "crypto"
 
 const DB_PATH = resolve(__dirname, "../apps/api/.db/local.sqlite")
 
-async function main() {
+function main() {
   console.log("Seeding database...")
-
-  const SQL = await initSqlJs()
 
   if (!existsSync(DB_PATH)) {
     console.error("Database file not found. Run pnpm db:migrate:dev first.")
     process.exit(1)
   }
 
-  const dbBuffer = readFileSync(DB_PATH)
-  const sqlite = new SQL.Database(dbBuffer)
-
-  sqlite.run("PRAGMA foreign_keys = ON")
+  const sqlite = new Database(DB_PATH)
+  sqlite.pragma("foreign_keys = ON")
 
   const db = drizzle(sqlite, { schema })
 
@@ -36,6 +32,7 @@ async function main() {
     slug: "dev",
     ownerId,
     storageQuotaBytes: 10 * 1024 * 1024 * 1024,
+    isPlatformDefault: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }).run()
@@ -52,6 +49,16 @@ async function main() {
   const viewerId = uuid()
   const now = new Date().toISOString()
 
+  db.insert(schema.platformSettings).values({
+    id: uuid(),
+    defaultWorkspaceId: wsId,
+    allowUserWorkspaceCreation: false,
+    enablePublicSignup: true,
+    platformName: "BucketDrive",
+    createdAt: now,
+    updatedAt: now,
+  }).run()
+
   const users = [
     { id: ownerId, name: "Owner User", email: "owner@bucketdrive.dev" },
     { id: adminId, name: "Admin User", email: "admin@bucketdrive.dev" },
@@ -60,12 +67,15 @@ async function main() {
   ]
 
   for (const seededUser of users) {
+    const isOwner = seededUser.id === ownerId
     db.insert(schema.user).values({
       id: seededUser.id,
       name: seededUser.name,
       email: seededUser.email,
       emailVerified: true,
       image: null,
+      isPlatformAdmin: isOwner,
+      canCreateWorkspaces: isOwner,
       createdAt: now,
       updatedAt: now,
     }).run()
@@ -268,9 +278,6 @@ async function main() {
     console.log(`  External share ID: ${extShareId} (password: ${externalPassword})`)
   }
 
-  const data = sqlite.export()
-  writeFileSync(DB_PATH, Buffer.from(data))
-
   const inviteToken = uuid()
   const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
@@ -280,6 +287,7 @@ async function main() {
     email: "pending@bucketdrive.dev",
     token: inviteToken,
     role: "editor",
+    canCreateWorkspaces: false,
     invitedBy: ownerId,
     status: "pending",
     expiresAt: inviteExpiresAt,
@@ -299,4 +307,4 @@ async function main() {
   sqlite.close()
 }
 
-main().catch(console.error)
+main()

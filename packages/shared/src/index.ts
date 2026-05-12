@@ -16,6 +16,7 @@ export * from "./contracts/dashboard"
 export * from "./contracts/members"
 export * from "./contracts/invitations"
 export * from "./contracts/notifications"
+export * from "./contracts/platform"
 export * as ShareContracts from "./contracts/shares"
 export * as SearchContracts from "./contracts/search"
 
