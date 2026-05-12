@@ -11,6 +11,7 @@ import { searchHandler } from "./modules/search/search.handler"
 import { dashboardHandler } from "./modules/dashboard/dashboard.handler"
 import { sharesHandler, publicSharesHandler } from "./modules/shares/shares.handler"
 import { tagsHandler } from "./modules/tags/tags.handler"
+import { notificationsHandler } from "./modules/notifications/notifications.handler"
 import { trashHandler } from "./modules/trash/trash.handler"
 import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 
@@ -64,6 +65,7 @@ app.route("/api/workspaces/:workspaceId/dashboard", dashboardHandler)
 app.route("/api/workspaces/:workspaceId/shares", sharesHandler)
 app.route("/api/workspaces/:workspaceId/tags", tagsHandler)
 app.route("/api/workspaces/:workspaceId/trash", trashHandler)
+app.route("/api/notifications", notificationsHandler)
 app.route("/api/shares", publicSharesHandler)
 app.route("/api/workspaces", workspacesHandler)
 

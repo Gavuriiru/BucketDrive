@@ -38,7 +38,7 @@ verifiable result.
 | 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ✅ |
 | 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ✅ |
 | 27 | Share polish | Analytics counters, branded public pages | ✅ `4639d9a` |
-| 28 | Notifications | In-app notification system + toast integration | ⬜ |
+| 28 | Notifications | In-app notification system + toast integration | ✅ |
 | 29 | Thumbnails & processing | Async preview generation via workers | ⬜ |
 | 30 | Contract tests | API contract validation against test D1 | ⬜ |
 | 31 | E2E & a11y | Playwright journeys, axe-core compliance | ⬜ |
@@ -1559,9 +1559,19 @@ git commit -m "feat(shares): access/download analytics and branded public pages"
 
 ---
 
-## Day 28 - Notifications System
+## Day 28 - Notifications System DONE
 
-> **Gap vs docs:** `docs/database/data-model.md` defines `Notification` entity. `docs/features/file-sharing.md` mentions notifications for locked shares. `docs/features/workspace-management.md` mentions invitation emails. **Not implemented.**
+> **Notes from implementation:**
+> - Updated `notification` schema to add `workspaceId` (nullable FK), `data` (JSON string for context), and generated migration `0006_talented_clea.sql`
+> - Created `NotificationsService` with `createNotification`, `listNotifications`, `getUnreadCount`, `markAsRead`, `markAllAsRead`
+> - Created `notifications.handler.ts` mounted at `/api/notifications` with endpoints: `GET /`, `GET /unread-count`, `PATCH /:id/read`, `POST /read-all`
+> - Emitted notifications from existing events: `share.locked` (creator notified on 10th failed attempt), `member.invited` (existing user notified), `member.joined` (inviter notified on accept), `ownership.transferred` (new owner notified)
+> - Frontend: `useNotifications` (polling every 30s), `useUnreadCount`, `useMarkRead`, `useMarkAllRead` hooks in `lib/api.ts`
+> - `NotificationBell` component with unread badge count, dropdown panel showing 20 newest notifications, time-ago formatting, per-notification mark-read, "Mark all read" action
+> - Clicking a notification navigates to relevant context (`/dashboard/shares`, `/dashboard/members`, `/dashboard`) and marks it as read
+> - Integrated into topbar between theme toggle and user avatar
+> - No WebSocket/SSE — short-polling every 30s keeps implementation simple and infra-free
+> - Validation: `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** In-app notification system for workspace events.
 

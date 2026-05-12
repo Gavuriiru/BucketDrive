@@ -11,6 +11,7 @@ import {
   workspaceSettings,
 } from "@bucketdrive/shared/db/schema"
 import type { StorageProvider } from "../../services/storage"
+import { NotificationsService } from "../notifications/notifications.service"
 import type {
   ShareDashboardItem,
   ShareLink,
@@ -532,6 +533,16 @@ export class SharesService {
               reason: "too_many_failed_password_attempts",
             },
           })
+
+          const notifications = new NotificationsService()
+          await notifications.createNotification({
+            userId: share.createdBy,
+            workspaceId: share.workspaceId,
+            type: "share.locked",
+            title: "Share link locked",
+            message: "One of your password-protected share links has been temporarily locked due to too many failed access attempts.",
+            data: { shareId, resourceType: share.resourceType, resourceId: share.resourceId },
+          })
         }
         throw new ShareError("INVALID_PASSWORD", "Invalid password")
       }
@@ -810,6 +821,16 @@ export class SharesService {
             metadata: {
               reason: "too_many_failed_password_attempts",
             },
+          })
+
+          const notifications = new NotificationsService()
+          await notifications.createNotification({
+            userId: share.createdBy,
+            workspaceId: share.workspaceId,
+            type: "share.locked",
+            title: "Share link locked",
+            message: "One of your password-protected share links has been temporarily locked due to too many failed access attempts.",
+            data: { shareId, resourceType: share.resourceType, resourceId: share.resourceId },
           })
         }
         throw new ShareError("INVALID_PASSWORD", "Invalid password")

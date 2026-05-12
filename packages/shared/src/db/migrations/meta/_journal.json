@@ -43,6 +43,13 @@
       "when": 1778580416682,
       "tag": "0005_mature_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1778616224364,
+      "tag": "0006_talented_clea",
+      "breakpoints": true
     }
   ]
 }

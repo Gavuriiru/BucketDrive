@@ -57,9 +57,11 @@ export const uploadPart = sqliteTable("upload_part", {
 export const notification = sqliteTable("notification", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
+  workspaceId: text("workspace_id").references(() => workspace.id),
   type: text("type").notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),
+  data: text("data"),
   isRead: integer("is_read", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at")
     .notNull()

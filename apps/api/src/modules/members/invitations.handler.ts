@@ -19,6 +19,7 @@ import {
   syncWorkspaceMemberships,
 } from "../../lib/workspace-membership"
 import { auditLog } from "@bucketdrive/shared/db/schema"
+import { NotificationsService } from "../notifications/notifications.service"
 
 interface InvitationsEnv {
   DB: D1Database
@@ -356,6 +357,18 @@ publicInvitations.post("/:token/accept", authMiddleware, async (c) => {
     action: "member.joined",
     resourceId: newMember.id,
     metadata: { email: user.email, role: invite.role, invitationId: invite.id },
+  })
+
+  // Notify inviter that their invitation was accepted
+  const notifications = new NotificationsService()
+  const ws = await db.select({ name: workspace.name }).from(workspace).where(eq(workspace.id, workspaceId)).get()
+  await notifications.createNotification({
+    userId: invite.invitedBy,
+    workspaceId,
+    type: "member.joined",
+    title: "Invitation accepted",
+    message: `${user.name} (${user.email}) has accepted your invitation to join ${ws?.name ?? "the workspace"}.`,
+    data: { invitationId: invite.id, memberId: newMember.id, workspaceId },
   })
 
   return c.json(

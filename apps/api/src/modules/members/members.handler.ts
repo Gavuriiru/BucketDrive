@@ -10,6 +10,7 @@ import { auditLog, member, user, workspaceInvitation, workspace } from "@bucketd
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
+import { NotificationsService } from "../notifications/notifications.service"
 import {
   ensureOrganizationForWorkspace,
   listWorkspaceMembersWithUsers,
@@ -119,6 +120,12 @@ members.post("/", requirePermission("users.invite"), async (c) => {
     updatedAt: now.toISOString(),
   }
 
+  const ws = await db
+    .select({ name: workspace.name, slug: workspace.slug })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId))
+    .get()
+
   await db.insert(workspaceInvitation).values(createdInvitation).run()
   await writeMemberAudit(db, {
     workspaceId,
@@ -132,11 +139,18 @@ members.post("/", requirePermission("users.invite"), async (c) => {
     },
   })
 
-  const ws = await db
-    .select({ name: workspace.name, slug: workspace.slug })
-    .from(workspace)
-    .where(eq(workspace.id, workspaceId))
-    .get()
+  // Notify invited user if they already have an account
+  if (targetUser) {
+    const notifications = new NotificationsService()
+    await notifications.createNotification({
+      userId: targetUser.id,
+      workspaceId,
+      type: "member.invited",
+      title: "Workspace invitation",
+      message: `You have been invited to join ${ws?.name ?? "a workspace"} as ${body.role}.`,
+      data: { invitationId: createdInvitation.id, workspaceId, role: body.role },
+    })
+  }
 
   const baseUrl = appUrl?.replace(/\/$/, "") ?? ""
   const inviteLink = `${baseUrl}/join?token=${token}`

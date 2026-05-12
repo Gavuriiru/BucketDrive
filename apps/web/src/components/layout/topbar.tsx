@@ -7,6 +7,7 @@ import { getSearchContextFromPath } from "@/lib/search-context"
 import { useAppStore } from "@/stores/app-store"
 import { useSearchStore } from "@/stores/search-store"
 import { useCommandPaletteStore } from "@/stores/command-palette-store"
+import { NotificationBell } from "@/components/features/notification-bell"
 
 export function Topbar() {
   const { data: session, isLoading } = useSession()
@@ -98,6 +99,8 @@ export function Topbar() {
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
+
+        <NotificationBell />
 
         {isLoading ? (
           <div className="h-8 w-8 animate-pulse rounded-full bg-surface-hover" />

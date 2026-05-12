@@ -8,6 +8,7 @@ import { authMiddleware } from "../../middleware/auth"
 import { getDB } from "../../lib/db"
 import { listWorkspaceMembershipsForUser, normalizeWorkspaceRole, syncWorkspaceMemberships } from "../../lib/workspace-membership"
 import { workspace, member, workspaceMember, auditLog } from "@bucketdrive/shared/db/schema"
+import { NotificationsService } from "../notifications/notifications.service"
 
 interface WorkspacesEnv {
   DB: D1Database
@@ -124,6 +125,17 @@ workspaces.post("/:workspaceId/transfer-ownership", async (c) => {
       createdAt: now,
     })
     .run()
+
+  // Notify new owner
+  const notifications = new NotificationsService()
+  await notifications.createNotification({
+    userId: body.newOwnerId,
+    workspaceId,
+    type: "ownership.transferred",
+    title: "Ownership transferred",
+    message: `You are now the owner of ${ws.name}.`,
+    data: { workspaceId, previousOwnerId: actor.id },
+  })
 
   return c.json(
     OwnershipTransferResponse.parse({

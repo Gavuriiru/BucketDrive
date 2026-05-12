@@ -1352,6 +1352,87 @@ export function useTransferOwnership(
   })
 }
 
+export function useNotifications(
+  page = 1,
+  limit = 50,
+): UseQueryResult<
+  {
+    data: Array<{
+      id: string
+      userId: string
+      workspaceId: string | null
+      type: string
+      title: string
+      message: string
+      data?: string | null
+      isRead: boolean
+      createdAt: string
+    }>
+    meta: PaginationMeta
+  },
+  ApiRequestError
+> {
+  return useQuery({
+    queryKey: ["notifications", page, limit],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      params.set("page", String(page))
+      params.set("limit", String(limit))
+      return api.get<{
+        data: Array<{
+          id: string
+          userId: string
+          workspaceId: string | null
+          type: string
+          title: string
+          message: string
+          data?: string | null
+          isRead: boolean
+          createdAt: string
+        }>
+        meta: PaginationMeta
+      }>(`/api/notifications?${params.toString()}`)
+    },
+    refetchInterval: 30_000,
+  })
+}
+
+export function useUnreadCount(): UseQueryResult<{ count: number }, ApiRequestError> {
+  return useQuery({
+    queryKey: ["notifications", "unread-count"],
+    queryFn: () => api.get<{ count: number }>("/api/notifications/unread-count"),
+    refetchInterval: 30_000,
+  })
+}
+
+export function useMarkRead(): UseMutationResult<
+  { success: true; id: string },
+  ApiRequestError,
+  { id: string }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<{ success: true; id: string }, ApiRequestError, { id: string }>({
+    mutationFn: ({ id }) => api.patch<{ success: true; id: string }>(`/api/notifications/${id}/read`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+      void queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] })
+    },
+  })
+}
+
+export function useMarkAllRead(): UseMutationResult<{ success: true; count: number }, ApiRequestError, void> {
+  const queryClient = useQueryClient()
+
+  return useMutation<{ success: true; count: number }, ApiRequestError, void>({
+    mutationFn: () => api.post<{ success: true; count: number }>("/api/notifications/read-all"),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+      void queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] })
+    },
+  })
+}
+
 export type {
   FileObject,
   Folder,
