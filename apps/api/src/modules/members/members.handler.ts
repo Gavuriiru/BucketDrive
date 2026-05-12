@@ -6,7 +6,7 @@ import {
   RemoveMemberResponse,
   UpdateMemberRoleRequest,
 } from "@bucketdrive/shared"
-import { auditLog, member, user } from "@bucketdrive/shared/db/schema"
+import { auditLog, member, user, workspaceInvitation, workspace } from "@bucketdrive/shared/db/schema"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
@@ -20,6 +20,7 @@ import {
 
 interface MembersEnv {
   DB: D1Database
+  APP_URL?: string
 }
 
 interface MembersVariables {
@@ -61,55 +62,101 @@ members.post("/", requirePermission("users.invite"), async (c) => {
   const actor = c.get("user")
   const db = getDB()
   const body = AddMemberRequest.parse(await c.req.json())
+  const appUrl = c.env.APP_URL
 
   await Promise.all([ensureOrganizationForWorkspace(db, workspaceId), syncWorkspaceMemberships(db, workspaceId)])
 
-  const invitedUser = await db
-    .select()
+  // Check if already a member
+  const targetUser = await db
+    .select({ id: user.id })
     .from(user)
     .where(eq(user.email, body.email.toLowerCase()))
     .get()
 
-  if (!invitedUser) {
-    return c.json({ code: "NOT_FOUND", message: "User not found for this email" }, 404)
+  if (targetUser) {
+    const alreadyMember = await db
+      .select({ id: member.id })
+      .from(member)
+      .where(and(eq(member.organizationId, workspaceId), eq(member.userId, targetUser.id)))
+      .get()
+    if (alreadyMember) {
+      return c.json({ code: "USER_ALREADY_MEMBER", message: "User is already a member" }, 409)
+    }
   }
 
-  const existing = await db
-    .select({ id: member.id })
-    .from(member)
-    .where(and(eq(member.organizationId, workspaceId), eq(member.userId, invitedUser.id)))
+  // Check for existing pending invitation
+  const existingInvite = await db
+    .select({ id: workspaceInvitation.id })
+    .from(workspaceInvitation)
+    .where(
+      and(
+        eq(workspaceInvitation.workspaceId, workspaceId),
+        eq(workspaceInvitation.email, body.email.toLowerCase()),
+        eq(workspaceInvitation.status, "pending"),
+      ),
+    )
     .get()
 
-  if (existing) {
-    return c.json({ code: "USER_ALREADY_MEMBER", message: "User is already a member" }, 409)
+  if (existingInvite) {
+    return c.json({ code: "CONFLICT", message: "Pending invitation already exists for this email" }, 409)
   }
 
-  const createdAt = new Date().toISOString()
-  const createdMember = {
+  const INVITE_EXPIRY_DAYS = 7
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+  const token = crypto.randomUUID()
+
+  const createdInvitation = {
     id: crypto.randomUUID(),
-    organizationId: workspaceId,
-    userId: invitedUser.id,
+    workspaceId,
+    email: body.email.toLowerCase(),
+    token,
     role: body.role,
-    createdAt,
+    invitedBy: actor.id,
+    status: "pending" as const,
+    expiresAt: expiresAt.toISOString(),
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
   }
 
-  await db.insert(member).values(createdMember).run()
-  await syncMemberToLegacyWorkspaceMember(db, workspaceId, invitedUser.id, body.role)
+  await db.insert(workspaceInvitation).values(createdInvitation).run()
   await writeMemberAudit(db, {
     workspaceId,
     actorId: actor.id,
     action: "member.invited",
-    resourceId: createdMember.id,
+    resourceId: createdInvitation.id,
     metadata: {
-      email: invitedUser.email,
+      email: body.email,
       role: body.role,
-      userId: invitedUser.id,
+      token,
     },
   })
 
-  const result = await listWorkspaceMembersWithUsers(db, workspaceId)
-  const created = result.find((entry) => entry.id === createdMember.id)
-  return c.json(created, 201)
+  const ws = await db
+    .select({ name: workspace.name, slug: workspace.slug })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId))
+    .get()
+
+  const baseUrl = appUrl?.replace(/\/$/, "") ?? ""
+  const inviteLink = `${baseUrl}/join?token=${token}`
+
+  return c.json(
+    {
+      id: createdInvitation.id,
+      workspaceId,
+      workspaceName: ws?.name ?? "",
+      workspaceSlug: ws?.slug ?? "",
+      email: createdInvitation.email,
+      role: createdInvitation.role,
+      invitedByName: actor.name,
+      status: createdInvitation.status,
+      expiresAt: createdInvitation.expiresAt,
+      createdAt: createdInvitation.createdAt,
+      inviteLink,
+    },
+    201,
+  )
 })
 
 members.patch("/:memberId", requirePermission("users.update_roles"), async (c) => {

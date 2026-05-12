@@ -18,6 +18,7 @@ import type {
   WorkspaceSettings,
   WorkspaceMemberListItem,
   WorkspaceRole,
+  InvitationListItem,
 } from "@bucketdrive/shared"
 
 interface ApiError {
@@ -642,28 +643,6 @@ export function useMembers(
   })
 }
 
-export function useAddMember(
-  workspaceId: string | null,
-): UseMutationResult<
-  WorkspaceMemberListItem,
-  ApiRequestError,
-  { email: string; role: Exclude<WorkspaceRole, "owner"> }
-> {
-  const queryClient = useQueryClient()
-
-  return useMutation<
-    WorkspaceMemberListItem,
-    ApiRequestError,
-    { email: string; role: Exclude<WorkspaceRole, "owner"> }
-  >({
-    mutationFn: (body) => api.post<WorkspaceMemberListItem>(buildWorkspacePath(workspaceId, "/members"), body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
-    },
-  })
-}
-
 export function useUpdateMemberRole(
   workspaceId: string | null,
 ): UseMutationResult<
@@ -1218,6 +1197,151 @@ export function useBrowseShare(
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["shareBrowse", shareId] })
+    },
+  })
+}
+
+interface ListInvitationsResponse {
+  data: InvitationListItem[]
+  meta: PaginationMeta
+}
+
+export function useInvitations(
+  workspaceId: string | null,
+): UseQueryResult<ListInvitationsResponse, ApiRequestError> {
+  return useQuery<ListInvitationsResponse, ApiRequestError>({
+    queryKey: ["invitations", workspaceId],
+    queryFn: () => api.get<ListInvitationsResponse>(buildWorkspacePath(workspaceId, "/invitations")),
+    enabled: workspaceId !== null,
+  })
+}
+
+interface CreateInvitationResponse {
+  id: string
+  workspaceId: string
+  workspaceName: string
+  workspaceSlug: string
+  email: string
+  role: WorkspaceRole
+  invitedByName: string
+  status: string
+  expiresAt: string
+  createdAt: string
+  inviteLink: string
+}
+
+export function useAddMember(
+  workspaceId: string | null,
+): UseMutationResult<
+  CreateInvitationResponse,
+  ApiRequestError,
+  { email: string; role: Exclude<WorkspaceRole, "owner"> }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    CreateInvitationResponse,
+    ApiRequestError,
+    { email: string; role: Exclude<WorkspaceRole, "owner"> }
+  >({
+    mutationFn: (body) => api.post<CreateInvitationResponse>(buildWorkspacePath(workspaceId, "/members"), body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["invitations", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+    },
+  })
+}
+
+export function useRevokeInvitation(
+  workspaceId: string | null,
+): UseMutationResult<{ success: true; invitationId: string }, ApiRequestError, { invitationId: string }> {
+  const queryClient = useQueryClient()
+
+  return useMutation<{ success: true; invitationId: string }, ApiRequestError, { invitationId: string }>({
+    mutationFn: ({ invitationId }) =>
+      api.delete<{ success: true; invitationId: string }>(
+        buildWorkspacePath(workspaceId, `/invitations/${invitationId}`),
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["invitations", workspaceId] })
+    },
+  })
+}
+
+export function useInvitationByToken(
+  token: string | null,
+): UseQueryResult<
+  {
+    id: string
+    workspaceId: string
+    workspaceName: string
+    workspaceSlug: string
+    email: string
+    role: WorkspaceRole
+    invitedByName: string
+    status: string
+    expiresAt: string
+    createdAt: string
+  },
+  ApiRequestError
+> {
+  return useQuery({
+    queryKey: ["invitation", token],
+    queryFn: () =>
+      api.get<{
+        id: string
+        workspaceId: string
+        workspaceName: string
+        workspaceSlug: string
+        email: string
+        role: WorkspaceRole
+        invitedByName: string
+        status: string
+        expiresAt: string
+        createdAt: string
+      }>(`/api/invitations/${requireId(token, "token")}`),
+    enabled: token !== null,
+  })
+}
+
+export function useAcceptInvitation(): UseMutationResult<
+  { success: true; workspaceId: string; role: WorkspaceRole },
+  ApiRequestError,
+  { token: string }
+> {
+  return useMutation<
+    { success: true; workspaceId: string; role: WorkspaceRole },
+    ApiRequestError,
+    { token: string }
+  >({
+    mutationFn: ({ token }) =>
+      api.post<{ success: true; workspaceId: string; role: WorkspaceRole }>(`/api/invitations/${token}/accept`),
+  })
+}
+
+export function useTransferOwnership(
+  workspaceId: string | null,
+): UseMutationResult<
+  { success: true; workspaceId: string; previousOwnerId: string; newOwnerId: string },
+  ApiRequestError,
+  { newOwnerId: string }
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    { success: true; workspaceId: string; previousOwnerId: string; newOwnerId: string },
+    ApiRequestError,
+    { newOwnerId: string }
+  >({
+    mutationFn: ({ newOwnerId }) =>
+      api.post<{ success: true; workspaceId: string; previousOwnerId: string; newOwnerId: string }>(
+        buildWorkspacePath(workspaceId, "/transfer-ownership"),
+        { newOwnerId },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
     },
   })
 }

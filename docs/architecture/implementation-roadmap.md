@@ -36,7 +36,7 @@ verifiable result.
 | 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ✅ |
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ✅ |
 | 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ✅ |
-| 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ⬜ |
+| 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ✅ |
 | 27 | Share polish | Analytics counters, branded public pages | ⬜ |
 | 28 | Notifications | In-app notification system + toast integration | ⬜ |
 | 29 | Thumbnails & processing | Async preview generation via workers | ⬜ |
@@ -1429,9 +1429,19 @@ git commit -m "feat(rbac): manager and guest roles, resource policies, billing/a
 
 ---
 
-## Day 26 - Workspace Invitations & Ownership Transfer
+## Day 26 - Workspace Invitations & Ownership Transfer DONE
 
-> **Gap vs docs:** `docs/features/workspace-management.md` defines email invitation flow with expiring tokens, acceptance endpoint, and ownership transfer with 7-day timeout. Current implementation only supports "direct add by existing email". **Incomplete.**
+> **Notes from implementation:**
+> - Added `workspaceInvitation` schema with `token`, `email`, `role`, `expiresAt`, `status` (pending/accepted/revoked/expired), `invitedBy`
+> - Generated migration `0004_oval_krista_starr.sql`; applied manually via sql.js script (FTS5 migration 0002 blocks `pnpm db:migrate:dev` on sql.js)
+> - Refactored `POST /api/workspaces/:id/members` from direct-add to invitation-based flow: creates `workspaceInvitation`, checks for duplicate emails/members, returns `inviteLink`
+> - New backend handlers: `GET /api/workspaces/:id/invitations`, `DELETE /api/workspaces/:id/invitations/:id`, `GET /api/invitations/:token`, `POST /api/invitations/:token/accept`
+> - Ownership transfer implemented as immediate transfer (not pending/timeout): `POST /api/workspaces/:id/transfer-ownership` validates current owner, target is admin, then swaps roles and updates `workspace.ownerId`
+> - Frontend Members page redesigned with tabs (Members / Pending Invitations), copy-link for invites, revoke action, and ownership transfer button for admins
+> - Public `/join?token=xxx` page handles auth check, email mismatch warning, and invitation acceptance with redirect to dashboard
+> - No email provider integration (Resend etc.) per decision — invites use copyable links only
+> - Audit events: `member.invited`, `member.invitation_revoked`, `member.joined`, `ownership.transferred`
+> - Validation: `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** Full workspace membership lifecycle.
 

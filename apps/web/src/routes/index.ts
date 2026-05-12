@@ -1,1 +1,1 @@
-export { router } from "./__root"
+export { router } from "./__root__"

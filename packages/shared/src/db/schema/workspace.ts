@@ -109,3 +109,23 @@ export const folder = sqliteTable("folder", {
     .notNull()
     .default(sql`(current_timestamp)`),
 })
+
+export const workspaceInvitation = sqliteTable("workspace_invitation", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspace.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  role: text("role").notNull().default("viewer"),
+  invitedBy: text("invited_by").notNull(),
+  status: text("status").notNull().default("pending"),
+  expiresAt: text("expires_at").notNull(),
+  acceptedAt: text("accepted_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+})

@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@t
 import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
 import { LoginPage } from "./login"
+import { JoinPage } from "./join"
 import { DashboardPage } from "./app/dashboard"
 import { FilesPage } from "./app/files"
 import { MembersPage } from "./app/members"
@@ -34,6 +35,12 @@ const loginRoute = createRoute({
     }
   },
   component: LoginPage,
+})
+
+const joinRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/join",
+  component: JoinPage,
 })
 
 const appRoute = createRoute({
@@ -115,6 +122,7 @@ const shareAccessRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  joinRoute,
   shareAccessRoute,
   appRoute.addChildren([
     homeRoute,

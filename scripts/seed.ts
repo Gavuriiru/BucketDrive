@@ -271,6 +271,22 @@ async function main() {
   const data = sqlite.export()
   writeFileSync(DB_PATH, Buffer.from(data))
 
+  const inviteToken = uuid()
+  const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  db.insert(schema.workspaceInvitation).values({
+    id: uuid(),
+    workspaceId: wsId,
+    email: "pending@bucketdrive.dev",
+    token: inviteToken,
+    role: "editor",
+    invitedBy: ownerId,
+    status: "pending",
+    expiresAt: inviteExpiresAt,
+    createdAt: now,
+    updatedAt: now,
+  }).run()
+
   console.log(`Seeded workspace: ${wsId}`)
   console.log(`  Owner ID: ${ownerId}`)
   console.log(`  Admin ID: ${adminId}`)
@@ -278,6 +294,7 @@ async function main() {
   console.log(`  Viewer ID: ${viewerId}`)
   console.log(`  Files: ${sampleFiles.length + folderFiles.length}`)
   console.log(`  Tags: ${tagNames.length}`)
+  console.log(`  Pending invitation: ${inviteToken} (pending@bucketdrive.dev)`)
 
   sqlite.close()
 }
