@@ -37,7 +37,7 @@ verifiable result.
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ✅ |
 | 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ✅ |
 | 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ✅ |
-| 27 | Share polish | Analytics counters, branded public pages | ✅ `257ecec` |
+| 27 | Share polish | Analytics counters, branded public pages | ✅ `4639d9a` |
 | 28 | Notifications | In-app notification system + toast integration | ⬜ |
 | 29 | Thumbnails & processing | Async preview generation via workers | ⬜ |
 | 30 | Contract tests | API contract validation against test D1 | ⬜ |
