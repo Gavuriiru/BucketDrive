@@ -11,6 +11,7 @@ export const ShareLinkSchema = z.object({
   passwordHash: z.string().nullable(),
   expiresAt: z.string().datetime().nullable(),
   accessCount: z.number().int().min(0),
+  downloadCount: z.number().int().min(0),
   lastAccessedAt: z.string().datetime().nullable(),
   isActive: z.boolean(),
   createdAt: z.string().datetime(),

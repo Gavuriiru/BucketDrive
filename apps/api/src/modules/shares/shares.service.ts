@@ -8,6 +8,7 @@ import {
   folder,
   auditLog,
   user,
+  workspaceSettings,
 } from "@bucketdrive/shared/db/schema"
 import type { StorageProvider } from "../../services/storage"
 import type {
@@ -542,6 +543,8 @@ export class SharesService {
     let files: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }> = []
     let folders: Array<{ id: string; name: string }> = []
 
+    let downloadIncrement = 0
+
     if (resourceType === "file") {
       const file = await db
         .select()
@@ -555,6 +558,7 @@ export class SharesService {
 
       resourceName = file.originalName
       signedUrl = await storage.generateSignedDownloadUrl(file.storageKey)
+      downloadIncrement = 1
     } else {
       const f = await db
         .select()
@@ -604,6 +608,7 @@ export class SharesService {
       .update(shareLink)
       .set({
         accessCount: share.accessCount + 1,
+        downloadCount: share.downloadCount + downloadIncrement,
         lastAccessedAt: now,
         updatedAt: now,
       })
@@ -638,7 +643,9 @@ export class SharesService {
       },
     })
 
-    return { resourceType, resourceName, signedUrl, files, folders }
+    const branding = await this.getWorkspaceBranding(share.workspaceId)
+
+    return { resourceType, resourceName, signedUrl, files, folders, ...branding }
   }
 
   private async findResource(
@@ -658,6 +665,22 @@ export class SharesService {
       .from(folder)
       .where(and(eq(folder.id, resourceId), eq(folder.isDeleted, false)))
       .get()
+  }
+
+  private async getWorkspaceBranding(workspaceId: string): Promise<{ brandingLogoUrl: string | null; brandingName: string | null }> {
+    const db = getDB()
+    const settings = await db
+      .select({
+        brandingLogoUrl: workspaceSettings.brandingLogoUrl,
+        brandingName: workspaceSettings.brandingName,
+      })
+      .from(workspaceSettings)
+      .where(eq(workspaceSettings.workspaceId, workspaceId))
+      .get()
+    return {
+      brandingLogoUrl: settings?.brandingLogoUrl ?? null,
+      brandingName: settings?.brandingName ?? null,
+    }
   }
 
   async getShareInfo(shareId: string) {
@@ -685,6 +708,8 @@ export class SharesService {
       resourceName = f?.name ?? "Unknown folder"
     }
 
+    const branding = await this.getWorkspaceBranding(share.workspaceId)
+
     return {
       id: share.id,
       resourceType: share.resourceType as "file" | "folder",
@@ -694,6 +719,7 @@ export class SharesService {
       isActive: share.isActive,
       expiresAt: share.expiresAt,
       createdAt: share.createdAt,
+      ...branding,
     }
   }
 
@@ -884,6 +910,8 @@ export class SharesService {
       },
     })
 
+    const branding = await this.getWorkspaceBranding(share.workspaceId)
+
     return {
       resourceName: targetFolder.name,
       currentFolderId: targetFolderId === share.resourceId ? null : targetFolderId,
@@ -895,6 +923,7 @@ export class SharesService {
         sizeBytes: ff.sizeBytes,
       })),
       folders: subFolders.map((sf) => ({ id: sf.id, name: sf.name })),
+      ...branding,
     }
   }
 }

@@ -14,6 +14,7 @@ export const shareLink = sqliteTable("share_link", {
   passwordHash: text("password_hash"),
   expiresAt: text("expires_at"),
   accessCount: integer("access_count").notNull().default(0),
+  downloadCount: integer("download_count").notNull().default(0),
   lastAccessedAt: text("last_accessed_at"),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at")

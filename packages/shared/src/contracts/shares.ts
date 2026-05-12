@@ -59,6 +59,8 @@ export const ShareAccessResponse = z.object({
       })
     )
     .optional(),
+  brandingLogoUrl: z.string().url().nullable(),
+  brandingName: z.string().nullable(),
 })
 
 export const ShareInfoResponse = z.object({
@@ -70,6 +72,8 @@ export const ShareInfoResponse = z.object({
   isActive: z.boolean(),
   expiresAt: z.string().datetime().nullable(),
   createdAt: z.string(),
+  brandingLogoUrl: z.string().url().nullable(),
+  brandingName: z.string().nullable(),
 })
 
 export const ShareBrowseRequest = z.object({
@@ -99,4 +103,6 @@ export const ShareBrowseResponse = z.object({
       name: z.string(),
     })
   ),
+  brandingLogoUrl: z.string().url().nullable(),
+  brandingName: z.string().nullable(),
 })

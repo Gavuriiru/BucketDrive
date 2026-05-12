@@ -120,7 +120,7 @@ export function ShareManagementPage() {
         </div>
       </div>
 
-      <div className="mb-4 grid gap-3 md:grid-cols-3">
+      <div className="mb-4 grid gap-3 md:grid-cols-4">
         <StatsCard label="Visible Shares" value={String(currentQuery.data?.meta.total ?? 0)} />
         <StatsCard
           label="Locked Links"
@@ -130,6 +130,15 @@ export function ShareManagementPage() {
         <StatsCard
           label="External Links"
           value={String(shares.filter((share) => share.shareType !== "internal").length)}
+        />
+        <StatsCard
+          label="Total Downloads"
+          value={String(
+            shares.reduce(
+              (sum: number, share: ShareDashboardItem) => sum + share.downloadCount,
+              0,
+            ),
+          )}
         />
       </div>
 
@@ -154,6 +163,12 @@ export function ShareManagementPage() {
                 </th>
                 <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary xl:table-cell">
                   Created
+                </th>
+                <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary lg:table-cell">
+                  Accesses
+                </th>
+                <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary lg:table-cell">
+                  Downloads
                 </th>
                 <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary xl:table-cell">
                   Last access
@@ -266,32 +281,17 @@ function ShareRow({
           </div>
         </div>
       </td>
-      <td className="hidden px-4 py-3 lg:table-cell">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-text-primary">{share.accessCount} accesses</p>
-          <div className="flex flex-wrap gap-1">
-            {share.permissions.length > 0 ? (
-              share.permissions.map((permission) => (
-                <span
-                  key={permission}
-                  className="rounded-full bg-surface-hover px-2 py-0.5 text-xs capitalize text-text-secondary"
-                >
-                  {permission}
-                </span>
-              ))
-            ) : (
-              <span className="text-xs text-text-tertiary">
-                {share.shareType === "internal" ? "No explicit permissions" : "Public access"}
-              </span>
-            )}
-          </div>
-        </div>
-      </td>
       <td className="hidden px-4 py-3 xl:table-cell">
         <div className="text-sm text-text-secondary">
           <p>{new Date(share.createdAt).toLocaleDateString()}</p>
           <p className="text-xs text-text-tertiary">{share.createdByName}</p>
         </div>
+      </td>
+      <td className="hidden px-4 py-3 lg:table-cell text-sm text-text-secondary">
+        {share.accessCount}
+      </td>
+      <td className="hidden px-4 py-3 lg:table-cell text-sm text-text-secondary">
+        {share.downloadCount}
       </td>
       <td className="hidden px-4 py-3 xl:table-cell text-sm text-text-secondary">
         {share.lastAccessedAt ? new Date(share.lastAccessedAt).toLocaleString() : "Never"}
@@ -469,6 +469,7 @@ function ShareSettingsDialog({
                 <div className="mt-3 grid gap-3 text-sm text-text-secondary sm:grid-cols-2">
                   <InfoRow label="Created" value={new Date(share.createdAt).toLocaleString()} />
                   <InfoRow label="Access count" value={String(share.accessCount)} />
+                  <InfoRow label="Download count" value={String(share.downloadCount)} />
                   <InfoRow
                     label="Last access"
                     value={

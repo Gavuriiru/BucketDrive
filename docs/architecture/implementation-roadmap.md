@@ -37,7 +37,7 @@ verifiable result.
 | 24 | Virtualization | react-window for 10k+ items, bundle audit | ✅ |
 | 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ✅ |
 | 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ✅ |
-| 27 | Share polish | Analytics counters, branded public pages | ⬜ |
+| 27 | Share polish | Analytics counters, branded public pages | ✅ `257ecec` |
 | 28 | Notifications | In-app notification system + toast integration | ⬜ |
 | 29 | Thumbnails & processing | Async preview generation via workers | ⬜ |
 | 30 | Contract tests | API contract validation against test D1 | ⬜ |
@@ -1493,9 +1493,26 @@ git commit -m "feat(workspace): email invitations, join flow, and ownership tran
 
 ---
 
-## Day 27 - Share Analytics & Branded Pages
+## Day 27 - Share Analytics & Branded Pages DONE
 
-> **Gap vs docs:** `docs/features/file-sharing.md` requires share analytics (access/download counts) and branded share pages using `brandingLogoUrl`/`brandingName`. Fields exist in DB but are unused in public pages. **Incomplete.**
+> **Notes from implementation:**
+> - Added `downloadCount` column to `shareLink` schema with default `0`; generated migration `0005_mature_blue_blade.sql`
+> - Updated `ShareLinkSchema` and `ShareDashboardItemSchema` in shared package to include `downloadCount`
+> - Updated shared contracts: `ShareAccessResponse`, `ShareInfoResponse`, and `ShareBrowseResponse` now include `brandingLogoUrl` and `brandingName`
+> - Backend `SharesService` increments `downloadCount` only when a signed download URL is generated for a file share (`accessShare`); `browseShare` does not increment downloads (folder browsing is access-only)
+> - Added `getWorkspaceBranding()` private method to `SharesService` that queries `workspaceSettings` by `workspaceId` and returns branding fields
+> - All public share endpoints (`getShareInfo`, `accessShare`, `browseShare`) now include branding in their responses
+> - Share management dashboard (`shares.tsx`) updated with:
+>   - New "Total Downloads" stats card
+>   - Separate "Accesses" and "Downloads" columns in the table
+>   - `downloadCount` displayed in the edit modal analytics card
+> - Public share page (`share.$shareId.tsx`) updated to use workspace branding:
+>   - `SharePasswordForm` receives `info` prop and displays `brandingName`
+>   - `ShareExternalDirect` shows branding name in subtitle and footer badge
+>   - `ShareExternalExplorer` header shows logo image + branding name when configured
+>   - Fallback to "BucketDrive" when no workspace branding is set
+> - Validation: `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
+> - Rebuilt `packages/shared/dist/` via `tsc --build` after schema changes to satisfy project references
 
 **Goal:** Shares have analytics and branding.
 

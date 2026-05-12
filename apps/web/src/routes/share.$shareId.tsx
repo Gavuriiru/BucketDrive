@@ -43,6 +43,8 @@ export function ShareAccessPage() {
             breadcrumbs: [],
             files: result.files ?? [],
             folders: result.folders ?? [],
+            brandingLogoUrl: result.brandingLogoUrl,
+            brandingName: result.brandingName,
           })
         }
       } catch (err) {
@@ -124,6 +126,7 @@ export function ShareAccessPage() {
         onSubmit={handleAccess}
         isLoading={accessMutation.isPending}
         error={accessError}
+        info={info}
       />
     )
   }
@@ -150,6 +153,7 @@ export function ShareAccessPage() {
           onSubmit={handleAccess}
           isLoading={accessMutation.isPending}
           error={accessError}
+          info={info}
         />
       )
     }
@@ -157,7 +161,7 @@ export function ShareAccessPage() {
     return (
       <ShareExternalExplorer
         info={info}
-        browseData={browseData ?? { resourceName: info.resourceName, currentFolderId: null, breadcrumbs: [], files: [], folders: [] }}
+        browseData={browseData ?? { resourceName: info.resourceName, currentFolderId: null, breadcrumbs: [], files: [], folders: [], brandingLogoUrl: info.brandingLogoUrl, brandingName: info.brandingName }}
         browseMutation={browseMutation}
         onBrowse={handleBrowse}
         accessPassword={browsePassword}
@@ -177,6 +181,7 @@ export function ShareAccessPage() {
         isLoading={accessMutation.isPending}
         error={accessError}
         noPassword
+        info={info}
       />
     )
   }
@@ -263,6 +268,7 @@ function SharePasswordForm({
   isLoading,
   error,
   noPassword,
+  info,
 }: {
   resourceName: string
   resourceType: "file" | "folder"
@@ -272,6 +278,7 @@ function SharePasswordForm({
   isLoading: boolean
   error: string | null
   noPassword?: boolean
+  info?: ShareInfoData
 }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-bg-primary p-6">
@@ -280,7 +287,9 @@ function SharePasswordForm({
       </div>
       <div className="text-center">
         <h1 className="text-xl font-semibold text-text-primary">{resourceName}</h1>
-        <p className="mt-1 text-sm text-text-secondary">BucketDrive</p>
+        <p className="mt-1 text-sm text-text-secondary">
+          {info?.brandingName || "BucketDrive"}
+        </p>
       </div>
 
       {noPassword ? (
@@ -357,7 +366,10 @@ function ShareExternalDirect({
       <div className="text-center">
         <h1 className="text-xl font-semibold text-text-primary">{resourceName}</h1>
         <p className="mt-2 text-sm text-text-secondary">
-          This file has been shared with you via BucketDrive
+          This file has been shared with you via{" "}
+          <span className="font-medium text-text-primary">
+            {info.brandingName || "BucketDrive"}
+          </span>
         </p>
       </div>
       <a
@@ -376,7 +388,9 @@ function ShareExternalDirect({
       )}
       <div className="flex h-8 items-center gap-1 rounded-full bg-surface-hover px-3">
         <FolderOpen className="h-3.5 w-3.5 text-text-tertiary" />
-        <span className="text-xs font-medium text-text-tertiary">BucketDrive</span>
+        <span className="text-xs font-medium text-text-tertiary">
+          {info.brandingName || "BucketDrive"}
+        </span>
       </div>
     </div>
   )
@@ -400,14 +414,30 @@ function ShareExternalExplorer({
   return (
     <div className="flex min-h-screen flex-col bg-bg-primary">
       <header className="border-b border-border-muted bg-bg-secondary px-6 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover">
-            <FolderOpen className="h-4 w-4 text-accent" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover">
+              <FolderOpen className="h-4 w-4 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-sm font-semibold text-text-primary">{info.resourceName}</h1>
+              <p className="text-xs text-text-tertiary">Shared folder</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-sm font-semibold text-text-primary">{info.resourceName}</h1>
-            <p className="text-xs text-text-tertiary">Shared folder</p>
-          </div>
+          {info.brandingName && (
+            <div className="flex items-center gap-2">
+              {info.brandingLogoUrl && (
+                <img
+                  src={info.brandingLogoUrl}
+                  alt=""
+                  className="h-5 w-5 rounded object-contain"
+                />
+              )}
+              <span className="text-xs font-medium text-text-secondary">
+                {info.brandingName}
+              </span>
+            </div>
+          )}
         </div>
       </header>
 

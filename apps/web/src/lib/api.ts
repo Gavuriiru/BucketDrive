@@ -1127,6 +1127,8 @@ interface ShareInfoData {
   isActive: boolean
   expiresAt: string | null
   createdAt: string
+  brandingLogoUrl: string | null
+  brandingName: string | null
 }
 
 interface ShareAccessResult {
@@ -1135,6 +1137,8 @@ interface ShareAccessResult {
   signedUrl?: string
   files?: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }>
   folders?: Array<{ id: string; name: string }>
+  brandingLogoUrl: string | null
+  brandingName: string | null
 }
 
 interface ShareBrowseResult {
@@ -1143,6 +1147,8 @@ interface ShareBrowseResult {
   breadcrumbs: Array<{ id: string | null; name: string }>
   files: Array<{ id: string; name: string; mimeType: string; sizeBytes: number }>
   folders: Array<{ id: string; name: string }>
+  brandingLogoUrl: string | null
+  brandingName: string | null
 }
 
 export function useShareInfo(
