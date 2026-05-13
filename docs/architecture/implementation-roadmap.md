@@ -39,7 +39,7 @@ verifiable result.
 | 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ✅ |
 | 27 | Share polish | Analytics counters, branded public pages | ✅ `4639d9a` |
 | 28 | Notifications | In-app notification system + toast integration | ✅ |
-| 29 | Thumbnails & processing | Async preview generation via workers | ✅ |
+| 29 | Thumbnails & processing | Async preview generation via workers | ✅ `14f6fb6` |
 | 29 | Thumbnails & processing | Async preview generation via workers | ⬜ |
 | 30 | Contract tests | API contract validation against test D1 | ⬜ |
 | 31 | E2E & a11y | Playwright journeys, axe-core compliance | ⬜ |
