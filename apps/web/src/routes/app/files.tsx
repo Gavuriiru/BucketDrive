@@ -734,6 +734,7 @@ export function FilesPage() {
           <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {viewMode === "grid" ? (
               <FileGrid
+                workspaceId={workspaceId}
                 folders={folders}
                 files={files}
                 isLoading={isLoading}
@@ -771,6 +772,7 @@ export function FilesPage() {
               />
             ) : (
               <FileList
+                workspaceId={workspaceId}
                 folders={folders}
                 files={files}
                 isLoading={isLoading}

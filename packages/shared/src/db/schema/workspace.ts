@@ -70,6 +70,8 @@ export const fileObject = sqliteTable("file_object", {
   extension: text("extension"),
   sizeBytes: integer("size_bytes").notNull().default(0),
   checksum: text("checksum"),
+  thumbnailKey: text("thumbnail_key"),
+  metadata: text("metadata"),
   isDeleted: integer("is_deleted", { mode: "boolean" }).notNull().default(false),
   deletedAt: text("deleted_at"),
   createdAt: text("created_at")

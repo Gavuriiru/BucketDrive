@@ -84,6 +84,11 @@ export const PreviewUrlResponse = z.object({
   mimeType: z.string(),
 })
 
+export const ThumbnailUrlResponse = z.object({
+  signedUrl: z.string().url(),
+  expiresAt: z.string().datetime(),
+})
+
 export const GetUploadSessionResponse = z.object({
   uploadId: z.string().uuid(),
   sessionId: z.string().uuid(),

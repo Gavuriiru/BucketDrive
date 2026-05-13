@@ -39,6 +39,7 @@ verifiable result.
 | 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ✅ |
 | 27 | Share polish | Analytics counters, branded public pages | ✅ `4639d9a` |
 | 28 | Notifications | In-app notification system + toast integration | ✅ |
+| 29 | Thumbnails & processing | Async preview generation via workers | ✅ |
 | 29 | Thumbnails & processing | Async preview generation via workers | ⬜ |
 | 30 | Contract tests | API contract validation against test D1 | ⬜ |
 | 31 | E2E & a11y | Playwright journeys, axe-core compliance | ⬜ |
@@ -1617,9 +1618,20 @@ git commit -m "feat(notifications): in-app notification system for workspace eve
 
 ---
 
-## Day 29 - Thumbnails & Async Processing
+## Day 29 - Thumbnails & Async Processing DONE
 
-> **Gap vs docs:** `docs/storage/storage-provider.md` and `docs/features/upload-system.md` list thumbnails, previews, OCR, and metadata extraction as async worker jobs. **Not implemented.**
+> **Notes from implementation:**
+> - Added `thumbnailKey` and `metadata` columns to `fileObject`; generated migration `0008_parched_eternity.sql`
+> - Installed `@cf-wasm/photon` v0.3.5 in `apps/api` for WASM-based image resizing inside the Worker
+> - Created `ThumbnailService` (`apps/api/src/services/thumbnail.service.ts`) with `generate()` for images and `uploadVideoFrame()` for videos
+> - Image thumbnails: downloads from R2 via binding, resizes to max 256x256 with Lanczos3 filter, exports WebP, uploads back to `workspace/{id}/thumbnails/{fileId}.webp`, updates DB
+> - Memory guard: skips images > 20 MB to avoid Worker OOM (128 MB limit)
+> - Async trigger: `files.handler.ts` calls `c.executionCtx.waitUntil(thumbnailService.generate(...))` after `completeUpload` for `image/*` MIME types — non-blocking for the upload response
+> - Video thumbnails: frontend extracts a frame at 0.5s via `<video>` + `<canvas>` during upload, then `POST`s the WebP blob to `/api/workspaces/:id/files/:fileId/thumbnail` after upload completes
+> - New API endpoints: `GET /files/:fileId/thumbnail` (signed URL, 5 min expiry) and `POST /files/:fileId/thumbnail` (accepts video frame blob)
+> - Frontend: `useThumbnailUrl` hook with `retry: false`, `FileThumbnail` component with loading pulse and icon fallback, integrated into `FileGridCard` and `FileListRow`
+> - Added `arrayBuffer()`, `text()`, `json()`, `blob()` to custom `R2ObjectBody` interface in `cloudflare.d.ts` to satisfy type resolution
+> - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 
 **Goal:** Uploaded images and videos get thumbnails generated asynchronously.
 

@@ -5,6 +5,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 import { FileContextMenu } from "./file-context-menu"
+import { FileThumbnail } from "./file-thumbnail"
 import { getTagColorClasses } from "@/lib/tag-colors"
 import { useExplorerStore } from "@/stores/explorer-store"
 
@@ -182,6 +183,7 @@ function FolderGridCard({
 interface FileGridCardProps {
   file: FileObject
   index: number
+  workspaceId: string
   isSelected: boolean
   isFocused: boolean
   onItemClick: (id: string, type: "file" | "folder", index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => void
@@ -200,6 +202,7 @@ interface FileGridCardProps {
 function FileGridCard({
   file,
   index,
+  workspaceId,
   isSelected,
   isFocused,
   onItemClick,
@@ -265,8 +268,14 @@ function FileGridCard({
                 : "border-border-muted"
         }`}
       >
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-surface-hover text-2xl">
-          {getFileIcon(file.mimeType)}
+        <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-surface-hover text-2xl">
+          <FileThumbnail
+            workspaceId={workspaceId}
+            fileId={file.id}
+            mimeType={file.mimeType}
+            fallback={getFileIcon(file.mimeType)}
+            className="h-full w-full"
+          />
         </div>
         <div className="mb-0.5 flex w-full items-center justify-center gap-1">
           <span className="line-clamp-2 break-words text-xs font-medium text-text-primary">
@@ -284,6 +293,7 @@ function FileGridCard({
 }
 
 interface FileGridProps {
+  workspaceId: string
   folders: FolderType[]
   files: FileObject[]
   isLoading: boolean
@@ -302,6 +312,7 @@ interface FileGridProps {
 }
 
 export function FileGrid({
+  workspaceId,
   folders,
   files,
   isLoading,
@@ -458,6 +469,7 @@ export function FileGrid({
                     key={file.id}
                     file={file}
                     index={itemIndex}
+                    workspaceId={workspaceId}
                     isSelected={selectedFileIds.includes(file.id)}
                     isFocused={focusedItemId === file.id}
                     onItemClick={onItemClick}

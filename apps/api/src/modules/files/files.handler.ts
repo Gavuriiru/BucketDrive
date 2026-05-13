@@ -3,6 +3,7 @@ import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { createStorageProvider } from "../../services/storage"
 import { UploadService, UploadError } from "../../services/upload.service"
+import { ThumbnailService } from "../../services/thumbnail.service"
 import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import { getDB } from "../../lib/db"
 import { hydrateFiles } from "./file-query"
@@ -18,6 +19,7 @@ import {
   GetUploadPartSignedUrlRequest,
   BatchUploadRequest,
   BatchUploadResponse,
+  ThumbnailUrlResponse,
 } from "@bucketdrive/shared"
 
 interface FilesEnv {
@@ -146,6 +148,18 @@ files.post("/upload/complete", requirePermission("files.upload"), async (c) => {
       folderId: body.folderId,
       parts: body.parts,
     })
+
+    if (result.storageKey && result.mimeType.startsWith("image/")) {
+      const thumbnailService = new ThumbnailService({ storage: c.env.STORAGE })
+      c.executionCtx.waitUntil(
+        thumbnailService.generate({
+          fileId: result.id,
+          workspaceId,
+          storageKey: result.storageKey,
+          mimeType: result.mimeType,
+        }),
+      )
+    }
 
     return c.json(result, 201)
   } catch (err) {
@@ -819,6 +833,61 @@ files.delete("/uploads/:sessionId", requirePermission("files.upload"), async (c)
     }
     throw err
   }
+})
+
+files.get("/:fileId/thumbnail", requirePermission("files.read"), async (c) => {
+  const fileId = c.req.param("fileId")
+  const db = getDB()
+
+  const file = await db
+    .select()
+    .from(fileObject)
+    .where(eq(fileObject.id, fileId))
+    .get()
+
+  if (!file || file.isDeleted) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  }
+
+  if (!file.thumbnailKey) {
+    return c.json({ code: "THUMBNAIL_NOT_FOUND", message: "Thumbnail not yet generated" }, 404)
+  }
+
+  const storage = createStorageProvider(c.env)
+  const signedUrl = await storage.generateSignedDownloadUrl(file.thumbnailKey, 300)
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+
+  return c.json(ThumbnailUrlResponse.parse({ signedUrl, expiresAt }))
+})
+
+files.post("/:fileId/thumbnail", requirePermission("files.upload"), async (c) => {
+  const workspaceId = c.req.param("workspaceId")
+  const fileId = c.req.param("fileId")
+
+  if (!workspaceId || !fileId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and fileId are required" }, 400)
+  }
+
+  const db = getDB()
+  const file = await db
+    .select()
+    .from(fileObject)
+    .where(and(eq(fileObject.id, fileId), eq(fileObject.workspaceId, workspaceId)))
+    .get()
+
+  if (!file || file.isDeleted) {
+    return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
+  }
+
+  const blob = await c.req.blob()
+  if (blob.size === 0) {
+    return c.json({ code: "VALIDATION_ERROR", message: "Thumbnail blob is required" }, 400)
+  }
+
+  const thumbnailService = new ThumbnailService({ storage: c.env.STORAGE })
+  await thumbnailService.uploadVideoFrame({ fileId, workspaceId, blob })
+
+  return c.json({ success: true })
 })
 
 files.delete("/:fileId", requirePermission("files.delete"), async (c) => {

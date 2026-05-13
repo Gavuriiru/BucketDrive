@@ -50,6 +50,9 @@ importers:
       '@bucketdrive/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@cf-wasm/photon':
+        specifier: ^0.3.5
+        version: 0.3.5
       aws4fetch:
         specifier: ^1.0.20
         version: 1.0.20
@@ -365,6 +368,12 @@ packages:
 
   '@better-fetch/fetch@1.1.21':
     resolution: {integrity: sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A==}
+
+  '@cf-wasm/internals@0.1.2':
+    resolution: {integrity: sha512-9d/I3JFv1IpQFYOrIw5RQShQPyuZRw9DyeBylF39Uj/MH7my8+EzKDPpUCHiqZ5O7tZS/A6zwP08egpeI5NBhA==}
+
+  '@cf-wasm/photon@0.3.5':
+    resolution: {integrity: sha512-+roU+03gyEAecfoeqxrxlEqRJh63b+tLRZaXYUELlfYX/5tIEIqh6TK2VJik7z7xPrP4taYe3mbclbAk5tkN0A==}
 
   '@cloudflare/kv-asset-handler@0.3.4':
     resolution: {integrity: sha512-YLPHc8yASwjNkmcDMQMY35yiWjoKAKnhUbPRszBRS0YgH+IXtsMp61j+yTcnCE3oO2DgP0U3iejLC8FTtKDC8Q==}
@@ -2849,7 +2858,6 @@ packages:
 
   libsql@0.5.29:
     resolution: {integrity: sha512-8lMP8iMgiBzzoNbAPQ59qdVcj6UaE/Vnm+fiwX4doX4Narook0a4GPKWBEv+CR8a1OwbfkgL18uBfBjWdF0Fzg==}
-    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lightningcss-android-arm64@1.32.0:
@@ -3696,6 +3704,12 @@ snapshots:
       '@noble/hashes': 2.2.0
 
   '@better-fetch/fetch@1.1.21': {}
+
+  '@cf-wasm/internals@0.1.2': {}
+
+  '@cf-wasm/photon@0.3.5':
+    dependencies:
+      '@cf-wasm/internals': 0.1.2
 
   '@cloudflare/kv-asset-handler@0.3.4':
     dependencies:

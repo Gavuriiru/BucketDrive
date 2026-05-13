@@ -12,6 +12,8 @@ export const FileObjectSchema = z.object({
   extension: z.string().nullable(),
   sizeBytes: z.number().int().min(0),
   checksum: z.string().nullable(),
+  thumbnailKey: z.string().nullable(),
+  metadata: z.string().nullable(),
   isDeleted: z.boolean(),
   deletedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),

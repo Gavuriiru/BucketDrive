@@ -96,6 +96,13 @@ class ApiClient {
   async delete<T>(url: string): Promise<T> {
     return this.request<T>(url, { method: "DELETE" })
   }
+
+  async postBlob<T>(url: string, blob: Blob): Promise<T> {
+    return this.request<T>(url, {
+      method: "POST",
+      body: blob,
+    })
+  }
 }
 
 export class ApiRequestError extends Error {
@@ -160,6 +167,11 @@ interface PreviewUrlResponse {
   expiresAt: string
   fileName: string
   mimeType: string
+}
+
+export interface ThumbnailUrlResponse {
+  signedUrl: string
+  expiresAt: string
 }
 
 interface ListFoldersResponse {
@@ -532,6 +544,22 @@ export function usePreviewUrl(
   })
 }
 
+export function useThumbnailUrl(
+  workspaceId: string | null,
+  fileId: string | null,
+): UseQueryResult<ThumbnailUrlResponse, ApiRequestError> {
+  return useQuery<ThumbnailUrlResponse, ApiRequestError>({
+    queryKey: ["thumbnail", workspaceId, fileId],
+    queryFn: () =>
+      api.get<ThumbnailUrlResponse>(
+        buildWorkspacePath(workspaceId, `/files/${requireId(fileId, "fileId")}/thumbnail`),
+      ),
+    enabled: workspaceId !== null && fileId !== null,
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
 interface WorkspaceData {
   id: string
   name: string
@@ -809,6 +837,18 @@ export function useRestoreFile(
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
+  })
+}
+
+export function useUploadVideoThumbnail(
+  workspaceId: string | null,
+): UseMutationResult<{ success: boolean }, ApiRequestError, { fileId: string; blob: Blob }> {
+  return useMutation<{ success: boolean }, ApiRequestError, { fileId: string; blob: Blob }>({
+    mutationFn: ({ fileId, blob }) =>
+      api.postBlob<{ success: boolean }>(
+        buildWorkspacePath(workspaceId, `/files/${fileId}/thumbnail`),
+        blob,
+      ),
   })
 }
 

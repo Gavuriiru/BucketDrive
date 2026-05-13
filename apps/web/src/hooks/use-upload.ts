@@ -7,7 +7,9 @@ import {
   useGetUploadSession,
   useGetPartSignedUrls,
   useCancelUpload,
+  useUploadVideoThumbnail,
 } from "@/lib/api"
+import { extractVideoFrame } from "@/lib/video-thumbnail"
 
 const MAX_RETRIES = 3
 const RETRY_BASE_DELAY = 1000
@@ -19,6 +21,7 @@ export function useUploadProcessor(workspaceId: string) {
   const completeMutation = useCompleteUpload()
   const getPartUrlsMutation = useGetPartSignedUrls(workspaceId, null)
   const cancelMutation = useCancelUpload(workspaceId)
+  const videoThumbnailMutation = useUploadVideoThumbnail(workspaceId)
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
 
   const uploadChunk = useCallback(
@@ -224,7 +227,7 @@ export function useUploadProcessor(workspaceId: string) {
         updateItem(item.id, { progress: 90 })
 
         const sortedParts = allParts.sort((a, b) => a.partNumber - b.partNumber)
-        await completeMutation.mutateAsync({
+        const completedFile = await completeMutation.mutateAsync({
           workspaceId,
           uploadId,
           fileName: item.fileName,
@@ -232,6 +235,20 @@ export function useUploadProcessor(workspaceId: string) {
           folderId: item.targetFolderId ?? null,
           parts: sortedParts,
         })
+
+        if (item.mimeType.startsWith("video/") && item.file) {
+          try {
+            const frameBlob = await extractVideoFrame(item.file)
+            if (frameBlob) {
+              await videoThumbnailMutation.mutateAsync({
+                fileId: completedFile.id,
+                blob: frameBlob,
+              })
+            }
+          } catch {
+            // Video thumbnail failures are non-critical
+          }
+        }
 
         updateItem(item.id, { status: "completed", progress: 100 })
         return true
@@ -278,13 +295,27 @@ export function useUploadProcessor(workspaceId: string) {
 
         updateItem(item.id, { progress: 85 })
 
-        await completeMutation.mutateAsync({
+        const completedFile = await completeMutation.mutateAsync({
           workspaceId,
           uploadId: initiate.uploadId,
           fileName: item.fileName,
           mimeType: item.mimeType,
           folderId: item.targetFolderId ?? null,
         })
+
+        if (item.mimeType.startsWith("video/") && item.file) {
+          try {
+            const frameBlob = await extractVideoFrame(item.file)
+            if (frameBlob) {
+              await videoThumbnailMutation.mutateAsync({
+                fileId: completedFile.id,
+                blob: frameBlob,
+              })
+            }
+          } catch {
+            // Video thumbnail failures are non-critical
+          }
+        }
 
         updateItem(item.id, { status: "completed", progress: 100 })
         return true

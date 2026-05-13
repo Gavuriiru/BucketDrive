@@ -5,6 +5,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
 import { FileContextMenu } from "./file-context-menu"
+import { FileThumbnail } from "./file-thumbnail"
 import { getTagColorClasses } from "@/lib/tag-colors"
 import { useExplorerStore } from "@/stores/explorer-store"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
@@ -215,6 +216,7 @@ function FolderListRow({
 interface FileListRowProps {
   file: FileObject
   index: number
+  workspaceId: string
   isSelected: boolean
   isFocused: boolean
   onItemClick: (id: string, type: "file" | "folder", index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => void
@@ -233,6 +235,7 @@ interface FileListRowProps {
 function FileListRow({
   file,
   index,
+  workspaceId,
   isSelected,
   isFocused,
   onItemClick,
@@ -300,7 +303,15 @@ function FileListRow({
         style={{ height: ROW_HEIGHT }}
       >
         <div className="flex flex-1 items-center gap-3 px-4 py-2.5 min-w-0">
-          <span className="text-lg">{getFileIcon(file.mimeType)}</span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-hover text-lg">
+            <FileThumbnail
+              workspaceId={workspaceId}
+              fileId={file.id}
+              mimeType={file.mimeType}
+              fallback={getFileIcon(file.mimeType)}
+              className="h-full w-full"
+            />
+          </span>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="truncate text-sm text-text-primary">{file.originalName}</span>
@@ -394,6 +405,7 @@ function FileListRow({
 }
 
 interface FileListProps {
+  workspaceId: string
   folders: FolderType[]
   files: FileObject[]
   isLoading: boolean
@@ -412,6 +424,7 @@ interface FileListProps {
 }
 
 export function FileList({
+  workspaceId,
   folders,
   files,
   isLoading,
@@ -556,6 +569,7 @@ export function FileList({
                 <FileListRow
                   file={file}
                   index={virtualItem.index}
+                  workspaceId={workspaceId}
                   isSelected={selectedFileIds.includes(file.id)}
                   isFocused={focusedItemId === file.id}
                   onItemClick={onItemClick}

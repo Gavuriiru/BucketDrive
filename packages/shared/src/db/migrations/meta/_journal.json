@@ -57,6 +57,13 @@
       "when": 1778620000000,
       "tag": "0007_brainy_sandman",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1778623451792,
+      "tag": "0008_parched_eternity",
+      "breakpoints": true
     }
   ]
 }

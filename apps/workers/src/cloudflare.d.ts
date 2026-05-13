@@ -12,6 +12,10 @@ interface D1Database {
 
 interface R2ObjectBody {
   body: ReadableStream<Uint8Array> | null
+  arrayBuffer(): Promise<ArrayBuffer>
+  text(): Promise<string>
+  json(): Promise<unknown>
+  blob(): Promise<Blob>
 }
 
 interface R2MultipartUpload {
