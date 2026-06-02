@@ -1858,6 +1858,7 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - Removed fixed-height virtualization from list view to prevent rows with tags or variable content from overlapping during load/render.
 > - Added automatic R2 sync for Explorer file listing: new bucket objects are cataloged, changed R2 metadata updates existing rows, and active rows missing from R2 are moved to trash.
 > - Added `workspace_settings` R2 sync state fields so automatic sync is throttled and R2 failures are recorded without breaking cached Explorer listings.
+> - Extended automatic R2 sync to the scheduled Worker: cron now syncs active R2 workspaces by their app-owned prefix, logs aggregate results, and the Files UI no longer exposes a manual sync button.
 
 ---
 

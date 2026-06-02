@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands, @typescript-eslint/restrict-template-expressions */
 import { useRef, useMemo, useCallback, useState, useEffect } from "react"
-import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X, Database, Loader2 } from "lucide-react"
+import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X } from "lucide-react"
 import {
   useFiles,
   useFolders,
@@ -11,7 +11,6 @@ import {
   useTags,
   useToggleFavorite,
   useBatchUpload,
-  useImportR2,
   type BreadcrumbItem,
  } from "@/lib/api"
 import { useUndoableMutations } from "@/hooks/use-undoable-mutations"
@@ -93,7 +92,6 @@ export function FilesPage() {
   const canShareFolder = workspace ? can(workspace.role, "folders.share") : false
   const canFavorite = workspace ? can(workspace.role, "files.favorite") : false
   const canTag = workspace ? can(workspace.role, "files.tag") : false
-  const canImportR2 = workspace ? can(workspace.role, "workspace.settings.update") : false
 
   const { data: filesData, isLoading: filesLoading } = useFiles(workspaceId, {
     folderId: currentFolderId,
@@ -142,7 +140,6 @@ export function FilesPage() {
   const createFolderMutation = useCreateFolder(workspaceId)
   const toggleFavoriteMutation = useToggleFavorite(workspaceId)
   const batchUpload = useBatchUpload(workspaceId)
-  const importR2 = useImportR2(workspaceId)
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [tagDialogFileId, setTagDialogFileId] = useState<string | null>(null)
@@ -429,10 +426,6 @@ export function FilesPage() {
     }
   }
 
-  const handleImportR2 = () => {
-    importR2.mutate(undefined)
-  }
-
   const handleContextMove = useCallback(
     (id: string, type: "file" | "folder") => {
       if ((type === "file" && !canMoveFile) || (type === "folder" && !canMoveFolder)) return
@@ -678,21 +671,6 @@ export function FilesPage() {
                 New Folder
               </button>
             )}
-            {canImportR2 && (
-              <button
-                type="button"
-                onClick={handleImportR2}
-                disabled={importR2.isPending}
-                className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {importR2.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Database className="h-4 w-4" />
-                )}
-                Sync R2
-              </button>
-            )}
             {canUpload && (
               <button
                 type="button"
@@ -712,23 +690,6 @@ export function FilesPage() {
             />
           </div>
         </div>
-
-        {(importR2.data || importR2.isError) && (
-          <div className="mb-4 rounded-lg border border-border-default bg-surface-default px-4 py-3 text-sm">
-            {importR2.data ? (
-              <p className="text-text-secondary">
-                Synced {importR2.data.scanned} R2 objects.
-                {importR2.data.imported > 0 ? ` Imported ${importR2.data.imported}.` : ""}
-                {importR2.data.updated > 0 ? ` Updated ${importR2.data.updated}.` : ""}
-                {importR2.data.deleted > 0 ? ` Moved to trash ${importR2.data.deleted}.` : ""}
-                {importR2.data.skipped > 0 ? ` Skipped ${importR2.data.skipped}.` : ""}
-                {importR2.data.failed > 0 ? ` Failed ${importR2.data.failed}.` : ""}
-              </p>
-            ) : (
-              <p className="text-error">{importR2.error?.message ?? "R2 sync failed"}</p>
-            )}
-          </div>
-        )}
 
         {downloadError && (
           <div className="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">

@@ -1,12 +1,14 @@
 import { and, eq, isNull } from "drizzle-orm"
 import { getDB } from "../lib/db"
-import { auditLog, bucket, fileObject, folder, workspaceSettings } from "@bucketdrive/shared/db/schema"
+import { auditLog, bucket, fileObject, folder, workspace, workspaceSettings } from "@bucketdrive/shared/db/schema"
 import type { StorageProvider } from "./storage"
 
 const DEFAULT_MIME_TYPE = "application/octet-stream"
 const MAX_IMPORT_PAGES = 1000
 const APP_FILES_PREFIX_PART = "files"
 const THUMBNAILS_PREFIX_PART = "thumbnails"
+export const AUTO_R2_SYNC_INTERVAL_MS = 30_000
+export const SYSTEM_R2_SYNC_ACTOR_ID = "system"
 
 export interface R2ImportResult {
   scanned: number
@@ -15,6 +17,114 @@ export interface R2ImportResult {
   deleted: number
   skipped: number
   failed: number
+}
+
+export interface R2SyncAllWorkspacesResult extends R2ImportResult {
+  workspaces: number
+  synced: number
+  skippedWorkspaces: number
+  failedWorkspaces: number
+}
+
+export async function syncR2WorkspaceIfStale(params: {
+  storage: StorageProvider
+  workspaceId: string
+  userId: string
+  prefix?: string
+  intervalMs?: number
+}): Promise<R2ImportResult | null> {
+  const db = getDB()
+  const settings = await db
+    .select({
+      r2LastSyncAt: workspaceSettings.r2LastSyncAt,
+      r2SyncStatus: workspaceSettings.r2SyncStatus,
+      updatedAt: workspaceSettings.updatedAt,
+    })
+    .from(workspaceSettings)
+    .where(eq(workspaceSettings.workspaceId, params.workspaceId))
+    .get()
+
+  const intervalMs = params.intervalMs ?? AUTO_R2_SYNC_INTERVAL_MS
+  const now = Date.now()
+  const lastAttemptAt = settings?.updatedAt ? Date.parse(settings.updatedAt) : NaN
+  if (
+    (settings?.r2SyncStatus === "syncing" || settings?.r2SyncStatus === "failed") &&
+    Number.isFinite(lastAttemptAt) &&
+    now - lastAttemptAt < intervalMs
+  ) {
+    return null
+  }
+
+  if (settings?.r2LastSyncAt) {
+    const lastSyncAt = Date.parse(settings.r2LastSyncAt)
+    if (Number.isFinite(lastSyncAt) && now - lastSyncAt < intervalMs) {
+      return null
+    }
+  }
+
+  const service = new R2ImportService(params.storage)
+  return service.syncWorkspace({
+    workspaceId: params.workspaceId,
+    userId: params.userId,
+    prefix: params.prefix,
+  })
+}
+
+export async function syncAllR2Workspaces(params: {
+  storage: StorageProvider
+  userId?: string
+  intervalMs?: number
+}): Promise<R2SyncAllWorkspacesResult> {
+  const db = getDB()
+  const rows = await db
+    .select({ workspaceId: workspace.id })
+    .from(workspace)
+    .innerJoin(bucket, eq(bucket.workspaceId, workspace.id))
+    .where(and(eq(workspace.isDeleted, false), eq(bucket.provider, "r2")))
+    .all()
+
+  const result: R2SyncAllWorkspacesResult = {
+    workspaces: rows.length,
+    synced: 0,
+    scanned: 0,
+    imported: 0,
+    updated: 0,
+    deleted: 0,
+    skipped: 0,
+    skippedWorkspaces: 0,
+    failed: 0,
+    failedWorkspaces: 0,
+  }
+
+  for (const row of rows) {
+    try {
+      const syncResult = await syncR2WorkspaceIfStale({
+        storage: params.storage,
+        workspaceId: row.workspaceId,
+        userId: params.userId ?? SYSTEM_R2_SYNC_ACTOR_ID,
+        prefix: `workspace/${row.workspaceId}/${APP_FILES_PREFIX_PART}/`,
+        intervalMs: params.intervalMs,
+      })
+
+      if (!syncResult) {
+        result.skippedWorkspaces += 1
+        continue
+      }
+
+      result.synced += 1
+      result.scanned += syncResult.scanned
+      result.imported += syncResult.imported
+      result.updated += syncResult.updated
+      result.deleted += syncResult.deleted
+      result.skipped += syncResult.skipped
+      result.failed += syncResult.failed
+    } catch (err) {
+      result.failedWorkspaces += 1
+      console.warn(`Automatic R2 sync failed for workspace ${row.workspaceId}:`, err)
+    }
+  }
+
+  return result
 }
 
 export class R2ImportService {

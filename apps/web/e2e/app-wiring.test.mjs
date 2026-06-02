@@ -37,17 +37,20 @@ test("onboarding route is mounted and the app redirects workspace-less users the
   assert.match(api, /bucketName/)
 })
 
-test("R2 import is exposed through the files API and files toolbar", async () => {
-  const [apiHandler, webApi, filesRoute] = await Promise.all([
+test("R2 sync runs automatically while preserving the admin import endpoint", async () => {
+  const [apiHandler, webApi, filesRoute, worker] = await Promise.all([
     read("../../apps/api/src/modules/files/files.handler.ts"),
     read("src/lib/api.ts"),
     read("src/routes/app/files.tsx"),
+    read("../../apps/workers/src/index.ts"),
   ])
 
   assert.match(apiHandler, /"\/import-r2"/)
   assert.match(apiHandler, /workspace\.settings\.update/)
+  assert.match(apiHandler, /syncR2WorkspaceIfStale/)
   assert.match(webApi, /useImportR2/)
-  assert.match(filesRoute, /Import R2/)
+  assert.doesNotMatch(filesRoute, /Sync R2/)
+  assert.match(worker, /syncAllR2Workspaces/)
 })
 
 test("sidebar uses exact active matching and avoids duplicate dashboard tabs", async () => {
@@ -73,13 +76,18 @@ test("file explorer separates drag handles from open and preview actions", async
 })
 
 test("R2 local CORS configuration is versioned and wired to a package script", async () => {
-  const [rootPackage, cors] = await Promise.all([
+  const [rootPackage, corsScript, cors] = await Promise.all([
     read("../../package.json"),
+    read("../../scripts/apply-r2-cors.ts"),
     read("../../docs/storage/r2-cors.dev.json"),
   ])
 
   assert.match(rootPackage, /"r2:cors:dev"/)
-  assert.match(rootPackage, /wrangler r2 bucket cors set bucketdrive-files/)
+  assert.match(corsScript, /"wrangler"/)
+  assert.match(corsScript, /"r2"/)
+  assert.match(corsScript, /"bucket"/)
+  assert.match(corsScript, /"cors"/)
+  assert.match(corsScript, /"set"/)
   assert.match(cors, /"http:\/\/localhost:5173"/)
   assert.match(cors, /"http:\/\/localhost:5174"/)
   assert.match(cors, /"PUT"/)

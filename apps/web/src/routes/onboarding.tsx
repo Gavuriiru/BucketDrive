@@ -112,7 +112,8 @@ export function OnboardingPage() {
               const name = formData.get("name") as string
               if (name.trim()) {
                 createWorkspace.mutate({ name: name.trim() }, {
-                  onSuccess: () => {
+                  onSuccess: (data: { id: string }) => {
+                    localStorage.setItem("bucketdrive-workspace-id", data.id)
                     void navigate({ to: "/dashboard/files" })
                   },
                 })

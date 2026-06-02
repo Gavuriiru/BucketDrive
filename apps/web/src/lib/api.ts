@@ -400,6 +400,8 @@ export function useFolders(
       )
     },
     enabled: workspaceId !== null && enabled,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -424,6 +426,8 @@ export function useTrash(
       )
     },
     enabled: workspaceId !== null,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -464,6 +468,7 @@ export function useInitiateUpload(): UseMutationResult<
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["files", variables.workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", variables.workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", variables.workspaceId] })
     },
   })
 }
@@ -485,6 +490,7 @@ export function useCompleteUpload(): UseMutationResult<
       upsertCompletedFileInFilesCache(queryClient, data)
       void queryClient.invalidateQueries({ queryKey: ["files", data.workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", data.workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", data.workspaceId] })
     },
   })
 }
@@ -619,6 +625,7 @@ export function useBatchUpload(workspaceId: string | null): UseMutationResult<
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
     },
   })
 }
@@ -734,6 +741,8 @@ export function useDashboardOverview(
     queryKey: ["dashboard-overview", workspaceId],
     queryFn: () => api.get<DashboardOverview>(buildWorkspacePath(workspaceId, "/dashboard/overview")),
     enabled: workspaceId !== null,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -778,6 +787,8 @@ export function useDashboardSettings(
     queryKey: ["dashboard-settings", workspaceId],
     queryFn: () => api.get<WorkspaceSettings>(buildWorkspacePath(workspaceId, "/dashboard/settings")),
     enabled: workspaceId !== null,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -953,6 +964,7 @@ export function useDeleteFile(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
     },
   })
 }
@@ -971,6 +983,7 @@ export function useRestoreFile(
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
     },
   })
 }
@@ -1001,6 +1014,7 @@ export function usePermanentlyDeleteFile(
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
     },
   })
 }
@@ -1116,9 +1130,12 @@ export function useDeleteFolder(
     mutationFn: ({ folderId }) =>
       api.delete<DeleteFolderResponse>(buildWorkspacePath(workspaceId, `/folders/${folderId}`)),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-settings", workspaceId] })
     },
   })
 }
@@ -1139,6 +1156,7 @@ export function useRestoreFolder(
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
     },
   })
 }
@@ -1242,6 +1260,8 @@ export function useShares(
       )
     },
     enabled: workspaceId !== null && options?.enabled !== false,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -1691,8 +1711,11 @@ export function useCreateWorkspace(): UseMutationResult<
         createdAt: string
         updatedAt: string
       }>("/api/workspaces", body),
-    onSuccess: () => {
+    onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", data.id] })
+      void queryClient.invalidateQueries({ queryKey: ["files", data.id] })
+      void queryClient.invalidateQueries({ queryKey: ["folders", data.id] })
     },
   })
 }
