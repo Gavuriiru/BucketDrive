@@ -15,7 +15,16 @@ import {
   syncMemberToLegacyWorkspaceMember,
   syncWorkspaceMemberships,
 } from "../../lib/workspace-membership"
-import { bucket, platformSettings, user as userSchema, workspace, workspaceSettings, member, workspaceMember, auditLog } from "@bucketdrive/shared/db/schema"
+import {
+  bucket,
+  platformSettings,
+  user as userSchema,
+  workspace,
+  workspaceSettings,
+  member,
+  workspaceMember,
+  auditLog,
+} from "@bucketdrive/shared/db/schema"
 import { NotificationsService } from "../notifications/notifications.service"
 
 interface WorkspacesEnv {
@@ -97,7 +106,12 @@ export async function ensureWorkspaceCreationRecords(
   const existingMember = await db
     .select({ id: member.id })
     .from(member)
-    .where(and(eq(member.organizationId, currentWorkspace.id), eq(member.userId, currentWorkspace.ownerId)))
+    .where(
+      and(
+        eq(member.organizationId, currentWorkspace.id),
+        eq(member.userId, currentWorkspace.ownerId),
+      ),
+    )
     .get()
 
   if (!existingMember) {
@@ -113,7 +127,12 @@ export async function ensureWorkspaceCreationRecords(
       .run()
   }
 
-  await syncMemberToLegacyWorkspaceMember(db, currentWorkspace.id, currentWorkspace.ownerId, "owner")
+  await syncMemberToLegacyWorkspaceMember(
+    db,
+    currentWorkspace.id,
+    currentWorkspace.ownerId,
+    "owner",
+  )
 }
 
 workspaces.get("/", async (c) => {
@@ -162,7 +181,13 @@ workspaces.post("/", async (c) => {
     return c.json({ code: "FORBIDDEN", message: "Workspace creation is disabled" }, 403)
   }
 
-  const slugBase = body.slug ?? body.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+  const slugBase =
+    body.slug ??
+    body.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
   const slug = slugBase || crypto.randomUUID()
   const existing = await db.select().from(workspace).where(eq(workspace.slug, slug)).get()
   if (existing) {
@@ -172,7 +197,10 @@ workspaces.post("/", async (c) => {
         return c.json(CreateWorkspaceResponse.parse(existing), 200)
       } catch (error) {
         console.error("Failed to recover workspace creation", error)
-        return c.json({ code: "INTERNAL_ERROR", message: "Failed to complete workspace setup" }, 500)
+        return c.json(
+          { code: "INTERNAL_ERROR", message: "Failed to complete workspace setup" },
+          500,
+        )
       }
     }
 
@@ -232,11 +260,17 @@ workspaces.post("/:workspaceId/transfer-ownership", async (c) => {
   }
 
   if (ws.ownerId !== actor.id) {
-    return c.json({ code: "OWNER_REQUIRED", message: "Only the workspace owner can transfer ownership" }, 403)
+    return c.json(
+      { code: "OWNER_REQUIRED", message: "Only the workspace owner can transfer ownership" },
+      403,
+    )
   }
 
   if (ws.ownerId === body.newOwnerId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "New owner cannot be the current owner" }, 400)
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "New owner cannot be the current owner" },
+      400,
+    )
   }
 
   const newOwnerMember = await db
@@ -246,18 +280,28 @@ workspaces.post("/:workspaceId/transfer-ownership", async (c) => {
     .get()
 
   if (!newOwnerMember) {
-    return c.json({ code: "NOT_FOUND", message: "Target user is not a member of this workspace" }, 404)
+    return c.json(
+      { code: "NOT_FOUND", message: "Target user is not a member of this workspace" },
+      404,
+    )
   }
 
   const normalizedRole = normalizeWorkspaceRole(newOwnerMember.role)
   if (normalizedRole !== "admin") {
-    return c.json({ code: "ROLE_TOO_LOW", message: "Ownership can only be transferred to an admin" }, 403)
+    return c.json(
+      { code: "ROLE_TOO_LOW", message: "Ownership can only be transferred to an admin" },
+      403,
+    )
   }
 
   const now = new Date().toISOString()
 
   // Transfer ownership
-  await db.update(workspace).set({ ownerId: body.newOwnerId, updatedAt: now }).where(eq(workspace.id, workspaceId)).run()
+  await db
+    .update(workspace)
+    .set({ ownerId: body.newOwnerId, updatedAt: now })
+    .where(eq(workspace.id, workspaceId))
+    .run()
 
   // Downgrade old owner to admin in member table
   const oldOwnerMember = await db
@@ -275,7 +319,9 @@ workspaces.post("/:workspaceId/transfer-ownership", async (c) => {
     await db
       .update(workspaceMember)
       .set({ role: "admin" })
-      .where(and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, actor.id)))
+      .where(
+        and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, actor.id)),
+      )
       .run()
   }
 
@@ -288,7 +334,12 @@ workspaces.post("/:workspaceId/transfer-ownership", async (c) => {
   await db
     .update(workspaceMember)
     .set({ role: "owner" })
-    .where(and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, body.newOwnerId)))
+    .where(
+      and(
+        eq(workspaceMember.workspaceId, workspaceId),
+        eq(workspaceMember.userId, body.newOwnerId),
+      ),
+    )
     .run()
 
   await db

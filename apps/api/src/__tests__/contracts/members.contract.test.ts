@@ -28,16 +28,22 @@ describe("members contracts", () => {
     expect(invite.status).toBe(201)
     InvitationDetailResponse.extend({ inviteLink: z.string() }).parse(await ctx.json(invite))
 
-    const update = await ctx.request(`/api/workspaces/${ctx.workspaceId}/members/${targetMember.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ role: "manager" }),
-    })
+    const update = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/members/${targetMember.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ role: "manager" }),
+      },
+    )
     expect(update.status).toBe(200)
     WorkspaceMemberListItemSchema.parse(await ctx.json(update))
 
-    const remove = await ctx.request(`/api/workspaces/${ctx.workspaceId}/members/${targetMember.id}`, {
-      method: "DELETE",
-    })
+    const remove = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/members/${targetMember.id}`,
+      {
+        method: "DELETE",
+      },
+    )
     expect(remove.status).toBe(200)
     RemoveMemberResponse.parse(await ctx.json(remove))
   })

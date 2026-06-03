@@ -57,20 +57,12 @@ export class ThumbnailService {
       let targetHeight = height
 
       if (width > this.MAX_DIMENSION || height > this.MAX_DIMENSION) {
-        const ratio = Math.min(
-          this.MAX_DIMENSION / width,
-          this.MAX_DIMENSION / height,
-        )
+        const ratio = Math.min(this.MAX_DIMENSION / width, this.MAX_DIMENSION / height)
         targetWidth = Math.round(width * ratio)
         targetHeight = Math.round(height * ratio)
       }
 
-      const outputImage = resize(
-        inputImage,
-        targetWidth,
-        targetHeight,
-        SamplingFilter.Lanczos3,
-      )
+      const outputImage = resize(inputImage, targetWidth, targetHeight, SamplingFilter.Lanczos3)
 
       const thumbnailBytes = outputImage.get_bytes_webp()
 
@@ -95,10 +87,7 @@ export class ThumbnailService {
           updatedAt: new Date().toISOString(),
         })
         .where(
-          and(
-            eq(fileObject.id, params.fileId),
-            eq(fileObject.workspaceId, params.workspaceId),
-          ),
+          and(eq(fileObject.id, params.fileId), eq(fileObject.workspaceId, params.workspaceId)),
         )
         .run()
 
@@ -130,10 +119,7 @@ export class ThumbnailService {
           updatedAt: new Date().toISOString(),
         })
         .where(
-          and(
-            eq(fileObject.id, params.fileId),
-            eq(fileObject.workspaceId, params.workspaceId),
-          ),
+          and(eq(fileObject.id, params.fileId), eq(fileObject.workspaceId, params.workspaceId)),
         )
         .run()
     } catch (err) {
@@ -148,19 +134,18 @@ export class ThumbnailService {
     })
   }
 
-  async processPending(params: {
-    workspaceId?: string
-    limit?: number
-  } = {}): Promise<ThumbnailBackfillResult> {
+  async processPending(
+    params: {
+      workspaceId?: string
+      limit?: number
+    } = {},
+  ): Promise<ThumbnailBackfillResult> {
     const limit = Math.max(1, Math.min(params.limit ?? 25, 100))
     const db = getDB()
     const conditions = [
       eq(fileObject.isDeleted, false),
       isNull(fileObject.thumbnailKey),
-      or(
-        like(fileObject.mimeType, "image/%"),
-        like(fileObject.mimeType, "video/%"),
-      ),
+      or(like(fileObject.mimeType, "image/%"), like(fileObject.mimeType, "video/%")),
     ]
 
     if (params.workspaceId) {

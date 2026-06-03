@@ -132,13 +132,13 @@ export function ShareModal({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border-default bg-surface-default p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
-          <div className="flex items-center justify-between mb-5">
-            <Dialog.Title className="text-lg font-semibold text-text-primary">
+        <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50" />
+        <Dialog.Content className="border-border-default bg-surface-default data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border p-6 shadow-xl">
+          <div className="mb-5 flex items-center justify-between">
+            <Dialog.Title className="text-text-primary text-lg font-semibold">
               Share &ldquo;{resourceName}&rdquo;
             </Dialog.Title>
-            <Dialog.Close className="rounded-md p-1 text-text-tertiary hover:bg-surface-hover hover:text-text-primary transition-colors">
+            <Dialog.Close className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1 transition-colors">
               <X className="h-5 w-5" />
             </Dialog.Close>
           </div>
@@ -147,7 +147,7 @@ export function ShareModal({
             <div className="space-y-5">
               {resourceType === "folder" ? (
                 <div>
-                  <p className="text-sm text-text-secondary mb-2">Share type</p>
+                  <p className="text-text-secondary mb-2 text-sm">Share type</p>
                   <div className="flex gap-2">
                     {(
                       [
@@ -169,13 +169,13 @@ export function ShareModal({
                       </button>
                     ))}
                   </div>
-                  <p className="mt-1.5 text-xs text-text-tertiary">
+                  <p className="text-text-tertiary mt-1.5 text-xs">
                     {shareTypeLabels[shareType].description}
                   </p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm text-text-secondary mb-2">Share type</p>
+                  <p className="text-text-secondary mb-2 text-sm">Share type</p>
                   <div className="flex gap-2">
                     {(
                       [
@@ -197,7 +197,7 @@ export function ShareModal({
                       </button>
                     ))}
                   </div>
-                  <p className="mt-1.5 text-xs text-text-tertiary">
+                  <p className="text-text-tertiary mt-1.5 text-xs">
                     {shareTypeLabels[shareType].description}
                   </p>
                 </div>
@@ -205,15 +205,15 @@ export function ShareModal({
 
               {shareType === "internal" && (
                 <div>
-                  <div className="rounded-lg border border-border-muted bg-surface-secondary p-3">
-                    <p className="text-xs font-medium text-text-secondary mb-2">Permissions</p>
+                  <div className="border-border-muted bg-surface-secondary rounded-lg border p-3">
+                    <p className="text-text-secondary mb-2 text-xs font-medium">Permissions</p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => togglePermission("read")}
                         className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                           permissions.includes("read")
                             ? "bg-accent text-white"
-                            : "border border-border-muted bg-surface-default text-text-secondary hover:border-border-default"
+                            : "border-border-muted bg-surface-default text-text-secondary hover:border-border-default border"
                         }`}
                       >
                         Read
@@ -223,7 +223,7 @@ export function ShareModal({
                         className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                           permissions.includes("download")
                             ? "bg-accent text-white"
-                            : "border border-border-muted bg-surface-default text-text-secondary hover:border-border-default"
+                            : "border-border-muted bg-surface-default text-text-secondary hover:border-border-default border"
                         }`}
                       >
                         Download
@@ -236,7 +236,10 @@ export function ShareModal({
               {shareType !== "internal" && (
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="share-password" className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
+                    <label
+                      htmlFor="share-password"
+                      className="text-text-secondary flex items-center gap-1.5 text-xs font-medium"
+                    >
                       <Lock className="h-3 w-3" />
                       Password protection
                     </label>
@@ -246,22 +249,27 @@ export function ShareModal({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Optional: password (min 4 chars)"
-                      className="mt-1.5 w-full rounded-lg border border-border-default bg-surface-default px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                     />
                     {password.length > 0 && password.length < 4 && (
-                      <p className="mt-1 text-xs text-error">Password must be at least 4 characters</p>
+                      <p className="text-error mt-1 text-xs">
+                        Password must be at least 4 characters
+                      </p>
                     )}
                   </div>
 
                   <div>
-                    <label htmlFor="share-expiration" className="text-xs font-medium text-text-secondary">
+                    <label
+                      htmlFor="share-expiration"
+                      className="text-text-secondary text-xs font-medium"
+                    >
                       Expiration
                     </label>
                     <select
                       id="share-expiration"
                       value={expiresIn}
                       onChange={(e) => setExpiresIn(e.target.value)}
-                      className="mt-1.5 w-full rounded-lg border border-border-default bg-surface-default px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="border-border-default bg-surface-default text-text-primary focus:border-accent focus:ring-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                     >
                       <option value="">Never</option>
                       <option value="1">1 day</option>
@@ -274,7 +282,7 @@ export function ShareModal({
               )}
 
               <div className="flex justify-end gap-3">
-                <Dialog.Close className="rounded-lg border border-border-muted px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-hover transition-colors">
+                <Dialog.Close className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-4 py-2 text-sm font-medium transition-colors">
                   Cancel
                 </Dialog.Close>
                 <button
@@ -283,7 +291,7 @@ export function ShareModal({
                     createShare.isPending ||
                     (shareType !== "internal" && password.length > 0 && password.length < 4)
                   }
-                  className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+                  className="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
                 >
                   <Share2 className="h-4 w-4" />
                   {createShare.isPending ? "Creating..." : "Create share"}
@@ -291,7 +299,7 @@ export function ShareModal({
               </div>
 
               {createShare.isError && (
-                <p className="text-sm text-error">
+                <p className="text-error text-sm">
                   {createShare.error instanceof Error
                     ? createShare.error.message
                     : "Failed to create share"}
@@ -300,9 +308,9 @@ export function ShareModal({
             </div>
           ) : (
             <div className="space-y-5">
-              <div className="rounded-lg border border-border-muted bg-surface-secondary p-4">
-                <p className="text-xs font-medium text-text-secondary mb-1">Share link created</p>
-                <p className="text-sm text-text-primary">
+              <div className="border-border-muted bg-surface-secondary rounded-lg border p-4">
+                <p className="text-text-secondary mb-1 text-xs font-medium">Share link created</p>
+                <p className="text-text-primary text-sm">
                   {createdShareType === "internal"
                     ? "Workspace members can now access this content."
                     : "Anyone with the link can access this content."}
@@ -310,23 +318,24 @@ export function ShareModal({
               </div>
 
               {createdShareType === "internal" ? (
-                <div className="rounded-lg border border-border-muted bg-surface-secondary p-3 text-sm text-text-secondary">
-                  This internal share is available to workspace members from the Shared with me page.
+                <div className="border-border-muted bg-surface-secondary text-text-secondary rounded-lg border p-3 text-sm">
+                  This internal share is available to workspace members from the Shared with me
+                  page.
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => copyLink(getShareLink(), "share")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-default px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                  className="border-border-default bg-surface-default text-text-primary hover:bg-surface-hover inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors"
                 >
                   {copiedLinkType === "share" ? (
                     <>
-                      <Check className="h-4 w-4 text-success" />
+                      <Check className="text-success h-4 w-4" />
                       Copied
                     </>
                   ) : (
                     <>
-                      <Copy className="h-4 w-4 text-text-tertiary" />
+                      <Copy className="text-text-tertiary h-4 w-4" />
                       Copy share link
                     </>
                   )}
@@ -341,16 +350,16 @@ export function ShareModal({
                         const link = getManagedDownloadLink()
                         if (link) copyLink(link, "download")
                       }}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-default px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                      className="border-border-default bg-surface-default text-text-primary hover:bg-surface-hover inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors"
                     >
                       {copiedLinkType === "download" ? (
                         <>
-                          <Check className="h-4 w-4 text-success" />
+                          <Check className="text-success h-4 w-4" />
                           Copied
                         </>
                       ) : (
                         <>
-                          <Download className="h-4 w-4 text-text-tertiary" />
+                          <Download className="text-text-tertiary h-4 w-4" />
                           Copy direct download link
                         </>
                       )}
@@ -363,16 +372,16 @@ export function ShareModal({
                         const link = buildPublicR2Url()
                         if (link) copyLink(link, "public")
                       }}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-default px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                      className="border-border-default bg-surface-default text-text-primary hover:bg-surface-hover inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors"
                     >
                       {copiedLinkType === "public" ? (
                         <>
-                          <Check className="h-4 w-4 text-success" />
+                          <Check className="text-success h-4 w-4" />
                           Copied
                         </>
                       ) : (
                         <>
-                          <Globe className="h-4 w-4 text-text-tertiary" />
+                          <Globe className="text-text-tertiary h-4 w-4" />
                           Copy public R2 URL
                         </>
                       )}
@@ -382,7 +391,7 @@ export function ShareModal({
               )}
 
               <div className="flex justify-end">
-                <Dialog.Close className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90">
+                <Dialog.Close className="bg-accent hover:bg-accent/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors">
                   Done
                 </Dialog.Close>
               </div>

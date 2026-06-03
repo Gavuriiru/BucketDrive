@@ -9,6 +9,7 @@ Accepted
 O BucketDrive usa Cloudflare D1 como banco de dados em produção. Em desenvolvimento local, o D1 não está disponível diretamente (depende de `wrangler dev --remote` que requer internet e consome quota).
 
 Precisamos de uma estratégia que garanta:
+
 - Desenvolvimento local offline (sem depender de internet)
 - Schema idêntico entre dev e prod (zero divergência)
 - Migrações versionadas e reproduzíveis
@@ -16,6 +17,7 @@ Precisamos de uma estratégia que garanta:
 - Seeds para desenvolvimento e testes
 
 O projeto já determinou:
+
 - SQLite via `better-sqlite3` para desenvolvimento local
 - D1 HTTP API para produção (Cloudflare Workers)
 - Drizzle ORM como camada de abstração
@@ -87,21 +89,25 @@ export function createD1DB(d1: D1Database) {
 ## Alternatives Considered
 
 ### Migrações SQL manuais
+
 - **Prós**: controle total sobre SQL, portabilidade máxima
 - **Contras**: propenso a erro humano, divergência dev/prod, sem type-safety, difícil de revisar em PR
 - **Rejeitado porque**: escala mal com schema complexo e múltiplos contribuidores
 
 ### Drizzle Push (sem migrações)
+
 - **Prós**: zero boilerplate, rápido para prototipar
 - **Contras**: sem histórico de mudanças, sem rollback, perigoso em produção (altera schema live sem revisão)
 - **Rejeitado porque**: inaceitável para produção. Migrações versionadas são mandatórias.
 
 ### Prisma
+
 - **Prós**: ORM maduro, tooling completo, Studio visual
 - **Contras**: bundle grande (runtime engine), performance inferior em Workers, suporte D1 via driver adapter (mais complexo), código gerado vs schema-in-code
 - **Rejeitado porque**: Drizzle é mais leve, mais idiomático TypeScript e melhor integração com Workers/D1
 
 ### Kysely
+
 - **Prós**: query builder TypeScript puro, excelente type-safety
 - **Contras**: sem migration tooling built-in, boilerplate manual para schema, curva de aprendizado maior
 - **Rejeitado porque**: Drizzle oferece ORM completo + migration kit + type-safety com menos boilerplate
@@ -109,6 +115,7 @@ export function createD1DB(d1: D1Database) {
 ## Consequences
 
 ### Positivas
+
 - Schema como código TypeScript (type-safe, revisável em PR)
 - Migrações automáticas versionadas (SQL gerado, revisável)
 - Mesma API para SQLite local e D1 produção
@@ -116,11 +123,13 @@ export function createD1DB(d1: D1Database) {
 - Tipagem TypeScript completa para queries (autocomplete, refatoração segura)
 
 ### Negativas
+
 - Drizzle Kit ainda evolui ativamente (breaking changes ocasionais em major versions)
 - D1 tem diferenças sutis do SQLite nativo que o `drizzle-orm/d1` abstrai, mas podem surgir em queries complexas
 - Melhor testar queries no D1 preview antes de subir para produção em casos complexos
 
 ### Mitigações
+
 - Fixar versão do Drizzle no `package.json`
 - Testes de integração com `wrangler dev --remote` em CI para validar queries D1
 - Manter queries SQL puras apenas em repositórios, usando Drizzle query builder para todo o resto

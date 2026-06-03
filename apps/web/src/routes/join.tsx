@@ -34,10 +34,10 @@ export function JoinPage() {
 
   if (!token) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-primary p-6">
-        <div className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-8 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-text-primary">Invalid Invitation</h1>
-          <p className="mt-2 text-sm text-text-secondary">No invitation token was provided.</p>
+      <div className="bg-bg-primary flex min-h-screen items-center justify-center p-6">
+        <div className="border-border-default bg-surface-default w-full max-w-sm rounded-2xl border p-8 text-center shadow-sm">
+          <h1 className="text-text-primary text-xl font-semibold">Invalid Invitation</h1>
+          <p className="text-text-secondary mt-2 text-sm">No invitation token was provided.</p>
         </div>
       </div>
     )
@@ -45,18 +45,18 @@ export function JoinPage() {
 
   if (invitationQuery.isLoading || isAuthenticated === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      <div className="bg-bg-primary flex min-h-screen items-center justify-center">
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
 
   if (invitationQuery.isError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-primary p-6">
-        <div className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-8 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-text-primary">Invitation Unavailable</h1>
-          <p className="mt-2 text-sm text-text-secondary">
+      <div className="bg-bg-primary flex min-h-screen items-center justify-center p-6">
+        <div className="border-border-default bg-surface-default w-full max-w-sm rounded-2xl border p-8 text-center shadow-sm">
+          <h1 className="text-text-primary text-xl font-semibold">Invitation Unavailable</h1>
+          <p className="text-text-secondary mt-2 text-sm">
             {invitationQuery.error?.message ?? "This invitation is no longer valid."}
           </p>
         </div>
@@ -67,10 +67,10 @@ export function JoinPage() {
   const invite = invitationQuery.data
   if (!invite) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-primary p-6">
-        <div className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-8 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-text-primary">Invitation Unavailable</h1>
-          <p className="mt-2 text-sm text-text-secondary">Unable to load invitation details.</p>
+      <div className="bg-bg-primary flex min-h-screen items-center justify-center p-6">
+        <div className="border-border-default bg-surface-default w-full max-w-sm rounded-2xl border p-8 text-center shadow-sm">
+          <h1 className="text-text-primary text-xl font-semibold">Invitation Unavailable</h1>
+          <p className="text-text-secondary mt-2 text-sm">Unable to load invitation details.</p>
         </div>
       </div>
     )
@@ -79,11 +79,11 @@ export function JoinPage() {
   const emailMatches = userEmail?.toLowerCase() === invite.email.toLowerCase()
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-primary p-6">
-      <div className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-8 shadow-sm">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
+    <div className="bg-bg-primary flex min-h-screen items-center justify-center p-6">
+      <div className="border-border-default bg-surface-default w-full max-w-sm rounded-2xl border p-8 shadow-sm">
+        <div className="bg-accent/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
           <svg
-            className="h-6 w-6 text-accent"
+            className="text-accent h-6 w-6"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -97,28 +97,28 @@ export function JoinPage() {
           </svg>
         </div>
 
-        <h1 className="mt-4 text-center text-xl font-semibold text-text-primary">
+        <h1 className="text-text-primary mt-4 text-center text-xl font-semibold">
           Workspace Invitation
         </h1>
 
-        <p className="mt-2 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary mt-2 text-center text-sm">
           You have been invited to join{" "}
-          <span className="font-medium text-text-primary">{invite.workspaceName}</span> as a{" "}
-          <span className="font-medium capitalize text-text-primary">{invite.role}</span>.
+          <span className="text-text-primary font-medium">{invite.workspaceName}</span> as a{" "}
+          <span className="text-text-primary font-medium capitalize">{invite.role}</span>.
         </p>
 
-        <div className="mt-6 rounded-xl border border-border-default bg-bg-tertiary p-4">
+        <div className="border-border-default bg-bg-tertiary mt-6 rounded-xl border p-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-text-tertiary">Invited by</span>
-            <span className="font-medium text-text-primary">{invite.invitedByName}</span>
+            <span className="text-text-primary font-medium">{invite.invitedByName}</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm">
             <span className="text-text-tertiary">Email</span>
-            <span className="font-medium text-text-primary">{invite.email}</span>
+            <span className="text-text-primary font-medium">{invite.email}</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm">
             <span className="text-text-tertiary">Expires</span>
-            <span className="font-medium text-text-primary">
+            <span className="text-text-primary font-medium">
               {new Date(invite.expiresAt).toLocaleDateString()}
             </span>
           </div>
@@ -128,25 +128,25 @@ export function JoinPage() {
           <div className="mt-6">
             <a
               href={`/login?redirect=/join?token=${token}`}
-              className="block w-full rounded-xl bg-accent px-4 py-2.5 text-center text-sm font-medium text-white transition-opacity hover:opacity-90"
+              className="bg-accent block w-full rounded-xl px-4 py-2.5 text-center text-sm font-medium text-white transition-opacity hover:opacity-90"
             >
               Sign in to accept
             </a>
-            <p className="mt-2 text-center text-xs text-text-tertiary">
+            <p className="text-text-tertiary mt-2 text-center text-xs">
               You must sign in with the invited email address.
             </p>
           </div>
         )}
 
         {isAuthenticated && !emailMatches && (
-          <div className="mt-6 rounded-xl border border-error/30 bg-error/10 p-4 text-center">
-            <p className="text-sm text-error">
+          <div className="border-error/30 bg-error/10 mt-6 rounded-xl border p-4 text-center">
+            <p className="text-error text-sm">
               You are signed in as <strong>{userEmail}</strong>, but this invitation is for{" "}
               <strong>{invite.email}</strong>.
             </p>
             <a
               href={`/login?redirect=/join?token=${token}`}
-              className="mt-3 inline-block text-sm font-medium text-accent hover:underline"
+              className="text-accent mt-3 inline-block text-sm font-medium hover:underline"
             >
               Switch account
             </a>
@@ -167,12 +167,14 @@ export function JoinPage() {
                 )
               }}
               disabled={acceptInvitation.isPending}
-              className="w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="bg-accent w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {acceptInvitation.isPending ? "Accepting..." : "Accept invitation"}
             </button>
             {acceptInvitation.isError && (
-              <p className="mt-2 text-center text-sm text-error">{acceptInvitation.error.message}</p>
+              <p className="text-error mt-2 text-center text-sm">
+                {acceptInvitation.error.message}
+              </p>
             )}
           </div>
         )}

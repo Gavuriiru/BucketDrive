@@ -8,6 +8,7 @@ The system uses **Better Auth** as the authentication provider, running directly
 Cloudflare Worker alongside the API. Sessions are persisted in D1 via Drizzle ORM.
 
 Authentication must be:
+
 - secure (HTTPOnly cookies, CSRF protection)
 - session-based (not stateless JWT stored in localStorage)
 - multi-workspace aware (user's roles vary per workspace)
@@ -18,6 +19,7 @@ Authentication must be:
 # Better Auth Overview
 
 Better Auth is a TypeScript authentication library that provides:
+
 - OAuth2/OIDC providers (GitHub, Google, extensible)
 - Email/password credential authentication
 - Session management with cookie-based tokens
@@ -109,11 +111,11 @@ Redirects to /login
 const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "sqlite" }),
   session: {
-    expiresIn: 30 * 24 * 60 * 60,        // 30 days
-    updateAge: 24 * 60 * 60,              // 1 day (refresh if close to expiry)
+    expiresIn: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 1 day (refresh if close to expiry)
     cookieCache: {
       enabled: true,
-      maxAge: 5 * 60,                      // 5 minutes
+      maxAge: 5 * 60, // 5 minutes
     },
   },
   cookie: {
@@ -191,13 +193,13 @@ Better Auth uses **database sessions** (not stateless JWTs):
 
 ### Why database sessions over stateless JWTs?
 
-| Criterion | Database Sessions | Stateless JWTs |
-|---|---|---|
-| Revocation | Instant (delete row) | Requires blocklist or short expiry |
-| Token size | Small (just session ID) | Large (all claims embedded) |
-| Cookie security | HTTPOnly (inaccessible to JS) | Same if stored in cookie |
-| Worker cold start | One D1 query | Zero queries (but validation still happens) |
-| Multi-workspace | Query workspace membership on each request | Must embed in JWT (token bloat) |
+| Criterion         | Database Sessions                          | Stateless JWTs                              |
+| ----------------- | ------------------------------------------ | ------------------------------------------- |
+| Revocation        | Instant (delete row)                       | Requires blocklist or short expiry          |
+| Token size        | Small (just session ID)                    | Large (all claims embedded)                 |
+| Cookie security   | HTTPOnly (inaccessible to JS)              | Same if stored in cookie                    |
+| Worker cold start | One D1 query                               | Zero queries (but validation still happens) |
+| Multi-workspace   | Query workspace membership on each request | Must embed in JWT (token bloat)             |
 
 With D1's sub-10ms query latency on warm connections, the tradeoff favors database sessions
 for the revocation and multi-workspace benefits.
@@ -272,15 +274,15 @@ async function rbacMiddleware(c, next) {
 
 Authentication actions generate audit logs:
 
-| Event | Logged data |
-|---|---|
-| `user.login` | userId, provider (github/google/email), IP, userAgent |
-| `user.login_failed` | email, reason, IP |
-| `user.logout` | userId, IP |
-| `session.refreshed` | sessionId, userId |
-| `session.revoked` | sessionId, actorId (admin who revoked) |
-| `workspace.join` | userId, workspaceId |
-| `workspace.leave` | userId, workspaceId |
+| Event               | Logged data                                           |
+| ------------------- | ----------------------------------------------------- |
+| `user.login`        | userId, provider (github/google/email), IP, userAgent |
+| `user.login_failed` | email, reason, IP                                     |
+| `user.logout`       | userId, IP                                            |
+| `session.refreshed` | sessionId, userId                                     |
+| `session.revoked`   | sessionId, actorId (admin who revoked)                |
+| `workspace.join`    | userId, workspaceId                                   |
+| `workspace.leave`   | userId, workspaceId                                   |
 
 ---
 

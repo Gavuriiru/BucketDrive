@@ -19,11 +19,15 @@ export const FileObjectSchema = z.object({
   deletedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-  tags: z.array(z.object({
-    id: z.string().uuid(),
-    name: z.string(),
-    color: z.string(),
-  })).optional(),
+  tags: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string(),
+        color: z.string(),
+      }),
+    )
+    .optional(),
   isFavorited: z.boolean().optional(),
 })
 

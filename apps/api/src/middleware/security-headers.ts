@@ -9,8 +9,5 @@ export const securityHeaders = createMiddleware(async (c, next) => {
   c.res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   c.res.headers.set("X-XSS-Protection", "0")
   c.res.headers.set("Cross-Origin-Resource-Policy", "same-origin")
-  c.res.headers.set(
-    "Content-Security-Policy",
-    "default-src 'none'; frame-ancestors 'none'",
-  )
+  c.res.headers.set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 })

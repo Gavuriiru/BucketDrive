@@ -45,13 +45,9 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16))
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"],
-  )
+  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, [
+    "deriveBits",
+  ])
   const hashBuffer = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
@@ -72,18 +68,14 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
     const iterations = Number(iterationsRaw)
     if (!iterations || !saltHex || !hashHex) return false
 
-    const key = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(password),
-      "PBKDF2",
-      false,
-      ["deriveBits"],
-    )
+    const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, [
+      "deriveBits",
+    ])
     const hashBuffer = await crypto.subtle.deriveBits(
       {
         name: "PBKDF2",
         hash: "SHA-256",
-      salt: toArrayBuffer(fromHex(saltHex)),
+        salt: toArrayBuffer(fromHex(saltHex)),
         iterations,
       },
       key,
@@ -169,7 +161,11 @@ export class SharesService {
     const db = getDB()
     const now = new Date().toISOString()
 
-    const resource = await this.findResource(params.workspaceId, params.resourceType, params.resourceId)
+    const resource = await this.findResource(
+      params.workspaceId,
+      params.resourceType,
+      params.resourceId,
+    )
     if (!resource) {
       throw new ShareError("NOT_FOUND", `${params.resourceType} not found`)
     }
@@ -233,8 +229,7 @@ export class SharesService {
   async listShares(params: ListSharesParams) {
     const db = getDB()
     const canManageAll = can(params.role, "shares.manage_all")
-    const effectiveScope =
-      params.scope === "workspace" && !canManageAll ? "mine" : params.scope
+    const effectiveScope = params.scope === "workspace" && !canManageAll ? "mine" : params.scope
 
     const conditions: SQL[] = [eq(shareLink.workspaceId, params.workspaceId)]
 
@@ -256,7 +251,9 @@ export class SharesService {
     const shareIds = rows.map((row) => row.id)
     const creatorIds = Array.from(new Set(rows.map((row) => row.createdBy)))
     const fileIds = rows.filter((row) => row.resourceType === "file").map((row) => row.resourceId)
-    const folderIds = rows.filter((row) => row.resourceType === "folder").map((row) => row.resourceId)
+    const folderIds = rows
+      .filter((row) => row.resourceType === "folder")
+      .map((row) => row.resourceId)
 
     const permissionRows =
       shareIds.length > 0
@@ -349,9 +346,10 @@ export class SharesService {
 
     const q = params.q?.trim().toLowerCase()
     const filtered = q
-      ? mapped.filter((share) =>
-          share.resourceName.toLowerCase().includes(q) ||
-          share.createdByName.toLowerCase().includes(q),
+      ? mapped.filter(
+          (share) =>
+            share.resourceName.toLowerCase().includes(q) ||
+            share.createdByName.toLowerCase().includes(q),
         )
       : mapped
 
@@ -497,7 +495,10 @@ export class SharesService {
       const ipFailures = ipFailuresRow ? ipFailuresRow.count : 0
 
       if (ipFailures >= 5) {
-        throw new ShareError("SHARE_PASSWORD_RATE_LIMITED", "Too many failed attempts from this IP. Try again in 15 minutes.")
+        throw new ShareError(
+          "SHARE_PASSWORD_RATE_LIMITED",
+          "Too many failed attempts from this IP. Try again in 15 minutes.",
+        )
       }
     }
 
@@ -515,7 +516,10 @@ export class SharesService {
     const totalFailures = totalFailuresRow ? totalFailuresRow.count : 0
 
     if (totalFailures >= 10) {
-      throw new ShareError("SHARE_LOCKED", "This share link has been temporarily locked due to too many failed attempts. Try again in 30 minutes.")
+      throw new ShareError(
+        "SHARE_LOCKED",
+        "This share link has been temporarily locked due to too many failed attempts. Try again in 30 minutes.",
+      )
     }
   }
 
@@ -542,7 +546,10 @@ export class SharesService {
     }
 
     if (options?.downloadOnly && share.shareType !== "external_direct") {
-      throw new ShareError("INVALID_RESOURCE", "Direct download is only available for external file shares")
+      throw new ShareError(
+        "INVALID_RESOURCE",
+        "Direct download is only available for external file shares",
+      )
     }
 
     if (share.passwordHash) {
@@ -614,7 +621,8 @@ export class SharesService {
             workspaceId: share.workspaceId,
             type: "share.locked",
             title: "Share link locked",
-            message: "One of your password-protected share links has been temporarily locked due to too many failed access attempts.",
+            message:
+              "One of your password-protected share links has been temporarily locked due to too many failed access attempts.",
             data: { shareId, resourceType: share.resourceType, resourceId: share.resourceId },
           })
         }
@@ -635,7 +643,13 @@ export class SharesService {
       const file = await db
         .select()
         .from(fileObject)
-        .where(and(eq(fileObject.id, share.resourceId), eq(fileObject.workspaceId, share.workspaceId), eq(fileObject.isDeleted, false)))
+        .where(
+          and(
+            eq(fileObject.id, share.resourceId),
+            eq(fileObject.workspaceId, share.workspaceId),
+            eq(fileObject.isDeleted, false),
+          ),
+        )
         .get()
 
       if (!file) {
@@ -655,13 +669,22 @@ export class SharesService {
       downloadIncrement = 1
     } else {
       if (options?.downloadOnly) {
-        throw new ShareError("INVALID_RESOURCE", "Direct download is only available for file shares")
+        throw new ShareError(
+          "INVALID_RESOURCE",
+          "Direct download is only available for file shares",
+        )
       }
 
       const f = await db
         .select()
         .from(folder)
-        .where(and(eq(folder.id, share.resourceId), eq(folder.workspaceId, share.workspaceId), eq(folder.isDeleted, false)))
+        .where(
+          and(
+            eq(folder.id, share.resourceId),
+            eq(folder.workspaceId, share.workspaceId),
+            eq(folder.isDeleted, false),
+          ),
+        )
         .get()
 
       if (!f) {
@@ -766,13 +789,25 @@ export class SharesService {
       return db
         .select()
         .from(fileObject)
-        .where(and(eq(fileObject.id, resourceId), eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
+        .where(
+          and(
+            eq(fileObject.id, resourceId),
+            eq(fileObject.workspaceId, workspaceId),
+            eq(fileObject.isDeleted, false),
+          ),
+        )
         .get()
     }
     return db
       .select()
       .from(folder)
-      .where(and(eq(folder.id, resourceId), eq(folder.workspaceId, workspaceId), eq(folder.isDeleted, false)))
+      .where(
+        and(
+          eq(folder.id, resourceId),
+          eq(folder.workspaceId, workspaceId),
+          eq(folder.isDeleted, false),
+        ),
+      )
       .get()
   }
 
@@ -780,7 +815,9 @@ export class SharesService {
     return createdBy === userId || can(role, "shares.manage_all")
   }
 
-  private async getWorkspaceBranding(workspaceId: string): Promise<{ brandingLogoUrl: string | null; brandingName: string | null }> {
+  private async getWorkspaceBranding(
+    workspaceId: string,
+  ): Promise<{ brandingLogoUrl: string | null; brandingName: string | null }> {
     const db = getDB()
     const settings = await db
       .select({
@@ -809,7 +846,9 @@ export class SharesService {
       const file = await db
         .select()
         .from(fileObject)
-        .where(and(eq(fileObject.id, share.resourceId), eq(fileObject.workspaceId, share.workspaceId)))
+        .where(
+          and(eq(fileObject.id, share.resourceId), eq(fileObject.workspaceId, share.workspaceId)),
+        )
         .get()
       resourceName = file?.originalName ?? "Unknown file"
     } else {
@@ -931,7 +970,8 @@ export class SharesService {
             workspaceId: share.workspaceId,
             type: "share.locked",
             title: "Share link locked",
-            message: "One of your password-protected share links has been temporarily locked due to too many failed access attempts.",
+            message:
+              "One of your password-protected share links has been temporarily locked due to too many failed access attempts.",
             data: { shareId, resourceType: share.resourceType, resourceId: share.resourceId },
           })
         }
@@ -943,7 +983,13 @@ export class SharesService {
     const targetFolder = await db
       .select()
       .from(folder)
-      .where(and(eq(folder.id, targetFolderId), eq(folder.workspaceId, share.workspaceId), eq(folder.isDeleted, false)))
+      .where(
+        and(
+          eq(folder.id, targetFolderId),
+          eq(folder.workspaceId, share.workspaceId),
+          eq(folder.isDeleted, false),
+        ),
+      )
       .get()
 
     if (!targetFolder) {
@@ -957,7 +1003,13 @@ export class SharesService {
       const f = await db
         .select()
         .from(folder)
-        .where(and(eq(folder.id, currentId), eq(folder.workspaceId, share.workspaceId), eq(folder.isDeleted, false)))
+        .where(
+          and(
+            eq(folder.id, currentId),
+            eq(folder.workspaceId, share.workspaceId),
+            eq(folder.isDeleted, false),
+          ),
+        )
         .get()
 
       if (!f) break

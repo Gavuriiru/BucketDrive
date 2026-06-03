@@ -3,6 +3,7 @@
 ## Project Vision
 
 This project is a modern cloud storage platform inspired by:
+
 - Google Drive
 - Dropbox
 - Nextcloud
@@ -10,6 +11,7 @@ This project is a modern cloud storage platform inspired by:
 - VSCode
 
 The platform must prioritize:
+
 - desktop-like UX
 - performance
 - accessibility
@@ -21,6 +23,7 @@ The platform must prioritize:
 This is NOT a CRUD dashboard project.
 
 The product experience must feel:
+
 - fluid
 - responsive
 - keyboard-driven
@@ -32,6 +35,7 @@ The product experience must feel:
 # Technology Stack
 
 ## Frontend
+
 - React 19 + TypeScript + Vite (SPA)
 - TailwindCSS v4 + shadcn/ui
 - TanStack Router (type-safe routing)
@@ -41,26 +45,31 @@ The product experience must feel:
 - React Hook Form + Zod (forms)
 
 ## Backend
+
 - Cloudflare Workers + Hono (API framework)
 - Better Auth (authentication, runs in Worker)
 - Drizzle ORM (database, typed queries)
 - Zod (runtime validation)
 
 ## Database
+
 - Cloudflare D1 (production)
 - SQLite via better-sqlite3 (local development)
 - Drizzle Kit (migrations)
 
 ## Storage
+
 - Cloudflare R2 (primary, via StorageProvider abstraction)
 - Future: S3, MinIO, Backblaze B2, Wasabi
 
 ## Infrastructure
+
 - Cloudflare Pages (frontend hosting)
 - Cloudflare Workers (API + background jobs)
 - Monorepo: Turborepo + pnpm workspaces
 
 ## ADRs
+
 - [ADR-001](docs/decisions/ADR-001-vite-spa.md): Vite SPA vs Next.js
 - [ADR-002](docs/decisions/ADR-002-better-auth.md): Better Auth as auth provider
 - [ADR-003](docs/decisions/ADR-003-drizzle-d1-sqlite.md): Drizzle Kit migration strategy
@@ -72,6 +81,7 @@ The product experience must feel:
 ## 1. UX First
 
 All interfaces must prioritize:
+
 - usability
 - clarity
 - responsiveness
@@ -79,6 +89,7 @@ All interfaces must prioritize:
 - minimal friction
 
 Avoid:
+
 - cluttered layouts
 - excessive modals
 - confusing navigation
@@ -90,12 +101,14 @@ Avoid:
 ## 2. Desktop-Like Experience
 
 The application should behave similarly to:
+
 - Finder
 - Windows Explorer
 - Google Drive
 - VSCode
 
 Required:
+
 - keyboard navigation
 - context menus
 - drag and drop
@@ -110,6 +123,7 @@ Required:
 Accessibility is mandatory.
 
 All features must support:
+
 - keyboard navigation
 - screen readers
 - focus visibility
@@ -125,6 +139,7 @@ Never ship inaccessible components.
 Security is not optional.
 
 All systems must consider:
+
 - RBAC
 - input validation
 - CSRF protection
@@ -145,11 +160,13 @@ Never trust frontend permissions.
 Strict TypeScript is mandatory.
 
 Forbidden:
+
 - any
 - unknown unchecked casts
 - untyped API responses
 
 Required:
+
 - shared types
 - runtime validation
 - typed APIs
@@ -162,11 +179,13 @@ Required:
 All external input must be validated.
 
 Required:
+
 - Zod validation
 - API schema validation
 - upload validation
 
 Never trust:
+
 - query params
 - request bodies
 - frontend state
@@ -176,6 +195,7 @@ Never trust:
 ## Frontend Rules
 
 Frontend stack:
+
 - React 19 + TypeScript + Vite
 - TailwindCSS
 - shadcn/ui
@@ -187,6 +207,7 @@ Frontend stack:
 - Zod
 
 Required:
+
 - dark mode
 - responsive design
 - loading states
@@ -195,6 +216,7 @@ Required:
 - optimistic updates
 
 Forbidden:
+
 - inline styles
 - inconsistent spacing
 - duplicated components
@@ -208,6 +230,7 @@ Forbidden:
 The design system is mandatory.
 
 All UI must use:
+
 - design tokens
 - spacing scale
 - typography scale
@@ -222,12 +245,15 @@ Avoid visual inconsistency.
 ## State Management
 
 Server state:
+
 - TanStack Query
 
 Client UI state:
+
 - Zustand
 
 Avoid:
+
 - unnecessary global state
 - prop drilling
 - duplicated cache logic
@@ -237,6 +263,7 @@ Avoid:
 ## Backend Rules
 
 Backend responsibilities:
+
 - authentication
 - RBAC
 - storage orchestration
@@ -247,6 +274,7 @@ Backend responsibilities:
 All business logic must live in backend services.
 
 Forbidden:
+
 - frontend business rules
 - direct storage access from frontend
 - duplicated authorization logic
@@ -260,12 +288,14 @@ Storage must be abstracted.
 Never directly depend on R2 APIs.
 
 Required:
+
 - StorageProvider abstraction
 - provider isolation
 - signed URL support
 - multipart upload support
 
 The system must support future providers:
+
 - S3
 - MinIO
 - Backblaze
@@ -284,6 +314,7 @@ Required:
 can(user, "files.delete")
 
 Permissions must be:
+
 - granular
 - composable
 - backend validated
@@ -293,12 +324,14 @@ Permissions must be:
 ## API Rules
 
 All APIs must:
+
 - validate input
 - validate output
 - return typed responses
 - handle errors consistently
 
 Required:
+
 - pagination
 - structured errors
 - audit-safe responses
@@ -310,6 +343,7 @@ Required:
 Performance is critical.
 
 Required:
+
 - virtualization
 - lazy loading
 - code splitting
@@ -317,6 +351,7 @@ Required:
 - memoization when necessary
 
 Avoid:
+
 - unnecessary rerenders
 - oversized client bundles
 - blocking UI
@@ -326,16 +361,19 @@ Avoid:
 ## Animation Rules
 
 Animations must:
+
 - feel smooth
 - feel subtle
 - improve UX
 
 Avoid:
+
 - excessive motion
 - chaotic animations
 - random transitions
 
 Animations should:
+
 - follow interface hierarchy
 - occur top-to-bottom
 - preserve visual clarity
@@ -345,6 +383,7 @@ Animations should:
 ## Sharing Rules
 
 All sharing systems must support:
+
 - expiration
 - revocation
 - password protection
@@ -358,6 +397,7 @@ External access must be isolated from internal permissions.
 ## Logging & Audit
 
 Critical actions must generate audit logs:
+
 - uploads
 - deletions
 - sharing
@@ -371,6 +411,7 @@ Logs must be structured and queryable.
 ## Definition of Done
 
 A feature is complete only if:
+
 - typed
 - validated
 - tested
@@ -387,6 +428,7 @@ A feature is complete only if:
 ## Forbidden Architecture Decisions
 
 Never:
+
 - bypass RBAC
 - duplicate business logic
 - hardcode permissions
@@ -404,6 +446,7 @@ Never:
 Use consistent terminology.
 
 Required terms:
+
 - FileObject
 - Folder
 - ShareLink
@@ -420,6 +463,7 @@ Never invent alternative names for existing concepts.
 ## Documentation Rules
 
 All important features must include:
+
 - feature spec
 - API contract
 - permission requirements
@@ -448,6 +492,7 @@ refactor/storage-provider-interface
 ```
 
 Never use:
+
 - generic names (`fix`, `update`, `wip`)
 - personal names as branches
 

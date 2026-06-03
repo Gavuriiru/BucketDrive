@@ -314,14 +314,20 @@ describe("can() — RBAC permission evaluation", () => {
     })
 
     it("falls back to base can() when parent access is absent or context missing", () => {
-      expect(canWithInheritance("viewer", "folders.read", { hasParentReadAccess: false })).toBe(true)
+      expect(canWithInheritance("viewer", "folders.read", { hasParentReadAccess: false })).toBe(
+        true,
+      )
       expect(canWithInheritance("viewer", "folders.read")).toBe(true)
       expect(canWithInheritance("viewer", "files.upload")).toBe(false)
     })
 
     it("does not inherit non-read permissions via parent access", () => {
-      expect(canWithInheritance("viewer", "folders.create", { hasParentReadAccess: true })).toBe(false)
-      expect(canWithInheritance("editor", "folders.delete", { hasParentReadAccess: true })).toBe(false)
+      expect(canWithInheritance("viewer", "folders.create", { hasParentReadAccess: true })).toBe(
+        false,
+      )
+      expect(canWithInheritance("editor", "folders.delete", { hasParentReadAccess: true })).toBe(
+        false,
+      )
     })
   })
 

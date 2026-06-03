@@ -1,12 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-plus-operands */
-import {
-  Pencil,
-  Trash2,
-  FolderInput,
-  Star,
-  X,
-  type LucideIcon,
-} from "lucide-react"
+import { Pencil, Trash2, FolderInput, Star, X, type LucideIcon } from "lucide-react"
 import { useExplorerStore } from "@/stores/explorer-store"
 import type { Command, CommandCategory } from "./types"
 

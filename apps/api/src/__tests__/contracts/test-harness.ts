@@ -237,8 +237,10 @@ export function createContractTestContext(): TestContext {
     seedFile: (input = {}) => seedFile(sqlite, workspaceId, bucketId, ctxBase.owner.id, now, input),
     seedTag: (input = {}) => seedTag(sqlite, workspaceId, now, input),
     seedShare: (input = {}) => seedShare(sqlite, workspaceId, ctxBase.owner.id, now, input),
-    seedNotification: (input = {}) => seedNotification(sqlite, ctxBase.owner.id, workspaceId, now, input),
-    seedInvitation: (input = {}) => seedInvitation(sqlite, workspaceId, ctxBase.owner.id, now, input),
+    seedNotification: (input = {}) =>
+      seedNotification(sqlite, ctxBase.owner.id, workspaceId, now, input),
+    seedInvitation: (input = {}) =>
+      seedInvitation(sqlite, workspaceId, ctxBase.owner.id, now, input),
   } as TestContext
 
   ctxBase.owner = ctxBase.seedUser({
@@ -268,28 +270,44 @@ export function createContractTestContext(): TestContext {
     role: null,
   })
 
-  sqlite.prepare(
-    `insert into workspace
+  sqlite
+    .prepare(
+      `insert into workspace
       (id, name, slug, owner_id, storage_quota_bytes, is_deleted, is_platform_default, created_at, updated_at)
       values (?, ?, ?, ?, ?, 0, 1, ?, ?)`,
-  ).run(workspaceId, "Test Workspace", "test-workspace", ctxBase.owner.id, 10_000_000_000, now, now)
-  sqlite.prepare(
-    `insert into workspace_settings
+    )
+    .run(
+      workspaceId,
+      "Test Workspace",
+      "test-workspace",
+      ctxBase.owner.id,
+      10_000_000_000,
+      now,
+      now,
+    )
+  sqlite
+    .prepare(
+      `insert into workspace_settings
       (id, workspace_id, default_share_expiration_days, enable_public_signup, trash_retention_days,
        max_file_size_bytes, upload_chunk_size_bytes, r2_public_base_url, r2_last_sync_at, created_at, updated_at)
       values (?, ?, 30, 1, 30, 5368709120, 5242880, ?, ?, ?, ?)`,
-  ).run(testId(), workspaceId, "https://public.example.com", new Date().toISOString(), now, now)
-  sqlite.prepare(
-    "insert into bucket (id, workspace_id, name, provider, visibility, created_at) values (?, ?, ?, 'r2', 'private', ?)",
-  ).run(bucketId, workspaceId, "bucketdrive-test", now)
-  sqlite.prepare(
-    `insert into organization (id, name, slug, created_at) values (?, ?, ?, ?)`,
-  ).run(workspaceId, "Test Workspace", "test-workspace", now)
-  sqlite.prepare(
-    `insert into platform_settings
+    )
+    .run(testId(), workspaceId, "https://public.example.com", new Date().toISOString(), now, now)
+  sqlite
+    .prepare(
+      "insert into bucket (id, workspace_id, name, provider, visibility, created_at) values (?, ?, ?, 'r2', 'private', ?)",
+    )
+    .run(bucketId, workspaceId, "bucketdrive-test", now)
+  sqlite
+    .prepare(`insert into organization (id, name, slug, created_at) values (?, ?, ?, ?)`)
+    .run(workspaceId, "Test Workspace", "test-workspace", now)
+  sqlite
+    .prepare(
+      `insert into platform_settings
       (id, default_workspace_id, allow_user_workspace_creation, enable_public_signup, platform_name, created_at, updated_at)
       values (?, ?, 1, 1, 'BucketDrive', ?, ?)`,
-  ).run(testId(), workspaceId, now, now)
+    )
+    .run(testId(), workspaceId, now, now)
 
   insertMember(sqlite, workspaceId, ctxBase.owner.id, "owner", now)
   insertMember(sqlite, workspaceId, ctxBase.admin.id, "admin", now)
@@ -312,11 +330,12 @@ function createD1Binding(sqlite: Database.Database): D1Database {
           bound.splice(0, bound.length, ...params)
           return prepared
         },
-        all: (): Promise<TestD1Result> => Promise.resolve({
-          results: statement.all(...bound) as Array<Record<string, unknown>>,
-          success: true,
-          meta: {},
-        }),
+        all: (): Promise<TestD1Result> =>
+          Promise.resolve({
+            results: statement.all(...bound) as Array<Record<string, unknown>>,
+            success: true,
+            meta: {},
+          }),
         get: (): Promise<Record<string, unknown> | null> =>
           Promise.resolve((statement.get(...bound) as Record<string, unknown> | undefined) ?? null),
         first: (): Promise<Record<string, unknown> | null> =>
@@ -325,7 +344,8 @@ function createD1Binding(sqlite: Database.Database): D1Database {
           statement.run(...bound)
           return Promise.resolve({ success: true, meta: {} })
         },
-        raw: (): Promise<unknown[][]> => Promise.resolve(statement.raw().all(...bound) as unknown[][]),
+        raw: (): Promise<unknown[][]> =>
+          Promise.resolve(statement.raw().all(...bound) as unknown[][]),
       }
       return prepared
     },
@@ -369,23 +389,27 @@ function createR2BucketMock(): R2Bucket {
         writeHttpMetadata: vi.fn(),
       })
     }),
-    head: vi.fn((key: string) => Promise.resolve({
-      key,
-      size: objects.get(key)?.byteLength ?? 4,
-      etag: "etag-test",
-      httpEtag: '"etag-test"',
-      uploaded: new Date("2026-06-02T12:00:00.000Z"),
-      writeHttpMetadata: vi.fn(),
-    })),
+    head: vi.fn((key: string) =>
+      Promise.resolve({
+        key,
+        size: objects.get(key)?.byteLength ?? 4,
+        etag: "etag-test",
+        httpEtag: '"etag-test"',
+        uploaded: new Date("2026-06-02T12:00:00.000Z"),
+        writeHttpMetadata: vi.fn(),
+      }),
+    ),
     delete: vi.fn(() => Promise.resolve(undefined)),
     list: vi.fn(() => Promise.resolve({ objects: [], truncated: false, delimitedPrefixes: [] })),
-    createMultipartUpload: vi.fn((key: string) => Promise.resolve({
-      key,
-      uploadId: "multipart-upload",
-      uploadPart: vi.fn((_partNumber: number) => Promise.resolve({ etag: "etag-part" })),
-      complete: vi.fn(() => Promise.resolve({})),
-      abort: vi.fn(() => Promise.resolve(undefined)),
-    })),
+    createMultipartUpload: vi.fn((key: string) =>
+      Promise.resolve({
+        key,
+        uploadId: "multipart-upload",
+        uploadPart: vi.fn((_partNumber: number) => Promise.resolve({ etag: "etag-part" })),
+        complete: vi.fn(() => Promise.resolve({})),
+        abort: vi.fn(() => Promise.resolve(undefined)),
+      }),
+    ),
     resumeMultipartUpload: vi.fn((_key: string, uploadId: string) => ({
       uploadId,
       uploadPart: vi.fn((_partNumber: number) => Promise.resolve({ etag: "etag-part" })),
@@ -431,19 +455,21 @@ function seedUser(
     canCreateWorkspaces: input.canCreateWorkspaces ?? false,
   }
 
-  sqlite.prepare(
-    `insert into user
+  sqlite
+    .prepare(
+      `insert into user
       (id, name, email, email_verified, image, is_platform_admin, can_create_workspaces, created_at, updated_at)
       values (?, ?, ?, 1, null, ?, ?, ?, ?)`,
-  ).run(
-    user.id,
-    user.name,
-    user.email,
-    user.isPlatformAdmin ? 1 : 0,
-    user.canCreateWorkspaces ? 1 : 0,
-    now,
-    now,
-  )
+    )
+    .run(
+      user.id,
+      user.name,
+      user.email,
+      user.isPlatformAdmin ? 1 : 0,
+      user.canCreateWorkspaces ? 1 : 0,
+      now,
+      now,
+    )
   mockedAuthState.users.set(user.id, user)
 
   if (input.role) {
@@ -460,12 +486,16 @@ function insertMember(
   role: WorkspaceRole,
   now: string,
 ) {
-  sqlite.prepare(
-    "insert into member (id, organization_id, user_id, role, created_at) values (?, ?, ?, ?, ?)",
-  ).run(testId(), workspaceId, userId, role, now)
-  sqlite.prepare(
-    "insert into workspace_member (id, workspace_id, user_id, role, created_at) values (?, ?, ?, ?, ?)",
-  ).run(testId(), workspaceId, userId, role, now)
+  sqlite
+    .prepare(
+      "insert into member (id, organization_id, user_id, role, created_at) values (?, ?, ?, ?, ?)",
+    )
+    .run(testId(), workspaceId, userId, role, now)
+  sqlite
+    .prepare(
+      "insert into workspace_member (id, workspace_id, user_id, role, created_at) values (?, ?, ?, ?, ?)",
+    )
+    .run(testId(), workspaceId, userId, role, now)
 }
 
 function seedFolder(
@@ -486,22 +516,24 @@ function seedFolder(
     deletedAt: input.deletedAt ?? null,
   }
 
-  sqlite.prepare(
-    `insert into folder
+  sqlite
+    .prepare(
+      `insert into folder
       (id, workspace_id, parent_folder_id, name, path, created_by, is_deleted, deleted_at, created_at, updated_at)
       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    folder.id,
-    folder.workspaceId,
-    folder.parentFolderId,
-    folder.name,
-    folder.path,
-    folder.createdBy,
-    folder.isDeleted ? 1 : 0,
-    folder.deletedAt,
-    now,
-    now,
-  )
+    )
+    .run(
+      folder.id,
+      folder.workspaceId,
+      folder.parentFolderId,
+      folder.name,
+      folder.path,
+      folder.createdBy,
+      folder.isDeleted ? 1 : 0,
+      folder.deletedAt,
+      now,
+      now,
+    )
 
   return folder
 }
@@ -531,28 +563,30 @@ function seedFile(
     deletedAt: input.deletedAt ?? null,
   }
 
-  sqlite.prepare(
-    `insert into file_object
+  sqlite
+    .prepare(
+      `insert into file_object
       (id, workspace_id, bucket_id, folder_id, owner_id, storage_key, original_name, mime_type, extension,
        size_bytes, checksum, thumbnail_key, metadata, is_deleted, deleted_at, created_at, updated_at)
       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null, ?, null, ?, ?, ?, ?)`,
-  ).run(
-    file.id,
-    file.workspaceId,
-    file.bucketId,
-    file.folderId,
-    file.ownerId,
-    file.storageKey,
-    file.originalName,
-    file.mimeType,
-    file.extension,
-    file.sizeBytes,
-    file.thumbnailKey,
-    file.isDeleted ? 1 : 0,
-    file.deletedAt,
-    now,
-    now,
-  )
+    )
+    .run(
+      file.id,
+      file.workspaceId,
+      file.bucketId,
+      file.folderId,
+      file.ownerId,
+      file.storageKey,
+      file.originalName,
+      file.mimeType,
+      file.extension,
+      file.sizeBytes,
+      file.thumbnailKey,
+      file.isDeleted ? 1 : 0,
+      file.deletedAt,
+      now,
+      now,
+    )
 
   return file
 }
@@ -569,9 +603,11 @@ function seedTag(
     name: input.name ?? "Important",
     color: input.color ?? "#ff0000",
   }
-  sqlite.prepare(
-    "insert into file_tag (id, workspace_id, name, color, created_at) values (?, ?, ?, ?, ?)",
-  ).run(tag.id, tag.workspaceId, tag.name, tag.color, now)
+  sqlite
+    .prepare(
+      "insert into file_tag (id, workspace_id, name, color, created_at) values (?, ?, ?, ?, ?)",
+    )
+    .run(tag.id, tag.workspaceId, tag.name, tag.color, now)
   return tag
 }
 
@@ -593,27 +629,29 @@ function seedShare(
     expiresAt: input.expiresAt ?? null,
     isActive: input.isActive ?? true,
   } satisfies TestShare
-  sqlite.prepare(
-    `insert into share_link
+  sqlite
+    .prepare(
+      `insert into share_link
       (id, workspace_id, resource_type, resource_id, share_type, created_by, password_hash, expires_at,
        access_count, download_count, is_active, created_at, updated_at)
       values (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)`,
-  ).run(
-    share.id,
-    share.workspaceId,
-    share.resourceType,
-    share.resourceId,
-    share.shareType,
-    share.createdBy,
-    share.passwordHash,
-    share.expiresAt,
-    share.isActive ? 1 : 0,
-    now,
-    now,
-  )
-  sqlite.prepare(
-    "insert into share_permission (id, share_link_id, permission) values (?, ?, 'read')",
-  ).run(testId(), share.id)
+    )
+    .run(
+      share.id,
+      share.workspaceId,
+      share.resourceType,
+      share.resourceId,
+      share.shareType,
+      share.createdBy,
+      share.passwordHash,
+      share.expiresAt,
+      share.isActive ? 1 : 0,
+      now,
+      now,
+    )
+  sqlite
+    .prepare("insert into share_permission (id, share_link_id, permission) values (?, ?, 'read')")
+    .run(testId(), share.id)
   return share
 }
 
@@ -633,20 +671,22 @@ function seedNotification(
     message: input.message ?? "A notification was created",
     isRead: input.isRead ?? false,
   }
-  sqlite.prepare(
-    `insert into notification
+  sqlite
+    .prepare(
+      `insert into notification
       (id, user_id, workspace_id, type, title, message, data, is_read, created_at)
       values (?, ?, ?, ?, ?, ?, null, ?, ?)`,
-  ).run(
-    notification.id,
-    notification.userId,
-    notification.workspaceId,
-    notification.type,
-    notification.title,
-    notification.message,
-    notification.isRead ? 1 : 0,
-    now,
-  )
+    )
+    .run(
+      notification.id,
+      notification.userId,
+      notification.workspaceId,
+      notification.type,
+      notification.title,
+      notification.message,
+      notification.isRead ? 1 : 0,
+      now,
+    )
   return notification
 }
 
@@ -667,22 +707,24 @@ function seedInvitation(
     status: input.status ?? "pending",
     expiresAt: input.expiresAt ?? "2030-01-01T00:00:00.000Z",
   } satisfies TestInvitation
-  sqlite.prepare(
-    `insert into workspace_invitation
+  sqlite
+    .prepare(
+      `insert into workspace_invitation
       (id, workspace_id, email, token, role, can_create_workspaces, invited_by, status, expires_at, created_at, updated_at)
       values (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
-  ).run(
-    invitation.id,
-    invitation.workspaceId,
-    invitation.email,
-    invitation.token,
-    invitation.role,
-    invitation.invitedBy,
-    invitation.status,
-    invitation.expiresAt,
-    now,
-    now,
-  )
+    )
+    .run(
+      invitation.id,
+      invitation.workspaceId,
+      invitation.email,
+      invitation.token,
+      invitation.role,
+      invitation.invitedBy,
+      invitation.status,
+      invitation.expiresAt,
+      now,
+      now,
+    )
   return invitation
 }
 

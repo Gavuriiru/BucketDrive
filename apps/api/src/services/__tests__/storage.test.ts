@@ -29,16 +29,19 @@ function createMockR2Bucket() {
 
   return {
     store,
-    put: vi.fn().mockImplementation(async (key: string, value: ArrayBuffer | ReadableStream | string) => {
-      const buf = typeof value === "string"
-        ? new TextEncoder().encode(value).buffer
-        : value instanceof ReadableStream
-          ? await new Response(value).arrayBuffer()
-          : value
+    put: vi
+      .fn()
+      .mockImplementation(async (key: string, value: ArrayBuffer | ReadableStream | string) => {
+        const buf =
+          typeof value === "string"
+            ? new TextEncoder().encode(value).buffer
+            : value instanceof ReadableStream
+              ? await new Response(value).arrayBuffer()
+              : value
 
-      store.set(key, buf)
-      return { etag: `etag-${key}`, key, version: "1" }
-    }),
+        store.set(key, buf)
+        return { etag: `etag-${key}`, key, version: "1" }
+      }),
     get: vi.fn().mockImplementation((key: string) => {
       const buf = store.get(key)
       if (!buf) return null
@@ -76,9 +79,15 @@ function createMockR2Bucket() {
         uploadPart: vi.fn().mockImplementation((partNumber: number, _value: unknown) => {
           return Promise.resolve({ partNumber, etag: `etag-${String(partNumber)}` })
         }),
-        complete: vi.fn().mockImplementation((parts: Array<{ partNumber: number; etag: string }>) => {
-          return Promise.resolve({ etag: `completed-${String(parts.length)}`, key: _key, version: "1" })
-        }),
+        complete: vi
+          .fn()
+          .mockImplementation((parts: Array<{ partNumber: number; etag: string }>) => {
+            return Promise.resolve({
+              etag: `completed-${String(parts.length)}`,
+              key: _key,
+              version: "1",
+            })
+          }),
         abort: vi.fn().mockResolvedValue(undefined),
       }
     }),
@@ -116,7 +125,9 @@ describe("R2StorageProvider", () => {
   describe("generateSignedUploadUrl", () => {
     it("returns a signed URL for PUT", async () => {
       const url = await provider.generateSignedUploadUrl("workspace/ws1/files/test-file")
-      expect(url).toContain("https://test.r2.cloudflarestorage.com/test-bucket/workspace/ws1/files/test-file")
+      expect(url).toContain(
+        "https://test.r2.cloudflarestorage.com/test-bucket/workspace/ws1/files/test-file",
+      )
       expect(url).toContain("X-Amz-Algorithm=AWS4-HMAC-SHA256")
       expect(url).toContain("X-Amz-Signature=mock-signature")
     })
@@ -139,7 +150,9 @@ describe("R2StorageProvider", () => {
   describe("generateSignedDownloadUrl", () => {
     it("returns a signed URL for GET", async () => {
       const url = await provider.generateSignedDownloadUrl("workspace/ws1/files/test-file")
-      expect(url).toContain("https://test.r2.cloudflarestorage.com/test-bucket/workspace/ws1/files/test-file")
+      expect(url).toContain(
+        "https://test.r2.cloudflarestorage.com/test-bucket/workspace/ws1/files/test-file",
+      )
       expect(url).toContain("X-Amz-Algorithm=AWS4-HMAC-SHA256")
       expect(url).toContain("X-Amz-Signature=mock-signature")
     })
@@ -156,21 +169,23 @@ describe("R2StorageProvider", () => {
 
   describe("list", () => {
     it("lists objects through the configured S3 endpoint", async () => {
-      const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-        new Response(
-          [
-            "<ListBucketResult>",
-            "<IsTruncated>false</IsTruncated>",
-            "<Contents>",
-            "<Key>docs/report.pdf</Key>",
-            "<LastModified>2026-01-01T00:00:00.000Z</LastModified>",
-            "<Size>42</Size>",
-            "</Contents>",
-            "</ListBucketResult>",
-          ].join(""),
-          { status: 200 },
-        ),
-      )
+      const fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(
+          new Response(
+            [
+              "<ListBucketResult>",
+              "<IsTruncated>false</IsTruncated>",
+              "<Contents>",
+              "<Key>docs/report.pdf</Key>",
+              "<LastModified>2026-01-01T00:00:00.000Z</LastModified>",
+              "<Size>42</Size>",
+              "</Contents>",
+              "</ListBucketResult>",
+            ].join(""),
+            { status: 200 },
+          ),
+        )
 
       const result = await provider.list({ prefix: "docs/" })
 
@@ -191,17 +206,19 @@ describe("R2StorageProvider", () => {
     })
 
     it("throws a storage auth error when R2 rejects S3 credentials", async () => {
-      const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-        new Response(
-          [
-            "<Error>",
-            "<Code>SignatureDoesNotMatch</Code>",
-            "<Message>The request signature we calculated does not match.</Message>",
-            "</Error>",
-          ].join(""),
-          { status: 403 },
-        ),
-      )
+      const fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(
+          new Response(
+            [
+              "<Error>",
+              "<Code>SignatureDoesNotMatch</Code>",
+              "<Message>The request signature we calculated does not match.</Message>",
+              "</Error>",
+            ].join(""),
+            { status: 403 },
+          ),
+        )
 
       await expect(provider.list()).rejects.toMatchObject({
         code: "R2_AUTH_FAILED",

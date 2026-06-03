@@ -17,6 +17,13 @@ import { trashHandler } from "./modules/trash/trash.handler"
 import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 import { platformHandler } from "./modules/platform/platform.handler"
 import { authMiddleware } from "./middleware/auth"
+import {
+  e2eCreateFile,
+  e2eCreateFilesBulk,
+  e2eGetSession,
+  e2eLogin,
+  e2eSignOut,
+} from "./lib/e2e-auth"
 
 interface Env {
   BETTER_AUTH_SECRET?: string
@@ -33,6 +40,7 @@ interface Env {
   R2_SECRET_ACCESS_KEY?: string
   R2_ENDPOINT?: string
   R2_BUCKET_NAME?: string
+  E2E_TEST_AUTH?: string
 }
 
 const app = new Hono<{ Bindings: Env }>()
@@ -50,20 +58,37 @@ function getAllowedOrigins(env: Env): string[] {
 }
 
 app.use("*", securityHeaders)
-app.use("*", cors({
-  origin: (origin, c) => {
-    if (!origin) return null
-    const env = c.env as Env
-    return getAllowedOrigins(env).includes(origin) ? origin : null
-  },
-  allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-  maxAge: 86400,
-}))
+app.use(
+  "*",
+  cors({
+    origin: (origin, c) => {
+      if (!origin) return null
+      const env = c.env as Env
+      return getAllowedOrigins(env).includes(origin) ? origin : null
+    },
+    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+    maxAge: 86400,
+  }),
+)
 
 app.use("*", async (c, next) => {
   createD1DB(c.env.DB)
+  await next()
+})
+
+app.post("/api/e2e/login", e2eLogin)
+app.post("/api/e2e/files", e2eCreateFile)
+app.post("/api/e2e/files/bulk", e2eCreateFilesBulk)
+app.get("/api/auth/get-session", async (c, next) => {
+  const response = await e2eGetSession(c)
+  if (response) return response
+  await next()
+})
+app.post("/api/auth/sign-out", async (c, next) => {
+  const response = e2eSignOut(c)
+  if (response) return response
   await next()
 })
 
@@ -112,20 +137,26 @@ app.notFound((c) => c.json({ code: "NOT_FOUND", message: "Not found" }, 404))
 
 app.onError((err, c) => {
   if (err instanceof ZodError) {
-    return c.json({
-      code: "VALIDATION_ERROR",
-      message: "Invalid request",
-      details: {
-        issues: err.issues,
+    return c.json(
+      {
+        code: "VALIDATION_ERROR",
+        message: "Invalid request",
+        details: {
+          issues: err.issues,
+        },
       },
-    }, 400)
+      400,
+    )
   }
 
   console.error("Unhandled error:", err)
-  return c.json({
-    code: "INTERNAL_ERROR",
-    message: err instanceof Error ? err.message : "An unexpected error occurred",
-  }, 500)
+  return c.json(
+    {
+      code: "INTERNAL_ERROR",
+      message: err instanceof Error ? err.message : "An unexpected error occurred",
+    },
+    500,
+  )
 })
 
 export default app

@@ -24,10 +24,7 @@ export const requirePermission = (permission: Permission) => {
     const role = await getWorkspaceRoleForUser(db, workspaceId, user.id)
 
     if (!role) {
-      return c.json(
-        { code: "WORKSPACE_ACCESS_DENIED", message: "Not a workspace member" },
-        403,
-      )
+      return c.json({ code: "WORKSPACE_ACCESS_DENIED", message: "Not a workspace member" }, 403)
     }
 
     let resourceOwnerId: string | undefined
@@ -59,10 +56,7 @@ export const requirePermission = (permission: Permission) => {
     const allowed = can(role, permission, resourceOwnerId, user.id)
 
     if (!allowed) {
-      return c.json(
-        { code: "FORBIDDEN", message: `Permission denied: ${permission}` },
-        403,
-      )
+      return c.json({ code: "FORBIDDEN", message: `Permission denied: ${permission}` }, 403)
     }
 
     c.set("workspaceRole", role)

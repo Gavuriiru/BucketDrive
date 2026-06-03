@@ -22,7 +22,12 @@ export const UpdatePlatformSettingsResponse = z.object({
 
 export const CreateWorkspaceRequest = z.object({
   name: z.string().min(1).max(100),
-  slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens only").optional(),
+  slug: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens only")
+    .optional(),
 })
 
 export const CreateWorkspaceResponse = z.object({

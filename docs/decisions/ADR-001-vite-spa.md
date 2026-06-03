@@ -22,6 +22,7 @@ Os documentos iniciais do projeto referenciavam Next.js App Router como framewor
 **Usar Vite + React SPA em vez de Next.js App Router.**
 
 Stack final do frontend:
+
 - React 19 + TypeScript
 - Vite como build tool e dev server
 - TanStack Router para roteamento client-side
@@ -30,21 +31,25 @@ Stack final do frontend:
 ## Alternatives Considered
 
 ### Next.js App Router
+
 - **Prós**: estrutura de rotas file-based, Server Components, Image Optimization built-in
 - **Contras**: overhead de SSR/SSG não utilizado, edge runtime constraints em Workers, bundle maior, complexidade de Server Components + Client Components boundary, hidratação desnecessária
 - **Rejeitado porque**: o projeto é puramente uma SPA. A separação Server/Client Components adiciona atrito sem trazer benefício real.
 
 ### Vite SPA
+
 - **Prós**: build rápido (esbuild/rollup), HMR instantâneo, bundle otimizado, sem SSR overhead, deploy trivial como arquivos estáticos no Cloudflare Pages, 100% client-side sem hidratação
 - **Contras**: carregamento inicial maior que SSR (mitigado com code splitting e lazy loading)
 - **Aceito porque**: alinhamento total com a natureza SPA do projeto, menor complexidade, melhor DX
 
 ### Outros (SvelteKit, SolidJS, Remix)
+
 - **Rejeitados**: o ecossistema React + shadcn/ui oferece a melhor combinação de componentes, tipagem, e suporte da comunidade para o escopo do projeto.
 
 ## Consequences
 
 ### Positivas
+
 - Build e HMR significativamente mais rápidos que Next.js
 - Arquitetura mais simples: sem server components, sem hidratação, sem boundary `'use client'`/`'use server'`
 - Deploy trivial: `vite build` → Cloudflare Pages static assets
@@ -52,6 +57,7 @@ Stack final do frontend:
 - Melhor integração com padrões SPA: Zustand global, TanStack Query cache, router client-side puro
 
 ### Negativas
+
 - Sem SSR para share pages públicas (resolvido: Worker renderiza HTML mínimo para share links se necessário)
 - Sem Image Optimization built-in (resolvido: Cloudflare Images ou transformação via Worker)
 - Carregamento inicial completo do bundle JS (mitigado: code splitting por rota, lazy loading de features)

@@ -61,7 +61,11 @@ describe("shares contracts", () => {
     const denied = await ctx.request(`/api/workspaces/${ctx.workspaceId}/shares`, {
       method: "POST",
       userId: ctx.viewer.id,
-      body: JSON.stringify({ resourceId: file.id, resourceType: "file", shareType: "external_direct" }),
+      body: JSON.stringify({
+        resourceId: file.id,
+        resourceType: "file",
+        shareType: "external_direct",
+      }),
     })
     expect(denied.status).toBe(403)
     expectApiError(await ctx.json(denied))

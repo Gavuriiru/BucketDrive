@@ -12,7 +12,11 @@ import { createContractTestContext, expectApiError } from "./test-harness"
 describe("platform contracts", () => {
   it("returns user info, updates settings, joins default workspace, and manages platform invitations", async () => {
     const ctx = createContractTestContext()
-    const invitee = ctx.seedUser({ email: "platform-invitee@example.com", name: "Platform Invitee", role: null })
+    const invitee = ctx.seedUser({
+      email: "platform-invitee@example.com",
+      name: "Platform Invitee",
+      role: null,
+    })
 
     const me = await ctx.request("/api/platform/me")
     expect(me.status).toBe(200)
@@ -29,7 +33,10 @@ describe("platform contracts", () => {
     expect(readSettings.status).toBe(200)
     PlatformSettingsResponse.parse(await ctx.json(readSettings))
 
-    const join = await ctx.request("/api/platform/join", { method: "POST", userId: ctx.outsider.id })
+    const join = await ctx.request("/api/platform/join", {
+      method: "POST",
+      userId: ctx.outsider.id,
+    })
     expect(join.status).toBe(200)
     PlatformJoinResponse.parse(await ctx.json(join))
 

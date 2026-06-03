@@ -25,7 +25,9 @@ export function buildStorageTrend(
 
     const usedBytes = files.reduce((total, file) => {
       const createdAt = new Date(file.createdAt).getTime()
-      const deletedAt = file.deletedAt ? new Date(file.deletedAt).getTime() : Number.POSITIVE_INFINITY
+      const deletedAt = file.deletedAt
+        ? new Date(file.deletedAt).getTime()
+        : Number.POSITIVE_INFINITY
 
       if (createdAt <= dayEnd && deletedAt > dayEnd) {
         return total + file.sizeBytes

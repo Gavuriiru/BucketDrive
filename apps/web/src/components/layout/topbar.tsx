@@ -28,20 +28,17 @@ export function Topbar() {
     { value: "system" as const, label: "System", icon: Monitor },
   ]
 
-  const ActiveIcon =
-    theme === "dark" ? Moon : theme === "light" ? Sun : Monitor
+  const ActiveIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor
 
   return (
-    <header className="flex h-topbar items-center gap-4 border-b border-border-muted bg-bg-primary px-4">
+    <header className="h-topbar border-border-muted bg-bg-primary flex items-center gap-4 border-b px-4">
       <div className="flex items-center gap-2">
-        <span className="text-lg font-semibold tracking-tight text-text-primary">
-          BucketDrive
-        </span>
+        <span className="text-text-primary text-lg font-semibold tracking-tight">BucketDrive</span>
       </div>
 
       <div className="flex flex-1 items-center justify-center">
-        <div className="flex w-full max-w-lg items-center gap-2 rounded-xl border border-border-default bg-bg-tertiary px-3 py-2">
-          <Search className="h-4 w-4 text-text-tertiary" />
+        <div className="border-border-default bg-bg-tertiary flex w-full max-w-lg items-center gap-2 rounded-xl border px-3 py-2">
+          <Search className="text-text-tertiary h-4 w-4" />
           <input
             type="text"
             value={query}
@@ -52,12 +49,12 @@ export function Topbar() {
             }}
             placeholder={searchContext.placeholder}
             disabled={!searchContext.enabled}
-            className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-tertiary disabled:cursor-not-allowed disabled:text-text-tertiary"
+            className="text-text-primary placeholder:text-text-tertiary disabled:text-text-tertiary flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
           />
           <button
             type="button"
             onClick={() => useCommandPaletteStore.getState().open()}
-            className="rounded-md border border-border-default bg-surface-default px-1.5 py-0.5 text-xs text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-secondary"
+            className="border-border-default bg-surface-default text-text-tertiary hover:bg-surface-hover hover:text-text-secondary rounded-md border px-1.5 py-0.5 text-xs transition-colors"
             aria-label="Open command palette"
           >
             ⌘K
@@ -69,7 +66,7 @@ export function Topbar() {
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <button
-              className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+              className="text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg p-2 transition-colors"
               aria-label="Change theme"
             >
               <ActiveIcon className="h-5 w-5" />
@@ -79,21 +76,19 @@ export function Topbar() {
             <DropdownMenu.Content
               align="end"
               sideOffset={4}
-              className="z-50 min-w-[160px] rounded-xl border border-border-default bg-surface-default p-1 shadow-lg"
+              className="border-border-default bg-surface-default z-50 min-w-[160px] rounded-xl border p-1 shadow-lg"
             >
               {themeOptions.map((option) => (
                 <DropdownMenu.Item
                   key={option.value}
                   onSelect={() => setTheme(option.value)}
-                  className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm text-text-primary outline-none transition-colors hover:bg-surface-hover focus:bg-surface-hover"
+                  className="text-text-primary hover:bg-surface-hover focus:bg-surface-hover flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors outline-none"
                 >
                   <span className="flex items-center gap-2">
-                    <option.icon className="h-4 w-4 text-text-secondary" />
+                    <option.icon className="text-text-secondary h-4 w-4" />
                     {option.label}
                   </span>
-                  {theme === option.value && (
-                    <Check className="h-4 w-4 text-accent" />
-                  )}
+                  {theme === option.value && <Check className="text-accent h-4 w-4" />}
                 </DropdownMenu.Item>
               ))}
             </DropdownMenu.Content>
@@ -103,7 +98,7 @@ export function Topbar() {
         <NotificationBell />
 
         {isLoading ? (
-          <div className="h-8 w-8 animate-pulse rounded-full bg-surface-hover" />
+          <div className="bg-surface-hover h-8 w-8 animate-pulse rounded-full" />
         ) : session?.user ? (
           <div className="flex items-center gap-2">
             {session.user.image ? (
@@ -113,23 +108,24 @@ export function Topbar() {
                 className="h-8 w-8 rounded-full"
               />
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-medium text-white">
+              <div className="bg-accent flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium text-white">
                 {session.user.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <span className="hidden text-sm font-medium text-text-primary md:block">
+            <span className="text-text-primary hidden text-sm font-medium md:block">
               {session.user.name}
             </span>
             <button
               onClick={signOut}
-              className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+              className="text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg p-1.5 transition-colors"
               aria-label="Sign out"
+              data-testid="sign-out"
             >
               <LogOut className="h-4 w-4" />
             </button>
           </div>
         ) : (
-          <div className="h-8 w-8 rounded-full bg-accent" />
+          <div className="bg-accent h-8 w-8 rounded-full" />
         )}
       </div>
     </header>

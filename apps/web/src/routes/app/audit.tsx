@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/restrict-template-expressions */
 import { useState } from "react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
-import { useDashboardAudit  } from "@/lib/api"
+import { useDashboardAudit } from "@/lib/api"
 
 export function AuditPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -18,7 +18,7 @@ export function AuditPage() {
   if (workspacesLoading || auditQuery.isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -26,7 +26,7 @@ export function AuditPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-text-tertiary">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No workspace found</p>
       </div>
     )
   }
@@ -36,23 +36,23 @@ export function AuditPage() {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Audit Log</h1>
-        <p className="mt-2 text-sm text-text-secondary">
+        <h1 className="text-text-primary text-2xl font-semibold">Audit Log</h1>
+        <p className="text-text-secondary mt-2 text-sm">
           Filter activity by action and resource type. Results are newest first.
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-border-default bg-surface-default p-5 md:flex-row">
+      <div className="border-border-default bg-surface-default flex flex-col gap-3 rounded-2xl border p-5 md:flex-row">
         <input
           value={action}
           onChange={(event) => setAction(event.target.value)}
           placeholder="Filter by action, e.g. member.removed"
-          className="flex-1 rounded-xl border border-border-default bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-tertiary focus:border-accent focus:ring-1 focus:ring-accent"
+          className="border-border-default bg-bg-tertiary text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
         />
         <select
           value={resourceType}
           onChange={(event) => setResourceType(event.target.value)}
-          className="rounded-xl border border-border-default bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+          className="border-border-default bg-bg-tertiary text-text-primary focus:border-accent focus:ring-accent rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
         >
           <option value="">All resources</option>
           <option value="file">file</option>
@@ -62,31 +62,35 @@ export function AuditPage() {
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border-default bg-surface-default">
+      <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border-muted bg-bg-tertiary">
-              <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Action</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Actor</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Resource</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Timestamp</th>
+            <tr className="border-border-muted bg-bg-tertiary border-b">
+              <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Action</th>
+              <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Actor</th>
+              <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                Resource
+              </th>
+              <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                Timestamp
+              </th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
               <tr
                 key={item.id}
-                className="border-b border-border-muted last:border-b-0 hover:bg-surface-hover"
+                className="border-border-muted hover:bg-surface-hover border-b last:border-b-0"
               >
-                <td className="px-4 py-3 text-sm font-medium text-text-primary">{item.action}</td>
-                <td className="px-4 py-3 text-sm text-text-secondary">
+                <td className="text-text-primary px-4 py-3 text-sm font-medium">{item.action}</td>
+                <td className="text-text-secondary px-4 py-3 text-sm">
                   {item.actorName ?? item.actorId}
                 </td>
-                <td className="px-4 py-3 text-sm text-text-secondary">
+                <td className="text-text-secondary px-4 py-3 text-sm">
                   {item.resourceType}
                   {item.resourceId ? ` • ${item.resourceId}` : ""}
                 </td>
-                <td className="px-4 py-3 text-sm text-text-secondary">
+                <td className="text-text-secondary px-4 py-3 text-sm">
                   {new Date(item.createdAt).toLocaleString()}
                 </td>
               </tr>
@@ -95,14 +99,14 @@ export function AuditPage() {
         </table>
 
         {items.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-text-tertiary">
+          <div className="text-text-tertiary px-4 py-8 text-center text-sm">
             No audit entries match the current filters.
           </div>
         )}
       </div>
 
       {auditQuery.isError && (
-        <div className="rounded-xl border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+        <div className="border-error/40 bg-error/10 text-error rounded-xl border px-4 py-3 text-sm">
           {auditQuery.error.message}
         </div>
       )}

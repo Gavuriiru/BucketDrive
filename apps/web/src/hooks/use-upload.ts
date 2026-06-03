@@ -143,13 +143,16 @@ export function useUploadProcessor(workspaceId: string) {
   )
 
   const processMultipartUpload = useCallback(
-    async (item: UploadItem, initiate: {
-      uploadId: string
-      sessionId: string
-      partSize: number
-      totalParts: number
-      storageKey: string
-    }) => {
+    async (
+      item: UploadItem,
+      initiate: {
+        uploadId: string
+        sessionId: string
+        partSize: number
+        totalParts: number
+        storageKey: string
+      },
+    ) => {
       const { uploadId, sessionId, partSize, totalParts } = initiate
 
       updateItem(item.id, {
@@ -200,7 +203,11 @@ export function useUploadProcessor(workspaceId: string) {
           }
         }
 
-        for (let batchStart = 0; batchStart < pendingPartNumbers.length; batchStart += MAX_CONCURRENT_CHUNKS) {
+        for (
+          let batchStart = 0;
+          batchStart < pendingPartNumbers.length;
+          batchStart += MAX_CONCURRENT_CHUNKS
+        ) {
           if (abortController.signal.aborted) {
             throw new Error("Upload cancelled")
           }
@@ -264,21 +271,18 @@ export function useUploadProcessor(workspaceId: string) {
         abortControllersRef.current.delete(item.id)
       }
     },
-    [
-      workspaceId,
-      updateItem,
-      getPartUrlsMutation,
-      uploadChunksWithRetry,
-      completeMutation,
-    ],
+    [workspaceId, updateItem, getPartUrlsMutation, uploadChunksWithRetry, completeMutation],
   )
 
   const processSingleUpload = useCallback(
-    async (item: UploadItem, initiate: {
-      uploadId: string
-      signedUrl: string
-      storageKey: string
-    }) => {
+    async (
+      item: UploadItem,
+      initiate: {
+        uploadId: string
+        signedUrl: string
+        storageKey: string
+      },
+    ) => {
       const file = item.file
       if (!file) {
         throw new Error("File handle lost")
@@ -397,7 +401,9 @@ export function useUploadProcessor(workspaceId: string) {
 
         throw new Error("Invalid upload initiation response")
       } catch (err) {
-        const message = formatUploadNetworkError(err instanceof Error ? err.message : "Upload failed")
+        const message = formatUploadNetworkError(
+          err instanceof Error ? err.message : "Upload failed",
+        )
         updateItem(item.id, { status: "failed", error: message })
         return false
       }
@@ -451,9 +457,11 @@ export function useUploadProcessor(workspaceId: string) {
     for (const item of queued) {
       await processItem(item)
     }
-    const remaining = useUploadStore.getState().items.filter(
-      (i) => i.status !== "completed" && i.status !== "failed" && i.status !== "cancelled",
-    )
+    const remaining = useUploadStore
+      .getState()
+      .items.filter(
+        (i) => i.status !== "completed" && i.status !== "failed" && i.status !== "cancelled",
+      )
     if (remaining.length === 0) {
       setTimeout(() => setOpen(false), 5000)
     }

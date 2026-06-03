@@ -17,13 +17,21 @@ function formatDate(dateStr: string): string {
   return date.toLocaleString()
 }
 
-function getPreviewType(mimeType: string): "image" | "video" | "audio" | "pdf" | "markdown" | "text" | "unknown" {
+function getPreviewType(
+  mimeType: string,
+): "image" | "video" | "audio" | "pdf" | "markdown" | "text" | "unknown" {
   if (mimeType.startsWith("image/")) return "image"
   if (mimeType.startsWith("video/")) return "video"
   if (mimeType.startsWith("audio/")) return "audio"
   if (mimeType === "application/pdf") return "pdf"
   if (mimeType === "text/markdown" || mimeType === "text/x-markdown") return "markdown"
-  if (mimeType.startsWith("text/") || mimeType === "application/json" || mimeType === "application/javascript" || mimeType === "text/csv") return "text"
+  if (
+    mimeType.startsWith("text/") ||
+    mimeType === "application/json" ||
+    mimeType === "application/javascript" ||
+    mimeType === "text/csv"
+  )
+    return "text"
   return "unknown"
 }
 
@@ -33,7 +41,7 @@ function ImagePreview({ url, alt }: { url: string; alt: string }) {
     <div className="flex h-full items-center justify-center bg-black/5 p-4 dark:bg-white/5">
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
         </div>
       )}
       <img
@@ -60,10 +68,10 @@ function VideoPreview({ url }: { url: string }) {
 function AudioPreview({ url, fileName }: { url: string; fileName: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
-        <FileText className="h-8 w-8 text-accent" />
+      <div className="bg-accent/10 flex h-16 w-16 items-center justify-center rounded-full">
+        <FileText className="text-accent h-8 w-8" />
       </div>
-      <p className="text-sm font-medium text-text-primary">{fileName}</p>
+      <p className="text-text-primary text-sm font-medium">{fileName}</p>
       <audio controls className="w-full max-w-md">
         <source src={url} />
         Your browser does not support the audio tag.
@@ -74,12 +82,8 @@ function AudioPreview({ url, fileName }: { url: string; fileName: string }) {
 
 function PdfPreview({ url }: { url: string }) {
   return (
-    <div className="h-full w-full bg-surface-secondary">
-      <iframe
-        src={url}
-        title="PDF Preview"
-        className="h-full w-full border-0"
-      />
+    <div className="bg-surface-secondary h-full w-full">
+      <iframe src={url} title="PDF Preview" className="h-full w-full border-0" />
     </div>
   )
 }
@@ -106,7 +110,7 @@ function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
   if (error) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-error">Failed to load text content</p>
+        <p className="text-error text-sm">Failed to load text content</p>
       </div>
     )
   }
@@ -114,7 +118,7 @@ function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
   if (content === null) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -124,21 +128,37 @@ function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
   if (isMarkdown) {
     return (
       <div className="h-full overflow-auto p-6">
-        <div className="space-y-2 text-sm leading-relaxed text-text-primary">
+        <div className="text-text-primary space-y-2 text-sm leading-relaxed">
           {content.split("\n").map((line, index) => {
             if (line.startsWith("### ")) {
-              return <h3 key={index} className="pt-3 text-lg font-semibold">{line.slice(4)}</h3>
+              return (
+                <h3 key={index} className="pt-3 text-lg font-semibold">
+                  {line.slice(4)}
+                </h3>
+              )
             }
             if (line.startsWith("## ")) {
-              return <h2 key={index} className="pt-4 text-xl font-semibold">{line.slice(3)}</h2>
+              return (
+                <h2 key={index} className="pt-4 text-xl font-semibold">
+                  {line.slice(3)}
+                </h2>
+              )
             }
             if (line.startsWith("# ")) {
-              return <h1 key={index} className="pt-5 text-2xl font-bold">{line.slice(2)}</h1>
+              return (
+                <h1 key={index} className="pt-5 text-2xl font-bold">
+                  {line.slice(2)}
+                </h1>
+              )
             }
             if (!line.trim()) {
               return <div key={index} className="h-2" />
             }
-            return <p key={index} className="whitespace-pre-wrap break-words">{line}</p>
+            return (
+              <p key={index} className="break-words whitespace-pre-wrap">
+                {line}
+              </p>
+            )
           })}
         </div>
       </div>
@@ -147,7 +167,7 @@ function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
 
   return (
     <div className="h-full overflow-auto p-4">
-      <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-text-primary">
+      <pre className="text-text-primary font-mono text-xs leading-relaxed break-words whitespace-pre-wrap">
         {content}
       </pre>
     </div>
@@ -157,14 +177,14 @@ function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
 function UnknownPreview({ file }: { file: FileObject }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-hover">
-        <FileText className="h-10 w-10 text-text-tertiary" />
+      <div className="bg-surface-hover flex h-20 w-20 items-center justify-center rounded-2xl">
+        <FileText className="text-text-tertiary h-10 w-10" />
       </div>
       <div className="text-center">
-        <p className="text-sm font-medium text-text-primary">{file.originalName}</p>
-        <p className="mt-1 text-xs text-text-tertiary">{file.mimeType}</p>
+        <p className="text-text-primary text-sm font-medium">{file.originalName}</p>
+        <p className="text-text-tertiary mt-1 text-xs">{file.mimeType}</p>
       </div>
-      <div className="w-full max-w-xs space-y-2 rounded-lg border border-border-default bg-surface-default p-4">
+      <div className="border-border-default bg-surface-default w-full max-w-xs space-y-2 rounded-lg border p-4">
         <div className="flex justify-between text-xs">
           <span className="text-text-tertiary">Size</span>
           <span className="text-text-primary">{formatSize(file.sizeBytes)}</span>
@@ -180,7 +200,9 @@ function UnknownPreview({ file }: { file: FileObject }) {
         {file.checksum && (
           <div className="flex justify-between text-xs">
             <span className="text-text-tertiary">Checksum</span>
-            <span className="max-w-[120px] truncate text-text-primary font-mono">{file.checksum}</span>
+            <span className="text-text-primary max-w-[120px] truncate font-mono">
+              {file.checksum}
+            </span>
           </div>
         )}
       </div>
@@ -237,7 +259,7 @@ export function FilePreview({
     if (isLoading || !previewData) {
       return (
         <div className="flex h-full items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
         </div>
       )
     }
@@ -270,19 +292,19 @@ export function FilePreview({
         aria-hidden="true"
       />
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-surface-default shadow-2xl md:w-[400px] lg:w-[480px]">
+      <div className="bg-surface-default fixed inset-y-0 right-0 z-50 flex w-full flex-col shadow-2xl md:w-[400px] lg:w-[480px]">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-border-default px-4 py-3">
+        <div className="border-border-default flex items-center gap-3 border-b px-4 py-3">
           <button
             onClick={onClose}
-            className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
+            className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors"
             aria-label="Close preview"
           >
             <X className="h-4 w-4" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-text-primary">{file.originalName}</p>
-            <p className="text-[11px] text-text-tertiary">
+            <p className="text-text-primary truncate text-sm font-medium">{file.originalName}</p>
+            <p className="text-text-tertiary text-[11px]">
               {file.mimeType} &middot; {formatSize(file.sizeBytes)}
             </p>
           </div>
@@ -290,7 +312,7 @@ export function FilePreview({
             <button
               onClick={onPrev}
               disabled={!hasPrev}
-              className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+              className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
               aria-label="Previous file"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -298,14 +320,14 @@ export function FilePreview({
             <button
               onClick={onNext}
               disabled={!hasNext}
-              className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+              className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
               aria-label="Next file"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
             <button
               onClick={() => onDownload(file.id)}
-              className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
+              className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors"
               aria-label="Download file"
             >
               <Download className="h-4 w-4" />
@@ -314,12 +336,10 @@ export function FilePreview({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {renderContent()}
-        </div>
+        <div className="flex-1 overflow-hidden">{renderContent()}</div>
 
         {/* Footer hints */}
-        <div className="flex items-center justify-between border-t border-border-default px-4 py-2 text-[11px] text-text-tertiary">
+        <div className="border-border-default text-text-tertiary flex items-center justify-between border-t px-4 py-2 text-[11px]">
           <span>Use arrow keys to navigate</span>
           <span>ESC to close</span>
         </div>

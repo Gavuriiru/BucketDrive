@@ -15,13 +15,12 @@ export function Breadcrumbs({ items, onNavigate, currentFolderId }: BreadcrumbsP
     <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm">
       {items.map((item, i) => {
         const isLast = i === items.length - 1
-        const isActive = item.id === currentFolderId || (item.id === null && currentFolderId === null)
+        const isActive =
+          item.id === currentFolderId || (item.id === null && currentFolderId === null)
 
         return (
           <span key={item.id ?? "root"} className="flex items-center gap-1">
-            {i > 0 && (
-              <ChevronRight className="h-3.5 w-3.5 text-text-tertiary" />
-            )}
+            {i > 0 && <ChevronRight className="text-text-tertiary h-3.5 w-3.5" />}
             {item.id === null ? (
               <button
                 onClick={() => {

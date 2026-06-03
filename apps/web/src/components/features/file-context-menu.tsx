@@ -53,7 +53,7 @@ export function FileContextMenu({
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Content className="z-50 min-w-[180px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg"> 
+        <ContextMenu.Content className="border-border-default bg-surface-default z-50 min-w-[180px] overflow-hidden rounded-lg border p-1.5 shadow-lg">
           {onOpen && (
             <ContextMenu.Item
               className={menuItemClass}
@@ -61,9 +61,9 @@ export function FileContextMenu({
                 onOpen()
               }}
             >
-              <FolderOpen className="h-4 w-4 text-text-tertiary" />
+              <FolderOpen className="text-text-tertiary h-4 w-4" />
               Open
-              <span className="ml-auto text-xs text-text-tertiary">Enter</span>
+              <span className="text-text-tertiary ml-auto text-xs">Enter</span>
             </ContextMenu.Item>
           )}
 
@@ -74,9 +74,9 @@ export function FileContextMenu({
                 onPreview()
               }}
             >
-              <Eye className="h-4 w-4 text-text-tertiary" />
+              <Eye className="text-text-tertiary h-4 w-4" />
               Preview
-              <span className="ml-auto text-xs text-text-tertiary">Space</span>
+              <span className="text-text-tertiary ml-auto text-xs">Space</span>
             </ContextMenu.Item>
           )}
 
@@ -87,12 +87,12 @@ export function FileContextMenu({
                 onDownload()
               }}
             >
-              <Download className="h-4 w-4 text-text-tertiary" />
+              <Download className="text-text-tertiary h-4 w-4" />
               Download
             </ContextMenu.Item>
           )}
 
-          {(itemType === "file" && (onPreview || onDownload)) && (
+          {itemType === "file" && (onPreview || onDownload) && (
             <ContextMenu.Separator className={separatorClass} />
           )}
 
@@ -104,7 +104,7 @@ export function FileContextMenu({
                   onFavorite()
                 }}
               >
-                <Star className="h-4 w-4 text-text-tertiary" />
+                <Star className="text-text-tertiary h-4 w-4" />
                 {favoriteLabel}
               </ContextMenu.Item>
               {onTags && (
@@ -114,7 +114,7 @@ export function FileContextMenu({
                     onTags()
                   }}
                 >
-                  <Tags className="h-4 w-4 text-text-tertiary" />
+                  <Tags className="text-text-tertiary h-4 w-4" />
                   Tags
                 </ContextMenu.Item>
               )}
@@ -129,9 +129,9 @@ export function FileContextMenu({
                 onRename()
               }}
             >
-              <Pencil className="h-4 w-4 text-text-tertiary" />
+              <Pencil className="text-text-tertiary h-4 w-4" />
               Rename
-              <span className="ml-auto text-xs text-text-tertiary">F2</span>
+              <span className="text-text-tertiary ml-auto text-xs">F2</span>
             </ContextMenu.Item>
           )}
 
@@ -142,9 +142,9 @@ export function FileContextMenu({
                 onCopy()
               }}
             >
-              <Copy className="h-4 w-4 text-text-tertiary" />
+              <Copy className="text-text-tertiary h-4 w-4" />
               Copy
-              <span className="ml-auto text-xs text-text-tertiary">Ctrl+C</span>
+              <span className="text-text-tertiary ml-auto text-xs">Ctrl+C</span>
             </ContextMenu.Item>
           )}
 
@@ -155,7 +155,7 @@ export function FileContextMenu({
                 onMove()
               }}
             >
-              <ArrowRightLeft className="h-4 w-4 text-text-tertiary" />
+              <ArrowRightLeft className="text-text-tertiary h-4 w-4" />
               Move
             </ContextMenu.Item>
           )}
@@ -169,7 +169,7 @@ export function FileContextMenu({
                 onShare()
               }}
             >
-              <Share2 className="h-4 w-4 text-text-tertiary" />
+              <Share2 className="text-text-tertiary h-4 w-4" />
               Share
             </ContextMenu.Item>
           )}
@@ -183,9 +183,9 @@ export function FileContextMenu({
                 onDelete()
               }}
             >
-              <Trash2 className="h-4 w-4 text-text-tertiary" />
+              <Trash2 className="text-text-tertiary h-4 w-4" />
               Delete
-              <span className="ml-auto text-xs text-text-tertiary">Del</span>
+              <span className="text-text-tertiary ml-auto text-xs">Del</span>
             </ContextMenu.Item>
           )}
         </ContextMenu.Content>

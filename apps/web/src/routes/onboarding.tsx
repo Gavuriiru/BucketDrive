@@ -30,8 +30,8 @@ export function OnboardingPage() {
 
   if (workspacesLoading || joinPlatform.isPending) {
     return (
-      <div className="flex h-screen items-center justify-center bg-bg-primary">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      <div className="bg-bg-primary flex h-screen items-center justify-center">
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -40,18 +40,20 @@ export function OnboardingPage() {
     platformSettings?.allowUserWorkspaceCreation ||
     platformMe?.canCreateWorkspaces ||
     platformMe?.isPlatformAdmin
-  const canJoinDefault = Boolean(platformSettings?.enablePublicSignup && platformSettings.defaultWorkspaceId)
+  const canJoinDefault = Boolean(
+    platformSettings?.enablePublicSignup && platformSettings.defaultWorkspaceId,
+  )
 
   return (
-    <div className="flex h-screen items-center justify-center bg-bg-primary p-6">
-      <div className="w-full max-w-md rounded-2xl border border-border-default bg-surface-default p-8 shadow-sm">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-          <HardDrive className="h-6 w-6 text-accent" />
+    <div className="bg-bg-primary flex h-screen items-center justify-center p-6">
+      <div className="border-border-default bg-surface-default w-full max-w-md rounded-2xl border p-8 shadow-sm">
+        <div className="bg-accent/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+          <HardDrive className="text-accent h-6 w-6" />
         </div>
-        <h1 className="mt-4 text-center text-xl font-semibold text-text-primary">
+        <h1 className="text-text-primary mt-4 text-center text-xl font-semibold">
           Welcome to {platformSettings?.platformName ?? "BucketDrive"}
         </h1>
-        <p className="mt-2 text-center text-sm text-text-secondary">
+        <p className="text-text-secondary mt-2 text-center text-sm">
           {canJoinDefault
             ? "Join the default workspace to finish your first setup."
             : canCreate
@@ -59,10 +61,10 @@ export function OnboardingPage() {
               : "You do not have access to any workspace yet. Please wait for an invitation from your administrator."}
         </p>
 
-        <div className="mt-5 rounded-xl border border-border-default bg-bg-tertiary p-4 text-xs text-text-secondary">
+        <div className="border-border-default bg-bg-tertiary text-text-secondary mt-5 rounded-xl border p-4 text-xs">
           <div className="flex items-center justify-between gap-3">
             <span>Storage provider</span>
-            <span className="font-medium text-text-primary">
+            <span className="text-text-primary font-medium">
               {storageStatus
                 ? [String(storageStatus.provider), String(storageStatus.bucketName)].join(" · ")
                 : "Checking..."}
@@ -82,7 +84,9 @@ export function OnboardingPage() {
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
             <span>Local CORS origin</span>
-            <span className="truncate text-text-primary">{storageStatus?.expectedCorsOrigin ?? "http://localhost:5173"}</span>
+            <span className="text-text-primary truncate">
+              {storageStatus?.expectedCorsOrigin ?? "http://localhost:5173"}
+            </span>
           </div>
         </div>
 
@@ -100,7 +104,7 @@ export function OnboardingPage() {
                 },
               })
             }}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-accent mt-6 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <HardDrive className="h-4 w-4" />
             {joinPlatform.isPending ? "Joining..." : "Join default workspace"}
@@ -114,21 +118,27 @@ export function OnboardingPage() {
               const formData = new FormData(e.currentTarget)
               const name = formData.get("name") as string
               if (name.trim()) {
-                createWorkspace.mutate({ name: name.trim() }, {
-                  onSuccess: (data: { id: string }) => {
-                    localStorage.setItem("bucketdrive-workspace-id", data.id)
-                    void navigate({
-                      to: "/dashboard/files",
-                      search: { folderId: undefined, previewFileId: undefined },
-                    })
+                createWorkspace.mutate(
+                  { name: name.trim() },
+                  {
+                    onSuccess: (data: { id: string }) => {
+                      localStorage.setItem("bucketdrive-workspace-id", data.id)
+                      void navigate({
+                        to: "/dashboard/files",
+                        search: { folderId: undefined, previewFileId: undefined },
+                      })
+                    },
                   },
-                })
+                )
               }
             }}
             className="mt-6 space-y-4"
           >
             <div>
-              <label htmlFor="workspace-name" className="block text-sm font-medium text-text-secondary">
+              <label
+                htmlFor="workspace-name"
+                className="text-text-secondary block text-sm font-medium"
+              >
                 Workspace name
               </label>
               <input
@@ -138,16 +148,18 @@ export function OnboardingPage() {
                 required
                 maxLength={100}
                 placeholder="My Team"
-                className="mt-1 block w-full rounded-xl border border-border-default bg-bg-primary px-3 py-2 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                className="border-border-default bg-bg-primary text-text-primary focus:border-accent focus:ring-accent mt-1 block w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-1"
               />
             </div>
             {createWorkspace.isError && (
-              <p className="text-sm text-error">{createWorkspace.error?.message ?? "Failed to create workspace"}</p>
+              <p className="text-error text-sm">
+                {createWorkspace.error?.message ?? "Failed to create workspace"}
+              </p>
             )}
             <button
               type="submit"
               disabled={createWorkspace.isPending}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="bg-accent flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
               {createWorkspace.isPending ? "Creating..." : "Create workspace"}
@@ -156,14 +168,14 @@ export function OnboardingPage() {
         )}
 
         {joinPlatform.isError && (
-          <p className="mt-3 text-center text-sm text-error">
+          <p className="text-error mt-3 text-center text-sm">
             {joinPlatform.error?.message ?? "Failed to join workspace"}
           </p>
         )}
 
         {!canCreate && !canJoinDefault && !platformSettings?.enablePublicSignup && (
-          <div className="mt-6 rounded-xl border border-border-default bg-bg-tertiary p-4 text-center">
-            <p className="text-sm text-text-secondary">
+          <div className="border-border-default bg-bg-tertiary mt-6 rounded-xl border p-4 text-center">
+            <p className="text-text-secondary text-sm">
               This platform requires an invitation to join.
             </p>
           </div>

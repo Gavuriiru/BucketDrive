@@ -2,13 +2,14 @@ import { useCallback, useState, type DragEvent } from "react"
 import { Upload } from "lucide-react"
 
 interface UploadDropZoneProps {
-  onFilesDrop: (entries: Array<{ file: File; relativePath: string }>, emptyFolders: string[]) => void
+  onFilesDrop: (
+    entries: Array<{ file: File; relativePath: string }>,
+    emptyFolders: string[],
+  ) => void
   className?: string
 }
 
-async function readEntriesAsync(
-  reader: FileSystemDirectoryReader,
-): Promise<FileSystemEntry[]> {
+async function readEntriesAsync(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
   return new Promise((resolve, reject) => {
     reader.readEntries(resolve, reject)
   })
@@ -85,10 +86,7 @@ export function UploadDropZone({ onFilesDrop, className = "" }: UploadDropZonePr
       const emptyFolders: string[] = []
 
       for (const item of Array.from(dtItems)) {
-        const entry =
-          typeof item.webkitGetAsEntry === "function"
-            ? item.webkitGetAsEntry()
-            : null
+        const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null
         if (entry) {
           await traverseEntry(entry, "", entries, emptyFolders, 0)
         } else {
@@ -111,7 +109,7 @@ export function UploadDropZone({ onFilesDrop, className = "" }: UploadDropZonePr
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative rounded-xl border-2 border-dashed transition-all duration-200 ${isDragging ? "scale-[1.02] border-accent bg-accent/10" : "border-border-default hover:border-border-strong"} ${className}`}
+      className={`relative rounded-xl border-2 border-dashed transition-all duration-200 ${isDragging ? "border-accent bg-accent/10 scale-[1.02]" : "border-border-default hover:border-border-strong"} ${className}`}
     >
       <div className="pointer-events-none flex flex-col items-center justify-center gap-3 py-12">
         <div
@@ -120,10 +118,10 @@ export function UploadDropZone({ onFilesDrop, className = "" }: UploadDropZonePr
           <Upload className="h-8 w-8" />
         </div>
         <div className="text-center">
-          <p className="text-sm font-medium text-text-primary">
+          <p className="text-text-primary text-sm font-medium">
             {isDragging ? "Drop files to upload" : "Drag files or folders here to upload"}
           </p>
-          <p className="mt-1 text-xs text-text-tertiary">or click the Upload button</p>
+          <p className="text-text-tertiary mt-1 text-xs">or click the Upload button</p>
         </div>
       </div>
     </div>

@@ -6,7 +6,13 @@ import {
   RemoveMemberResponse,
   UpdateMemberRoleRequest,
 } from "@bucketdrive/shared"
-import { auditLog, member, user, workspaceInvitation, workspace } from "@bucketdrive/shared/db/schema"
+import {
+  auditLog,
+  member,
+  user,
+  workspaceInvitation,
+  workspace,
+} from "@bucketdrive/shared/db/schema"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
@@ -69,7 +75,10 @@ members.post("/", requirePermission("users.invite"), async (c) => {
   const body = AddMemberRequest.parse(await c.req.json())
   const appUrl = c.env.APP_URL
 
-  await Promise.all([ensureOrganizationForWorkspace(db, workspaceId), syncWorkspaceMemberships(db, workspaceId)])
+  await Promise.all([
+    ensureOrganizationForWorkspace(db, workspaceId),
+    syncWorkspaceMemberships(db, workspaceId),
+  ])
 
   // Check if already a member
   const targetUser = await db
@@ -103,7 +112,10 @@ members.post("/", requirePermission("users.invite"), async (c) => {
     .get()
 
   if (existingInvite) {
-    return c.json({ code: "CONFLICT", message: "Pending invitation already exists for this email" }, 409)
+    return c.json(
+      { code: "CONFLICT", message: "Pending invitation already exists for this email" },
+      409,
+    )
   }
 
   const INVITE_EXPIRY_DAYS = 7
@@ -180,7 +192,10 @@ members.patch("/:memberId", requirePermission("users.update_roles"), async (c) =
   const workspaceId = c.req.param("workspaceId")
   const memberId = c.req.param("memberId")
   if (!workspaceId || !memberId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and memberId are required" }, 400)
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and memberId are required" },
+      400,
+    )
   }
 
   const actor = c.get("user")
@@ -229,7 +244,10 @@ members.delete("/:memberId", requirePermission("users.remove"), async (c) => {
   const workspaceId = c.req.param("workspaceId")
   const memberId = c.req.param("memberId")
   if (!workspaceId || !memberId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and memberId are required" }, 400)
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and memberId are required" },
+      400,
+    )
   }
 
   const actor = c.get("user")

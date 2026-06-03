@@ -3,6 +3,7 @@
 # Philosophy
 
 The interface must feel:
+
 - modern
 - polished
 - lightweight
@@ -11,6 +12,7 @@ The interface must feel:
 - professional
 
 The visual language should prioritize:
+
 - clarity
 - hierarchy
 - spacing consistency
@@ -18,6 +20,7 @@ The visual language should prioritize:
 - accessibility
 
 Avoid:
+
 - clutter
 - excessive decoration
 - visual noise
@@ -25,6 +28,7 @@ Avoid:
 - chaotic animations
 
 The experience should resemble:
+
 - Linear
 - Raycast
 - Notion
@@ -41,11 +45,13 @@ The experience should resemble:
 Consistency is mandatory.
 
 The same interaction must always:
+
 - look the same
 - behave the same
 - animate the same
 
 Avoid:
+
 - inconsistent paddings
 - inconsistent radii
 - inconsistent hover states
@@ -58,12 +64,14 @@ Avoid:
 Visual hierarchy must be obvious.
 
 Prioritize:
+
 - spacing
 - typography
 - contrast
 - grouping
 
 Avoid:
+
 - oversized text
 - excessive colors
 - unnecessary borders
@@ -74,6 +82,7 @@ Avoid:
 ## 3. Accessibility
 
 All components must support:
+
 - keyboard navigation
 - visible focus states
 - screen readers
@@ -87,16 +96,19 @@ Never remove focus outlines without replacement.
 ## 4. Motion
 
 Animations must:
+
 - guide attention
 - improve clarity
 - reinforce hierarchy
 
 Animations must NEVER:
+
 - distract users
 - feel random
 - happen simultaneously everywhere
 
 Animation flow should:
+
 - occur top-to-bottom
 - follow reading order
 - preserve visual organization
@@ -108,6 +120,7 @@ Animation flow should:
 ## Philosophy
 
 Colors should:
+
 - feel neutral
 - avoid oversaturation
 - prioritize content visibility
@@ -119,10 +132,12 @@ Accent colors should be used sparingly.
 ## Required Theme Support
 
 The application must support:
+
 - light mode
 - dark mode
 
 Theme switching must:
+
 - feel instant
 - avoid flashing
 - preserve contrast accessibility
@@ -192,18 +207,23 @@ xl  = 18px
 ## Usage Rules
 
 Buttons:
+
 - rounded-xl
 
 Cards:
+
 - rounded-2xl
 
 Inputs:
+
 - rounded-xl
 
 Dropdowns:
+
 - rounded-xl
 
 Modals:
+
 - rounded-2xl
 
 Avoid mixing random radius values.
@@ -213,16 +233,19 @@ Avoid mixing random radius values.
 # Shadows
 
 Shadows must be:
+
 - soft
 - subtle
 - layered
 
 Avoid:
+
 - harsh shadows
 - excessive blur
 - strong opacity
 
 Shadows should reinforce:
+
 - depth
 - elevation
 - focus
@@ -234,11 +257,13 @@ Shadows should reinforce:
 # Philosophy
 
 Typography should:
+
 - maximize readability
 - preserve hierarchy
 - avoid visual overload
 
 Avoid:
+
 - giant text
 - too many font weights
 - inconsistent line heights
@@ -248,9 +273,11 @@ Avoid:
 ## Font Usage
 
 Primary font:
+
 - Inter
 
 Fallbacks:
+
 - system-ui
 - sans-serif
 
@@ -290,6 +317,7 @@ Avoid excessive bold text.
 # Philosophy
 
 Layouts must:
+
 - breathe
 - feel organized
 - avoid overcrowding
@@ -303,6 +331,7 @@ Whitespace is important.
 Use consistent max widths.
 
 Avoid:
+
 - extremely wide text blocks
 - edge-to-edge clutter
 
@@ -311,10 +340,12 @@ Avoid:
 ## Grid Rules
 
 Use:
+
 - CSS Grid
 - Flexbox
 
 Avoid:
+
 - deeply nested layouts
 - layout hacks
 
@@ -325,12 +356,14 @@ Avoid:
 ## Buttons
 
 Buttons must:
+
 - have clear hierarchy
 - have visible hover states
 - have active states
 - have disabled states
 
 Required variants:
+
 - primary
 - secondary
 - ghost
@@ -341,11 +374,13 @@ Required variants:
 ## Inputs
 
 Inputs must:
+
 - have visible focus states
 - support keyboard navigation
 - support validation states
 
 Required states:
+
 - default
 - focused
 - error
@@ -356,12 +391,14 @@ Required states:
 ## Modals
 
 Modals must:
+
 - trap focus
 - support ESC closing
 - animate smoothly
 - avoid excessive nesting
 
 Avoid:
+
 - modal inside modal
 - giant modal forms
 
@@ -370,6 +407,7 @@ Avoid:
 ## Dropdowns
 
 Dropdowns must:
+
 - support keyboard navigation
 - support search when needed
 - have smooth positioning
@@ -379,6 +417,7 @@ Dropdowns must:
 ## Tables
 
 Tables must:
+
 - support virtualization
 - support selection
 - support sorting
@@ -393,6 +432,7 @@ Large datasets must remain performant.
 The file explorer is a core experience.
 
 It must feel:
+
 - fast
 - intuitive
 - desktop-like
@@ -415,6 +455,7 @@ It must feel:
 ## Selection Rules
 
 Selected items must:
+
 - remain visually clear
 - support bulk actions
 - preserve accessibility contrast
@@ -442,10 +483,12 @@ Avoid slow animations.
 # Animation Curves
 
 Preferred:
+
 - ease-out
 - cubic-bezier smooth transitions
 
 Avoid:
+
 - bounce animations
 - elastic motion
 - chaotic transitions
@@ -455,11 +498,13 @@ Avoid:
 # Animation Hierarchy
 
 Animations should:
+
 - follow interface hierarchy
 - happen sequentially
 - preserve readability
 
 Avoid:
+
 - everything animating simultaneously
 - random delayed items
 - inconsistent directions
@@ -469,11 +514,13 @@ Avoid:
 # Loading States
 
 All async operations require:
+
 - skeletons
 - progress indicators
 - optimistic feedback
 
 Avoid:
+
 - layout shifts
 - blank loading screens
 
@@ -482,11 +529,13 @@ Avoid:
 # Empty States
 
 Empty states must:
+
 - explain context
 - guide users
 - avoid dead ends
 
 Include:
+
 - actionable suggestions
 - upload actions
 - creation actions
@@ -496,6 +545,7 @@ Include:
 # Error States
 
 Errors must:
+
 - be understandable
 - be actionable
 - preserve layout consistency
@@ -508,6 +558,7 @@ Avoid generic:
 # Responsive Design
 
 The application must support:
+
 - desktop
 - tablet
 - mobile
@@ -519,6 +570,7 @@ Desktop experience is priority.
 # Dark Mode Rules
 
 Dark mode must:
+
 - preserve contrast
 - reduce eye strain
 - avoid pure black backgrounds
@@ -526,6 +578,7 @@ Dark mode must:
 Use layered surfaces.
 
 Avoid:
+
 - neon colors
 - excessive saturation
 
@@ -534,9 +587,11 @@ Avoid:
 # Icons
 
 Use:
+
 - Lucide icons
 
 Icons must:
+
 - remain consistent
 - match text alignment
 - avoid visual clutter
@@ -546,6 +601,7 @@ Icons must:
 # Accessibility Rules
 
 Required:
+
 - focus visibility
 - keyboard navigation
 - semantic HTML
@@ -559,6 +615,7 @@ Never sacrifice accessibility for aesthetics.
 # Forbidden UI Practices
 
 Never:
+
 - use inline styles
 - use random spacing
 - mix visual styles

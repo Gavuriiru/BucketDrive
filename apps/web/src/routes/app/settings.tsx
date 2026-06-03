@@ -38,7 +38,7 @@ export function SettingsPage() {
   if (workspacesLoading || settingsQuery.isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -46,7 +46,7 @@ export function SettingsPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-text-tertiary">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No workspace found</p>
       </div>
     )
   }
@@ -59,14 +59,14 @@ export function SettingsPage() {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Workspace Settings</h1>
-        <p className="mt-2 text-sm text-text-secondary">
+        <h1 className="text-text-primary text-2xl font-semibold">Workspace Settings</h1>
+        <p className="text-text-secondary mt-2 text-sm">
           Update quota, upload policy, retention, branding, and public signup behavior.
         </p>
       </div>
 
       <form
-        className="grid gap-6 rounded-2xl border border-border-default bg-surface-default p-6"
+        className="border-border-default bg-surface-default grid gap-6 rounded-2xl border p-6"
         onSubmit={(event) => {
           event.preventDefault()
           updateSettings.mutate({
@@ -160,24 +160,24 @@ export function SettingsPage() {
           </Field>
         </div>
 
-        <label className="flex items-center gap-3 rounded-xl border border-border-muted bg-bg-tertiary px-4 py-3 text-sm text-text-primary">
+        <label className="border-border-muted bg-bg-tertiary text-text-primary flex items-center gap-3 rounded-xl border px-4 py-3 text-sm">
           <input
             type="checkbox"
             checked={enablePublicSignup}
             onChange={(event) => setEnablePublicSignup(event.target.checked)}
-            className="h-4 w-4 accent-accent"
+            className="accent-accent h-4 w-4"
           />
           Enable public signup for this workspace
         </label>
 
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-text-tertiary">
+          <p className="text-text-tertiary text-xs">
             Size inputs are entered as GB/MB and converted to bytes on save.
           </p>
           <button
             type="submit"
             disabled={updateSettings.isPending}
-            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-accent rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {updateSettings.isPending ? "Saving..." : "Save settings"}
           </button>
@@ -185,7 +185,7 @@ export function SettingsPage() {
       </form>
 
       {(settingsQuery.isError || updateSettings.isError) && (
-        <div className="rounded-xl border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+        <div className="border-error/40 bg-error/10 text-error rounded-xl border px-4 py-3 text-sm">
           {settingsQuery.error?.message ?? updateSettings.error?.message}
         </div>
       )}
@@ -193,16 +193,10 @@ export function SettingsPage() {
   )
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: ReactNode
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="grid gap-2">
-      <span className="text-sm font-medium text-text-primary">{label}</span>
+      <span className="text-text-primary text-sm font-medium">{label}</span>
       {children}
     </label>
   )

@@ -116,11 +116,7 @@ export class UploadService {
       throw new UploadError("FILE_TOO_LARGE", `Max file size is ${String(MAX_FILE_SIZE / 1e9)} GB`)
     }
 
-    const ws = await db
-      .select()
-      .from(workspace)
-      .where(eq(workspace.id, params.workspaceId))
-      .get()
+    const ws = await db.select().from(workspace).where(eq(workspace.id, params.workspaceId)).get()
 
     if (!ws) {
       throw new UploadError("WORKSPACE_NOT_FOUND", "Workspace not found")
@@ -157,12 +153,7 @@ export class UploadService {
     const allFiles = await db
       .select()
       .from(fileObject)
-      .where(
-        and(
-          eq(fileObject.workspaceId, params.workspaceId),
-          eq(fileObject.isDeleted, false),
-        ),
-      )
+      .where(and(eq(fileObject.workspaceId, params.workspaceId), eq(fileObject.isDeleted, false)))
       .all()
 
     const totalUsed = allFiles.reduce((sum, f) => sum + f.sizeBytes, 0)
@@ -311,13 +302,7 @@ export class UploadService {
       .select()
       .from(uploadPart)
       .where(
-        and(
-          eq(uploadPart.uploadSessionId, sessionId),
-          inArray(
-            uploadPart.partNumber,
-            partNumbers,
-          ),
-        ),
+        and(eq(uploadPart.uploadSessionId, sessionId), inArray(uploadPart.partNumber, partNumbers)),
       )
       .all()
 
@@ -486,11 +471,7 @@ export class UploadService {
       })
       .run()
 
-    const created = await db
-      .select()
-      .from(fileObject)
-      .where(eq(fileObject.id, fileId))
-      .get()
+    const created = await db.select().from(fileObject).where(eq(fileObject.id, fileId)).get()
 
     if (!created) {
       throw new UploadError("INTERNAL_ERROR", "Failed to create file record")

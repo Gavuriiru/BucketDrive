@@ -2,7 +2,10 @@ import { createD1DB, getDB } from "../../api/src/lib/db"
 import { createStorageProvider } from "../../api/src/services/storage"
 import { ThumbnailService } from "../../api/src/services/thumbnail.service"
 import { TrashService } from "../../api/src/services/trash.service"
-import { SYSTEM_R2_SYNC_ACTOR_ID, syncAllR2Workspaces } from "../../api/src/services/r2-import.service"
+import {
+  SYSTEM_R2_SYNC_ACTOR_ID,
+  syncAllR2Workspaces,
+} from "../../api/src/services/r2-import.service"
 
 interface Env {
   DB: D1Database
@@ -28,10 +31,7 @@ export default {
 async function runScheduledJobs(env: Env) {
   createD1DB(env.DB)
 
-  const results = await Promise.allSettled([
-    runTrashCleanup(env),
-    runR2Sync(env),
-  ])
+  const results = await Promise.allSettled([runTrashCleanup(env), runR2Sync(env)])
 
   for (const result of results) {
     if (result.status === "rejected") {

@@ -23,6 +23,7 @@ and the palette narrows results in real time.
 ## 3. Context-Aware
 
 Available commands vary based on context:
+
 - **Explorer context**: file/folder actions (rename, share, delete, move)
 - **Global context**: navigation, settings, theme toggle
 - **Selection context**: bulk actions when multiple files are selected
@@ -30,6 +31,7 @@ Available commands vary based on context:
 ## 4. Keyboard Navigation
 
 Fully navigable by keyboard:
+
 - `↑↓` — move between results
 - `Enter` — execute selected command
 - `Esc` — close palette
@@ -44,6 +46,7 @@ Fully navigable by keyboard:
 `Ctrl/Cmd + K` opens the palette from anywhere in the application.
 
 The palette:
+
 - Opens centered on screen with backdrop blur
 - Auto-focuses the search input
 - Shows recent/relevant commands by default
@@ -135,6 +138,7 @@ Create share link        → Opens share modal (no file preselected)
 ## Ranking
 
 Results are ranked by:
+
 1. Exact match on command name (highest priority)
 2. Prefix match on command name
 3. Fuzzy match on command name and keywords
@@ -211,13 +215,13 @@ Shows: Top 3 file matches (clickable, opens the file)
 
 # Keyboard Shortcuts Within Palette
 
-| Key | Action |
-|---|---|
-| `↑` / `↓` | Move selection up/down |
+| Key       | Action                                         |
+| --------- | ---------------------------------------------- |
+| `↑` / `↓` | Move selection up/down                         |
 | `←` / `→` | Move between categories (if horizontal layout) |
-| `Enter` | Execute selected command |
-| `Esc` | Close palette |
-| `Tab` | Cycle focus between input and results |
+| `Enter`   | Execute selected command                       |
+| `Esc`     | Close palette                                  |
+| `Tab`     | Cycle focus between input and results          |
 
 ---
 
@@ -250,8 +254,8 @@ export interface Command {
   icon?: LucideIcon
   shortcut?: string
   category: "navigation" | "file" | "folder" | "bulk" | "workspace" | "appearance"
-  keywords?: string[]          // Additional search terms
-  condition?: (ctx: CommandContext) => boolean  // When to show
+  keywords?: string[] // Additional search terms
+  condition?: (ctx: CommandContext) => boolean // When to show
   action: (ctx: CommandContext) => void
 }
 
@@ -327,6 +331,7 @@ Commands are defined declaratively, making it easy to add new ones:
 3. Command automatically appears in palette (filtered by `condition`)
 
 Future integrations:
+
 - Plugin system: third-party plugins can register commands
 - AI commands: "Summarize this file", "Translate filename"
 - Workflow commands: "Run backup", "Export workspace"

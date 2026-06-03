@@ -12,7 +12,12 @@ export class StorageProviderError extends Error {
 
 export interface StorageProvider {
   list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
-    objects: Array<{ key: string; size: number; uploaded?: Date; httpMetadata?: { contentType?: string } }>
+    objects: Array<{
+      key: string
+      size: number
+      uploaded?: Date
+      httpMetadata?: { contentType?: string }
+    }>
     cursor?: string
     truncated: boolean
   }>
@@ -64,7 +69,12 @@ export class R2StorageProvider implements StorageProvider {
   }
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
-    objects: Array<{ key: string; size: number; uploaded?: Date; httpMetadata?: { contentType?: string } }>
+    objects: Array<{
+      key: string
+      size: number
+      uploaded?: Date
+      httpMetadata?: { contentType?: string }
+    }>
     cursor?: string
     truncated: boolean
   }> {
@@ -83,7 +93,11 @@ export class R2StorageProvider implements StorageProvider {
       const text = await response.text()
       const r2Code = readXmlValue(text, "Code")
       const r2Message = readXmlValue(text, "Message")
-      if (response.status === 403 || r2Code === "SignatureDoesNotMatch" || r2Code === "InvalidAccessKeyId") {
+      if (
+        response.status === 403 ||
+        r2Code === "SignatureDoesNotMatch" ||
+        r2Code === "InvalidAccessKeyId"
+      ) {
         throw new StorageProviderError(
           "R2_AUTH_FAILED",
           r2Message ?? "R2 rejected the configured S3 credentials.",
@@ -122,7 +136,10 @@ export class R2StorageProvider implements StorageProvider {
     const url = new URL(`${this.endpoint}/${this.bucketName}/${key}`)
     url.searchParams.set("X-Amz-Expires", String(expiresIn))
     if (options?.filename) {
-      url.searchParams.set("response-content-disposition", buildAttachmentDisposition(options.filename))
+      url.searchParams.set(
+        "response-content-disposition",
+        buildAttachmentDisposition(options.filename),
+      )
     }
     const signed = await this.s3.sign(url.toString(), {
       method: "GET",
@@ -172,9 +189,7 @@ export class R2StorageProvider implements StorageProvider {
     parts: Array<{ partNumber: number; etag: string }>,
   ): Promise<void> {
     const multipart = this.binding.resumeMultipartUpload(key, uploadId)
-    await multipart.complete(
-      parts.map((p) => ({ partNumber: p.partNumber, etag: p.etag })),
-    )
+    await multipart.complete(parts.map((p) => ({ partNumber: p.partNumber, etag: p.etag })))
   }
 
   async abortMultipartUpload(uploadId: string, key: string): Promise<void> {
@@ -190,23 +205,23 @@ function parseListBucketResult(xml: string): {
 } {
   const truncated = readXmlValue(xml, "IsTruncated") === "true"
   const cursor = readXmlValue(xml, "NextContinuationToken")
-  const objects = Array.from(xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)).flatMap(
-    (match) => {
-      const content = match[1]
-      if (!content) return []
+  const objects = Array.from(xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)).flatMap((match) => {
+    const content = match[1]
+    if (!content) return []
 
-      const key = readXmlValue(content, "Key")
-      const sizeText = readXmlValue(content, "Size")
-      if (!key || !sizeText) return []
+    const key = readXmlValue(content, "Key")
+    const sizeText = readXmlValue(content, "Size")
+    if (!key || !sizeText) return []
 
-      const lastModified = readXmlValue(content, "LastModified")
-      return [{
+    const lastModified = readXmlValue(content, "LastModified")
+    return [
+      {
         key,
         size: Number(sizeText),
         uploaded: lastModified ? new Date(lastModified) : undefined,
-      }]
-    },
-  )
+      },
+    ]
+  })
 
   return { objects, cursor, truncated }
 }
@@ -220,7 +235,7 @@ function decodeXml(value: string): string {
   return value
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
-    .replaceAll("&quot;", "\"")
+    .replaceAll("&quot;", '"')
     .replaceAll("&apos;", "'")
     .replaceAll("&amp;", "&")
 }
@@ -249,7 +264,12 @@ class R2BindingProvider implements StorageProvider {
   constructor(private binding: R2Bucket) {}
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
-    objects: Array<{ key: string; size: number; uploaded?: Date; httpMetadata?: { contentType?: string } }>
+    objects: Array<{
+      key: string
+      size: number
+      uploaded?: Date
+      httpMetadata?: { contentType?: string }
+    }>
     cursor?: string
     truncated: boolean
   }> {
@@ -322,9 +342,7 @@ class R2BindingProvider implements StorageProvider {
     parts: Array<{ partNumber: number; etag: string }>,
   ): Promise<void> {
     const multipart = this.binding.resumeMultipartUpload(key, uploadId)
-    await multipart.complete(
-      parts.map((p) => ({ partNumber: p.partNumber, etag: p.etag })),
-    )
+    await multipart.complete(parts.map((p) => ({ partNumber: p.partNumber, etag: p.etag })))
   }
 
   async abortMultipartUpload(uploadId: string, key: string): Promise<void> {
@@ -333,7 +351,10 @@ class R2BindingProvider implements StorageProvider {
   }
 }
 
-export function buildPublicObjectUrl(baseUrl: string | null | undefined, key: string): string | null {
+export function buildPublicObjectUrl(
+  baseUrl: string | null | undefined,
+  key: string,
+): string | null {
   const normalizedBase = baseUrl?.trim().replace(/\/+$/, "")
   if (!normalizedBase) return null
 

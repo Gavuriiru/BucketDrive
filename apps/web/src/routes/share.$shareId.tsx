@@ -1,7 +1,15 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-deprecated, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { useState, useCallback } from "react"
 import { useParams } from "@tanstack/react-router"
-import { FolderOpen, Download, Lock, LockKeyhole, ChevronRight, AlertTriangle, ArrowLeft } from "lucide-react"
+import {
+  FolderOpen,
+  Download,
+  Lock,
+  LockKeyhole,
+  ChevronRight,
+  AlertTriangle,
+  ArrowLeft,
+} from "lucide-react"
 import {
   useShareInfo,
   useAccessShare,
@@ -77,8 +85,8 @@ export function ShareAccessPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      <div className="bg-bg-primary flex min-h-screen items-center justify-center">
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -89,8 +97,8 @@ export function ShareAccessPage() {
 
   if (!info) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-        <p className="text-sm text-text-tertiary">Share not found</p>
+      <div className="bg-bg-primary flex min-h-screen items-center justify-center">
+        <p className="text-text-tertiary text-sm">Share not found</p>
       </div>
     )
   }
@@ -98,7 +106,7 @@ export function ShareAccessPage() {
   if (!info.isActive) {
     return (
       <ShareErrorFrame
-        icon={<LockKeyhole className="h-8 w-8 text-error" />}
+        icon={<LockKeyhole className="text-error h-8 w-8" />}
         title="Share revoked"
         message="This share link has been revoked and is no longer available."
       />
@@ -108,7 +116,7 @@ export function ShareAccessPage() {
   if (info.expiresAt && new Date(info.expiresAt) < new Date()) {
     return (
       <ShareErrorFrame
-        icon={<LockKeyhole className="h-8 w-8 text-error" />}
+        icon={<LockKeyhole className="text-error h-8 w-8" />}
         title="Share expired"
         message="This share link has expired."
       />
@@ -160,7 +168,17 @@ export function ShareAccessPage() {
     return (
       <ShareExternalExplorer
         info={info}
-        browseData={browseData ?? { resourceName: info.resourceName, currentFolderId: null, breadcrumbs: [], files: [], folders: [], brandingLogoUrl: info.brandingLogoUrl, brandingName: info.brandingName }}
+        browseData={
+          browseData ?? {
+            resourceName: info.resourceName,
+            currentFolderId: null,
+            breadcrumbs: [],
+            files: [],
+            folders: [],
+            brandingLogoUrl: info.brandingLogoUrl,
+            brandingName: info.brandingName,
+          }
+        }
         browseMutation={browseMutation}
         onBrowse={handleBrowse}
         accessPassword={browsePassword}
@@ -186,8 +204,8 @@ export function ShareAccessPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-      <p className="text-sm text-text-tertiary">Loading share...</p>
+    <div className="bg-bg-primary flex min-h-screen items-center justify-center">
+      <p className="text-text-tertiary text-sm">Loading share...</p>
     </div>
   )
 }
@@ -202,11 +220,11 @@ function ShareErrorFrame({
   message: string
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg-primary p-6">
+    <div className="bg-bg-primary flex min-h-screen flex-col items-center justify-center gap-4 p-6">
       {icon}
       <div className="text-center">
-        <h1 className="text-lg font-semibold text-text-primary">{title}</h1>
-        <p className="mt-1 text-sm text-text-secondary">{message}</p>
+        <h1 className="text-text-primary text-lg font-semibold">{title}</h1>
+        <p className="text-text-secondary mt-1 text-sm">{message}</p>
       </div>
     </div>
   )
@@ -217,7 +235,7 @@ function ShareErrorState({ error }: { error: unknown }) {
     if (error.code === "SHARE_REVOKED") {
       return (
         <ShareErrorFrame
-          icon={<LockKeyhole className="h-8 w-8 text-error" />}
+          icon={<LockKeyhole className="text-error h-8 w-8" />}
           title="Share revoked"
           message="This share link has been revoked."
         />
@@ -226,7 +244,7 @@ function ShareErrorState({ error }: { error: unknown }) {
     if (error.code === "SHARE_EXPIRED") {
       return (
         <ShareErrorFrame
-          icon={<LockKeyhole className="h-8 w-8 text-error" />}
+          icon={<LockKeyhole className="text-error h-8 w-8" />}
           title="Share expired"
           message="This share link has expired."
         />
@@ -235,7 +253,7 @@ function ShareErrorState({ error }: { error: unknown }) {
     if (error.code === "SHARE_LOCKED") {
       return (
         <ShareErrorFrame
-          icon={<Lock className="h-8 w-8 text-warning" />}
+          icon={<Lock className="text-warning h-8 w-8" />}
           title="Share locked"
           message={error.message}
         />
@@ -243,7 +261,7 @@ function ShareErrorState({ error }: { error: unknown }) {
     }
     return (
       <ShareErrorFrame
-        icon={<AlertTriangle className="h-8 w-8 text-error" />}
+        icon={<AlertTriangle className="text-error h-8 w-8" />}
         title="Not found"
         message={error.message}
       />
@@ -251,7 +269,7 @@ function ShareErrorState({ error }: { error: unknown }) {
   }
   return (
     <ShareErrorFrame
-      icon={<AlertTriangle className="h-8 w-8 text-error" />}
+      icon={<AlertTriangle className="text-error h-8 w-8" />}
       title="Not found"
       message="This share link could not be found."
     />
@@ -280,31 +298,29 @@ function SharePasswordForm({
   info?: ShareInfoData
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-bg-primary p-6">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-hover">
-        <FolderOpen className="h-8 w-8 text-accent" />
+    <main className="bg-bg-primary flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+      <div className="bg-surface-hover flex h-16 w-16 items-center justify-center rounded-2xl">
+        <FolderOpen className="text-accent h-8 w-8" />
       </div>
       <div className="text-center">
-        <h1 className="text-xl font-semibold text-text-primary">{resourceName}</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          {info?.brandingName || "BucketDrive"}
-        </p>
+        <h1 className="text-text-primary text-xl font-semibold">{resourceName}</h1>
+        <p className="text-text-secondary mt-1 text-sm">{info?.brandingName || "BucketDrive"}</p>
       </div>
 
       {noPassword ? (
         <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
-          <p className="text-center text-sm text-text-tertiary">
+          <p className="text-text-tertiary text-center text-sm">
             This {resourceType} is shared via a direct link.
           </p>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+            className="bg-accent w-full rounded-xl px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
           >
             {isLoading ? "Loading..." : "Access shared content"}
           </button>
           {error && (
-            <p className="rounded-lg bg-error/10 border border-error/20 p-3 text-sm text-error">
+            <p className="bg-error/10 border-error/20 text-error rounded-lg border p-3 text-sm">
               {error}
             </p>
           )}
@@ -312,37 +328,39 @@ function SharePasswordForm({
       ) : (
         <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
           <div className="space-y-2">
-            <label htmlFor="password" className="text-xs font-medium text-text-secondary">
+            <label htmlFor="password" className="text-text-secondary text-xs font-medium">
               Password required
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
+              <Lock className="text-text-tertiary absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <input
                 id="password"
+                data-testid="share-password"
                 type="password"
                 value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}
                 placeholder="Enter share password"
                 autoFocus
-                className="w-full rounded-lg border border-border-default bg-surface-default py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent w-full rounded-lg border py-2.5 pr-4 pl-10 text-sm focus:ring-1 focus:outline-none"
               />
             </div>
           </div>
           <button
             type="submit"
+            data-testid="share-access"
             disabled={isLoading || password.length < 4}
-            className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+            className="bg-accent w-full rounded-xl px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
           >
             {isLoading ? "Verifying..." : "Access share"}
           </button>
           {error && (
-            <p className="rounded-lg bg-error/10 border border-error/20 p-3 text-sm text-error">
+            <p className="bg-error/10 border-error/20 text-error rounded-lg border p-3 text-sm">
               {error}
             </p>
           )}
         </form>
       )}
-    </div>
+    </main>
   )
 }
 
@@ -358,15 +376,15 @@ function ShareExternalDirect({
   info: ShareInfoData
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-bg-primary p-6">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-success/10">
-        <Download className="h-8 w-8 text-success" />
+    <main className="bg-bg-primary flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+      <div className="bg-success/10 flex h-16 w-16 items-center justify-center rounded-2xl">
+        <Download className="text-success h-8 w-8" />
       </div>
       <div className="text-center">
-        <h1 className="text-xl font-semibold text-text-primary">{resourceName}</h1>
-        <p className="mt-2 text-sm text-text-secondary">
+        <h1 className="text-text-primary text-xl font-semibold">{resourceName}</h1>
+        <p className="text-text-secondary mt-2 text-sm">
           This file has been shared with you via{" "}
-          <span className="font-medium text-text-primary">
+          <span className="text-text-primary font-medium">
             {info.brandingName || "BucketDrive"}
           </span>
         </p>
@@ -374,25 +392,26 @@ function ShareExternalDirect({
       <a
         href={signedUrl}
         download={resourceName}
+        data-testid="download-file"
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90"
+        className="bg-accent inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90"
       >
         <Download className="h-4 w-4" />
         Download file
       </a>
       {info.expiresAt && (
-        <p className="text-xs text-text-tertiary">
+        <p className="text-text-tertiary text-xs">
           Link expires: {new Date(info.expiresAt).toLocaleString()}
         </p>
       )}
-      <div className="flex h-8 items-center gap-1 rounded-full bg-surface-hover px-3">
-        <FolderOpen className="h-3.5 w-3.5 text-text-tertiary" />
-        <span className="text-xs font-medium text-text-tertiary">
+      <div className="bg-surface-hover flex h-8 items-center gap-1 rounded-full px-3">
+        <FolderOpen className="text-text-tertiary h-3.5 w-3.5" />
+        <span className="text-text-tertiary text-xs font-medium">
           {info.brandingName || "BucketDrive"}
         </span>
       </div>
-    </div>
+    </main>
   )
 }
 
@@ -412,54 +431,48 @@ function ShareExternalExplorer({
   error: string | null
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-bg-primary">
-      <header className="border-b border-border-muted bg-bg-secondary px-6 py-3">
+    <main className="bg-bg-primary flex min-h-screen flex-col">
+      <header className="border-border-muted bg-bg-secondary border-b px-6 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover">
-              <FolderOpen className="h-4 w-4 text-accent" />
+            <div className="bg-surface-hover flex h-8 w-8 items-center justify-center rounded-lg">
+              <FolderOpen className="text-accent h-4 w-4" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold text-text-primary">{info.resourceName}</h1>
-              <p className="text-xs text-text-tertiary">Shared folder</p>
+              <h1 className="text-text-primary text-sm font-semibold">{info.resourceName}</h1>
+              <p className="text-text-tertiary text-xs">Shared folder</p>
             </div>
           </div>
           {info.brandingName && (
             <div className="flex items-center gap-2">
               {info.brandingLogoUrl && (
-                <img
-                  src={info.brandingLogoUrl}
-                  alt=""
-                  className="h-5 w-5 rounded object-contain"
-                />
+                <img src={info.brandingLogoUrl} alt="" className="h-5 w-5 rounded object-contain" />
               )}
-              <span className="text-xs font-medium text-text-secondary">
-                {info.brandingName}
-              </span>
+              <span className="text-text-secondary text-xs font-medium">{info.brandingName}</span>
             </div>
           )}
         </div>
       </header>
 
-      <div className="flex flex-col flex-1 p-4">
-        <nav className="mb-4 flex items-center gap-1 text-xs text-text-secondary">
+      <div className="flex flex-1 flex-col p-4">
+        <nav className="text-text-secondary mb-4 flex items-center gap-1 text-xs">
           {browseData.currentFolderId ? (
             <button
               onClick={() => onBrowse(null)}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-surface-hover transition-colors"
+              className="hover:bg-surface-hover flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors"
             >
               <ArrowLeft className="h-3 w-3" />
-              <span className="font-medium text-text-primary">{info.resourceName}</span>
+              <span className="text-text-primary font-medium">{info.resourceName}</span>
             </button>
           ) : (
-            <span className="font-medium text-text-primary px-1.5 py-0.5">{info.resourceName}</span>
+            <span className="text-text-primary px-1.5 py-0.5 font-medium">{info.resourceName}</span>
           )}
           {browseData.breadcrumbs.slice(1).map((crumb) => (
             <span key={crumb.id} className="flex items-center gap-1">
-              <ChevronRight className="h-3 w-3 text-text-tertiary" />
+              <ChevronRight className="text-text-tertiary h-3 w-3" />
               <button
                 onClick={() => onBrowse(crumb.id)}
-                className="rounded px-1.5 py-0.5 hover:bg-surface-hover transition-colors"
+                className="hover:bg-surface-hover rounded px-1.5 py-0.5 transition-colors"
               >
                 {crumb.name}
               </button>
@@ -468,23 +481,25 @@ function ShareExternalExplorer({
         </nav>
 
         {error && (
-          <div className="mb-4 rounded-lg bg-error/10 border border-error/20 p-3">
-            <p className="text-sm text-error">{error}</p>
+          <div className="bg-error/10 border-error/20 mb-4 rounded-lg border p-3">
+            <p className="text-error text-sm">{error}</p>
           </div>
         )}
 
         {browseMutation.isPending && (
           <div className="flex items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            <div className="border-accent h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden rounded-xl border border-border-default">
+        <div className="border-border-default flex-1 overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border-muted bg-surface-default">
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">Name</th>
-                <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary sm:table-cell">
+              <tr className="border-border-muted bg-surface-default border-b">
+                <th className="text-text-tertiary px-4 py-2.5 text-left text-xs font-medium">
+                  Name
+                </th>
+                <th className="text-text-tertiary hidden px-4 py-2.5 text-left text-xs font-medium sm:table-cell">
                   Type
                 </th>
               </tr>
@@ -492,7 +507,7 @@ function ShareExternalExplorer({
             <tbody>
               {browseData.folders.length === 0 && browseData.files.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="px-4 py-8 text-center text-sm text-text-tertiary">
+                  <td colSpan={2} className="text-text-tertiary px-4 py-8 text-center text-sm">
                     This folder is empty
                   </td>
                 </tr>
@@ -500,35 +515,42 @@ function ShareExternalExplorer({
               {browseData.folders.map((folder) => (
                 <tr
                   key={folder.id}
-                  className="border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover cursor-pointer"
+                  className="border-border-muted hover:bg-surface-hover cursor-pointer border-b transition-colors last:border-b-0"
                   onClick={() => onBrowse(folder.id)}
                 >
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-3">
                       <span className="text-lg">{folderIcon}</span>
-                      <span className="text-sm font-medium text-text-primary">{folder.name}</span>
+                      <span className="text-text-primary text-sm font-medium">{folder.name}</span>
                     </div>
                   </td>
                   <td className="hidden px-4 py-2.5 sm:table-cell">
-                    <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs text-text-secondary capitalize">
+                    <span className="bg-surface-hover text-text-secondary rounded-full px-2 py-0.5 text-xs capitalize">
                       Folder
                     </span>
                   </td>
                 </tr>
               ))}
               {browseData.files.map((file) => (
-                <tr key={file.id} className="border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover">
+                <tr
+                  key={file.id}
+                  className="border-border-muted hover:bg-surface-hover border-b transition-colors last:border-b-0"
+                >
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-3">
                       <span className="text-lg">{fileIcon}</span>
                       <div>
-                        <p className="truncate text-sm font-medium text-text-primary">{file.name}</p>
-                        <p className="text-xs text-text-tertiary">{formatFileSize(file.sizeBytes)}</p>
+                        <p className="text-text-primary truncate text-sm font-medium">
+                          {file.name}
+                        </p>
+                        <p className="text-text-tertiary text-xs">
+                          {formatFileSize(file.sizeBytes)}
+                        </p>
                       </div>
                     </div>
                   </td>
                   <td className="hidden px-4 py-2.5 sm:table-cell">
-                    <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs text-text-secondary">
+                    <span className="bg-surface-hover text-text-secondary rounded-full px-2 py-0.5 text-xs">
                       {file.mimeType.split("/")[0] ?? "File"}
                     </span>
                   </td>
@@ -538,7 +560,7 @@ function ShareExternalExplorer({
           </table>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
 

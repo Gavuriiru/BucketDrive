@@ -5,11 +5,13 @@
 This document defines the file and folder sharing system.
 
 The platform supports:
+
 - internal sharing
 - external direct sharing
 - external explorer sharing
 
 Sharing must remain:
+
 - secure
 - auditable
 - revocable
@@ -23,6 +25,7 @@ Sharing must remain:
 ## 1. Sharing Must Feel Simple
 
 The sharing experience should feel:
+
 - fast
 - intuitive
 - frictionless
@@ -34,12 +37,14 @@ Creating a share link should require minimal steps.
 ## 2. Security Is Mandatory
 
 All sharing systems must support:
+
 - expiration
 - revocation
 - access validation
 - audit logging
 
 Optional protections:
+
 - password protection
 - readonly restrictions
 
@@ -48,6 +53,7 @@ Optional protections:
 ## 3. External Sharing Is Isolated
 
 External users must NEVER:
+
 - gain workspace access
 - access unrelated resources
 - infer internal metadata
@@ -63,6 +69,7 @@ External access remains sandboxed.
 Sharing between authenticated workspace users.
 
 Capabilities:
+
 - readonly access
 - editor access
 - manager access
@@ -76,12 +83,14 @@ Internal sharing integrates with RBAC.
 Direct readonly download links.
 
 Capabilities:
+
 - optional password
 - expiration
 - direct download
 - anonymous access
 
 Designed for:
+
 - quick file delivery
 - public downloads
 - temporary access
@@ -93,6 +102,7 @@ Designed for:
 Readonly folder browsing interface.
 
 Capabilities:
+
 - folder navigation
 - file previews
 - individual downloads
@@ -100,6 +110,7 @@ Capabilities:
 - expiration
 
 Restrictions:
+
 - no uploads
 - no modifications
 - no deletes
@@ -136,10 +147,12 @@ updated_at
 # Supported Resources
 
 Sharing must support:
+
 - files
 - folders
 
 Future support:
+
 - collections
 - workspaces
 - smart folders
@@ -151,6 +164,7 @@ Future support:
 Share permissions remain separate from RBAC.
 
 External users do NOT receive:
+
 - workspace permissions
 - role inheritance
 
@@ -178,6 +192,7 @@ download
 ```
 
 External sharing must NEVER allow:
+
 - modification
 - uploads
 - permission management
@@ -211,6 +226,7 @@ Copy Share URL
 # Share URL Structure
 
 Public URLs must:
+
 - avoid exposing provider information
 - avoid exposing internal paths
 - use opaque identifiers
@@ -222,6 +238,7 @@ Recommended format:
 ```
 
 Avoid:
+
 - predictable IDs
 - raw storage paths
 
@@ -232,6 +249,7 @@ Avoid:
 Password protection is optional.
 
 Rules:
+
 - passwords must be hashed (bcrypt with salt rounds >= 12)
 - passwords must NEVER be stored in plaintext
 - password attempts must be rate limited
@@ -246,15 +264,16 @@ The system must implement layered protection:
 
 ## Rate Limiting Rules
 
-| Attempts | Time Window | Consequence |
-|---|---|---|
-| 5 failed | 15 minutes | IP temporarily blocked from that share link |
-| 10 failed (total) | Lifetime | Share link locked for 30 minutes |
-| 50 failed (global) | 1 hour | IP temporarily banned across all share links for one week |
+| Attempts           | Time Window | Consequence                                               |
+| ------------------ | ----------- | --------------------------------------------------------- |
+| 5 failed           | 15 minutes  | IP temporarily blocked from that share link               |
+| 10 failed (total)  | Lifetime    | Share link locked for 30 minutes                          |
+| 50 failed (global) | 1 hour      | IP temporarily banned across all share links for one week |
 
 ## Lock Mechanism
 
 When a share link is locked due to brute-force:
+
 1. All access attempts return `403 Forbidden` with `{"code": "SHARE_LOCKED"}`
 2. The share creator receives a notification (if notifications enabled)
 3. Admin users can see locked shares in the share dashboard
@@ -263,6 +282,7 @@ When a share link is locked due to brute-force:
 ## Tracking
 
 Failed and successful attempts are recorded in `ShareAccessAttempt`:
+
 - `ip_address`: hashed for privacy, used for rate-limit windows
 - `success: boolean`: successful password entry resets the failure counter for that IP
 - `attempted_at`: timestamp for sliding window calculations
@@ -270,6 +290,7 @@ Failed and successful attempts are recorded in `ShareAccessAttempt`:
 ## Password Reset
 
 Share creators may regenerate the password at any time:
+
 - Old password is invalidated immediately
 - Active signed URLs remain valid until expiry (they were already authorized)
 - Reset generates an audit log event
@@ -281,6 +302,7 @@ Share creators may regenerate the password at any time:
 Shares may include expiration dates.
 
 Expired shares must:
+
 - immediately deny access
 - invalidate signed URLs
 - remain auditable
@@ -292,6 +314,7 @@ Expired shares must:
 Users with permission may revoke shares.
 
 Revocation must:
+
 - invalidate access immediately
 - invalidate active signed URLs when possible
 - update frontend state
@@ -302,10 +325,12 @@ Revocation must:
 # Share Management
 
 Users may manage:
+
 - shares they created
 - shares they own
 
 Administrative users may manage:
+
 - all workspace shares
 
 ---
@@ -315,6 +340,7 @@ Administrative users may manage:
 Users must have access to a sharing dashboard.
 
 Capabilities:
+
 - list active shares
 - revoke shares
 - edit expiration
@@ -323,6 +349,7 @@ Capabilities:
 - copy links
 
 Administrative users may:
+
 - view all workspace shares
 - audit external access
 
@@ -331,17 +358,20 @@ Administrative users may:
 # Explorer Sharing UX
 
 Readonly explorer pages must feel:
+
 - polished
 - lightweight
 - desktop-like
 
 Supported:
+
 - folder navigation
 - breadcrumbs
 - previews
 - downloads
 
 Avoid:
+
 - admin UI exposure
 - internal metadata leakage
 
@@ -350,6 +380,7 @@ Avoid:
 # External Viewer Restrictions
 
 External viewers must NEVER:
+
 - rename files
 - upload files
 - delete files
@@ -363,12 +394,14 @@ Readonly isolation is mandatory.
 # File Previews
 
 Readonly explorer shares should support:
+
 - image previews
 - PDF previews
 - video previews
 - markdown previews
 
 Future support:
+
 - Office previews
 - audio previews
 
@@ -377,11 +410,13 @@ Future support:
 # Download Behavior
 
 Downloads should:
+
 - use signed URLs
 - remain temporary
 - support large files
 
 Avoid:
+
 - permanent public storage URLs
 
 ---
@@ -401,11 +436,13 @@ All share access requires validation:
 # Share Analytics
 
 The platform should support:
+
 - access counts
 - download counts
 - last accessed timestamp
 
 Future support:
+
 - geographic access analytics
 - bandwidth analytics
 
@@ -416,6 +453,7 @@ Future support:
 Sharing actions must generate logs:
 
 Required:
+
 - share creation
 - share access
 - failed password attempts
@@ -423,6 +461,7 @@ Required:
 - share updates
 
 Audit logs must include:
+
 - actor
 - timestamp
 - IP address
@@ -434,12 +473,14 @@ Audit logs must include:
 # Security Rules
 
 Sharing systems must:
+
 - isolate external access
 - prevent path traversal
 - prevent unauthorized metadata exposure
 - validate signed operations
 
 Never expose:
+
 - raw bucket paths
 - provider URLs
 - workspace internals
@@ -449,6 +490,7 @@ Never expose:
 # Rate Limiting
 
 Public share access should support:
+
 - rate limiting
 - abuse prevention
 - password brute-force prevention
@@ -458,6 +500,7 @@ Public share access should support:
 # UI Requirements
 
 Sharing UI must support:
+
 - dark mode
 - keyboard navigation
 - responsive layouts
@@ -465,6 +508,7 @@ Sharing UI must support:
 - error states
 
 Required interactions:
+
 - copy link
 - expiration picker
 - password toggle
@@ -475,11 +519,13 @@ Required interactions:
 # Modal Requirements
 
 Share modals must:
+
 - remain lightweight
 - avoid excessive complexity
 - support keyboard navigation
 
 Avoid:
+
 - giant forms
 - nested modals
 
@@ -488,11 +534,13 @@ Avoid:
 # Error Handling
 
 Errors must be:
+
 - understandable
 - actionable
 - secure
 
 Avoid exposing:
+
 - internal resource IDs
 - backend implementation details
 
@@ -515,6 +563,7 @@ The system must handle:
 # Moving Shared Resources
 
 Moving shared resources should:
+
 - preserve active shares
 - preserve share validity
 
@@ -525,6 +574,7 @@ Avoid breaking share URLs unnecessarily.
 # Renaming Shared Resources
 
 Renaming resources should:
+
 - preserve sharing
 - preserve access history
 
@@ -533,6 +583,7 @@ Renaming resources should:
 # Deleting Shared Resources
 
 Deleting resources should:
+
 - invalidate shares
 - preserve audit logs
 
@@ -541,6 +592,7 @@ Deleting resources should:
 # Future Scalability
 
 The architecture must support future:
+
 - upload-enabled shares
 - collaborative shares
 - expiring download quotas

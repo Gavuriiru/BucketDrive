@@ -13,12 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react"
-import {
-  useDeleteShare,
-  useShares,
-  useUpdateShare,
-    type WorkspaceData,
- } from "@/lib/api"
+import { useDeleteShare, useShares, useUpdateShare, type WorkspaceData } from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
@@ -70,7 +65,7 @@ export function ShareManagementPage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -78,7 +73,7 @@ export function ShareManagementPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-text-tertiary">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No workspace found</p>
       </div>
     )
   }
@@ -87,12 +82,12 @@ export function ShareManagementPage() {
     <div className="flex h-full flex-col p-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">Share Links</h1>
-          <p className="text-xs text-text-tertiary">
+          <h1 className="text-text-primary text-lg font-semibold">Share Links</h1>
+          <p className="text-text-tertiary text-xs">
             Manage your active links, expirations, passwords, and revocations.
           </p>
         </div>
-        <div className="flex rounded-lg border border-border-muted bg-surface-default p-0.5">
+        <div className="border-border-muted bg-surface-default flex rounded-lg border p-0.5">
           <button
             onClick={() => setActiveTab("mine")}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -132,47 +127,48 @@ export function ShareManagementPage() {
         <StatsCard
           label="Total Downloads"
           value={String(
-            shares.reduce(
-              (sum: number, share: ShareDashboardItem) => sum + share.downloadCount,
-              0,
-            ),
+            shares.reduce((sum: number, share: ShareDashboardItem) => sum + share.downloadCount, 0),
           )}
         />
       </div>
 
-      <div className="mb-4 rounded-xl border border-border-default bg-surface-secondary px-4 py-3">
-        <p className="text-sm text-text-secondary">
+      <div className="border-border-default bg-surface-secondary mb-4 rounded-xl border px-4 py-3">
+        <p className="text-text-secondary text-sm">
           Internal shares stay inside the workspace and appear in{" "}
-          <span className="font-medium text-text-primary">Shared with me</span>.{" "}
-          External shares can be copied and sent outside the workspace.
+          <span className="text-text-primary font-medium">Shared with me</span>. External shares can
+          be copied and sent outside the workspace.
         </p>
       </div>
 
       {shares.length === 0 ? (
         <EmptyState tab={activeTab} workspace={workspace} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border-default">
+        <div className="border-border-default overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border-muted bg-surface-default">
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Resource</th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary lg:table-cell">
+              <tr className="border-border-muted bg-surface-default border-b">
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Resource
+                </th>
+                <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium lg:table-cell">
                   Access
                 </th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary xl:table-cell">
+                <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium xl:table-cell">
                   Created
                 </th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary lg:table-cell">
+                <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium lg:table-cell">
                   Accesses
                 </th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary lg:table-cell">
+                <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium lg:table-cell">
                   Downloads
                 </th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium text-text-tertiary xl:table-cell">
+                <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium xl:table-cell">
                   Last access
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Status</th>
-                <th className="w-48 px-4 py-3 text-right text-xs font-medium text-text-tertiary">
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Status
+                </th>
+                <th className="text-text-tertiary w-48 px-4 py-3 text-right text-xs font-medium">
                   Actions
                 </th>
               </tr>
@@ -224,20 +220,20 @@ function StatsCard({
           : "border-border-default bg-surface-default"
       }`}
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-text-tertiary">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-text-primary">{value}</p>
+      <p className="text-text-tertiary text-xs font-medium tracking-wide uppercase">{label}</p>
+      <p className="text-text-primary mt-2 text-2xl font-semibold">{value}</p>
     </div>
   )
 }
 
 function EmptyState({ tab, workspace }: { tab: ShareTab; workspace: WorkspaceData }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-default bg-surface-default p-10 text-center">
-      <Link2 className="h-10 w-10 text-text-tertiary" />
-      <p className="text-sm font-medium text-text-primary">
+    <div className="border-border-default bg-surface-default flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-10 text-center">
+      <Link2 className="text-text-tertiary h-10 w-10" />
+      <p className="text-text-primary text-sm font-medium">
         {tab === "workspace" ? "No workspace shares yet" : "You have not created any shares yet"}
       </p>
-      <p className="max-w-xl text-xs text-text-tertiary">
+      <p className="text-text-tertiary max-w-xl text-xs">
         {tab === "workspace"
           ? `${workspace.name} does not have any active or historical links in this scope yet.`
           : "Create a share from the explorer context menu to manage it here."}
@@ -263,15 +259,15 @@ function ShareRow({
   const canCopy = share.shareType !== "internal"
 
   return (
-    <tr className="border-b border-border-muted align-top transition-colors last:border-b-0 hover:bg-surface-hover">
+    <tr className="border-border-muted hover:bg-surface-hover border-b align-top transition-colors last:border-b-0">
       <td className="px-4 py-3">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 text-lg">
             {share.resourceType === "folder" ? "\uD83D\uDCC2" : "\uD83D\uDCC4"}
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-text-primary">{share.resourceName}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
+            <p className="text-text-primary truncate text-sm font-medium">{share.resourceName}</p>
+            <div className="text-text-tertiary mt-1 flex flex-wrap items-center gap-2 text-xs">
               <ShareTypeBadge shareType={share.shareType} />
               <span className="capitalize">{share.resourceType}</span>
               {showCreator && <span>by {share.createdByName}</span>}
@@ -282,12 +278,12 @@ function ShareRow({
       <td className="hidden px-4 py-3 lg:table-cell">
         <div className="flex flex-wrap gap-1.5">
           {share.permissions.length === 0 ? (
-            <span className="text-sm text-text-tertiary">Link access</span>
+            <span className="text-text-tertiary text-sm">Link access</span>
           ) : (
             share.permissions.map((permission) => (
               <span
                 key={permission}
-                className="rounded-full bg-surface-hover px-2 py-0.5 text-xs capitalize text-text-secondary"
+                className="bg-surface-hover text-text-secondary rounded-full px-2 py-0.5 text-xs capitalize"
               >
                 {permission}
               </span>
@@ -296,18 +292,18 @@ function ShareRow({
         </div>
       </td>
       <td className="hidden px-4 py-3 xl:table-cell">
-        <div className="text-sm text-text-secondary">
+        <div className="text-text-secondary text-sm">
           <p>{new Date(share.createdAt).toLocaleDateString()}</p>
-          <p className="text-xs text-text-tertiary">{share.createdByName}</p>
+          <p className="text-text-tertiary text-xs">{share.createdByName}</p>
         </div>
       </td>
-      <td className="hidden px-4 py-3 lg:table-cell text-sm text-text-secondary">
+      <td className="text-text-secondary hidden px-4 py-3 text-sm lg:table-cell">
         {share.accessCount}
       </td>
-      <td className="hidden px-4 py-3 lg:table-cell text-sm text-text-secondary">
+      <td className="text-text-secondary hidden px-4 py-3 text-sm lg:table-cell">
         {share.downloadCount}
       </td>
-      <td className="hidden px-4 py-3 xl:table-cell text-sm text-text-secondary">
+      <td className="text-text-secondary hidden px-4 py-3 text-sm xl:table-cell">
         {share.lastAccessedAt ? new Date(share.lastAccessedAt).toLocaleString() : "Never"}
       </td>
       <td className="px-4 py-3">
@@ -324,10 +320,10 @@ function ShareRow({
           {canCopy && (
             <button
               onClick={() => void onCopyLink(share)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border-muted px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-default hover:text-text-primary"
+              className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors"
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-success" />
+                <Check className="text-success h-3.5 w-3.5" />
               ) : (
                 <Copy className="h-3.5 w-3.5" />
               )}
@@ -336,7 +332,7 @@ function ShareRow({
           )}
           <button
             onClick={onEdit}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border-muted px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-default hover:text-text-primary"
+            className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors"
           >
             <Pencil className="h-3.5 w-3.5" />
             Edit
@@ -350,7 +346,7 @@ function ShareRow({
 function ShareTypeBadge({ shareType }: { shareType: ShareDashboardItem["shareType"] }) {
   if (shareType === "internal") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-xs text-text-secondary">
+      <span className="bg-surface-hover text-text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
         <Users className="h-3 w-3" />
         Internal
       </span>
@@ -358,14 +354,20 @@ function ShareTypeBadge({ shareType }: { shareType: ShareDashboardItem["shareTyp
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent">
+    <span className="bg-accent/10 text-accent inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
       <Globe className="h-3 w-3" />
       {shareType === "external_direct" ? "Public file" : "Public folder"}
     </span>
   )
 }
 
-function StatusBadge({ label, tone }: { label: string; tone: "default" | "success" | "warning" | "muted" }) {
+function StatusBadge({
+  label,
+  tone,
+}: {
+  label: string
+  tone: "default" | "success" | "warning" | "muted"
+}) {
   const className =
     tone === "success"
       ? "bg-success/10 text-success"
@@ -447,40 +449,40 @@ function ShareSettingsDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border-default bg-surface-default p-6 shadow-xl">
+        <Dialog.Content className="border-border-default bg-surface-default fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border p-6 shadow-xl">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <Dialog.Title className="text-lg font-semibold text-text-primary">
+              <Dialog.Title className="text-text-primary text-lg font-semibold">
                 Manage share
               </Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-text-tertiary">
+              <Dialog.Description className="text-text-tertiary mt-1 text-sm">
                 {share?.resourceName}
               </Dialog.Description>
             </div>
-            <Dialog.Close className="rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary">
+            <Dialog.Close className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1 transition-colors">
               <X className="h-5 w-5" />
             </Dialog.Close>
           </div>
 
           {share && (
             <div className="space-y-5">
-              <div className="rounded-xl border border-border-default bg-surface-secondary p-4">
+              <div className="border-border-default bg-surface-secondary rounded-xl border p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <ShareTypeBadge shareType={share.shareType} />
                   {share.hasPassword && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-xs text-text-secondary">
+                    <span className="bg-surface-hover text-text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
                       <Lock className="h-3 w-3" />
                       Password protected
                     </span>
                   )}
                   {share.isLocked && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs text-warning">
+                    <span className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
                       <AlertTriangle className="h-3 w-3" />
                       Locked after failed attempts
                     </span>
                   )}
                 </div>
-                <div className="mt-3 grid gap-3 text-sm text-text-secondary sm:grid-cols-2">
+                <div className="text-text-secondary mt-3 grid gap-3 text-sm sm:grid-cols-2">
                   <InfoRow label="Created" value={new Date(share.createdAt).toLocaleString()} />
                   <InfoRow label="Access count" value={String(share.accessCount)} />
                   <InfoRow label="Download count" value={String(share.downloadCount)} />
@@ -502,7 +504,7 @@ function ShareSettingsDialog({
               <div>
                 <label
                   htmlFor="share-expiration"
-                  className="text-xs font-medium uppercase tracking-wide text-text-tertiary"
+                  className="text-text-tertiary text-xs font-medium tracking-wide uppercase"
                 >
                   Expiration
                 </label>
@@ -511,9 +513,9 @@ function ShareSettingsDialog({
                   type="datetime-local"
                   value={expiresAtInput}
                   onChange={(event) => setExpiresAtInput(event.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-border-default bg-surface-default px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="border-border-default bg-surface-default text-text-primary focus:border-accent focus:ring-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                 />
-                <p className="mt-1 text-xs text-text-tertiary">
+                <p className="text-text-tertiary mt-1 text-xs">
                   Clear this field to keep the share active until you revoke it.
                 </p>
               </div>
@@ -523,7 +525,7 @@ function ShareSettingsDialog({
                   <div>
                     <label
                       htmlFor="share-password"
-                      className="text-xs font-medium uppercase tracking-wide text-text-tertiary"
+                      className="text-text-tertiary text-xs font-medium tracking-wide uppercase"
                     >
                       Rotate password
                     </label>
@@ -533,17 +535,17 @@ function ShareSettingsDialog({
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="Leave blank to keep the current password"
-                      className="mt-1.5 w-full rounded-lg border border-border-default bg-surface-default px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                     />
                   </div>
 
-                  <label className="flex items-center gap-2 rounded-lg border border-border-muted px-3 py-2 text-sm text-text-secondary">
+                  <label className="border-border-muted text-text-secondary flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
                     <input
                       type="checkbox"
                       checked={removePassword}
                       onChange={(event) => setRemovePassword(event.target.checked)}
                       disabled={!share.hasPassword}
-                      className="h-4 w-4 rounded border-border-default bg-surface-default text-accent focus:ring-accent"
+                      className="border-border-default bg-surface-default text-accent focus:ring-accent h-4 w-4 rounded"
                     />
                     Remove password protection
                   </label>
@@ -551,7 +553,7 @@ function ShareSettingsDialog({
               )}
 
               {(updateShare.isError || revokeShare.isError) && (
-                <p className="text-sm text-error">
+                <p className="text-error text-sm">
                   {updateShare.error instanceof Error
                     ? updateShare.error.message
                     : revokeShare.error instanceof Error
@@ -564,13 +566,13 @@ function ShareSettingsDialog({
                 <button
                   onClick={handleRevoke}
                   disabled={isSubmitting || !share.isActive}
-                  className="inline-flex items-center gap-2 rounded-lg border border-error/40 px-4 py-2 text-sm font-medium text-error transition-colors hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-error/40 text-error hover:bg-error/10 inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Shield className="h-4 w-4" />
                   Revoke share
                 </button>
                 <div className="flex gap-3">
-                  <Dialog.Close className="rounded-lg border border-border-muted px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-hover">
+                  <Dialog.Close className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-4 py-2 text-sm font-medium transition-colors">
                     Cancel
                   </Dialog.Close>
                   <button
@@ -578,7 +580,7 @@ function ShareSettingsDialog({
                     disabled={
                       isSubmitting || (password.trim().length > 0 && password.trim().length < 4)
                     }
-                    className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="bg-accent hover:bg-accent/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {updateShare.isPending ? "Saving..." : "Save changes"}
                   </button>
@@ -595,8 +597,8 @@ function ShareSettingsDialog({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wide text-text-tertiary">{label}</p>
-      <p className="mt-1 text-sm text-text-primary">{value}</p>
+      <p className="text-text-tertiary text-xs tracking-wide uppercase">{label}</p>
+      <p className="text-text-primary mt-1 text-sm">{value}</p>
     </div>
   )
 }

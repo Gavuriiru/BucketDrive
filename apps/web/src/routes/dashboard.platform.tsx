@@ -21,7 +21,7 @@ export function PlatformAdminPage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -29,19 +29,23 @@ export function PlatformAdminPage() {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <section>
-        <p className="text-xs font-medium uppercase tracking-[0.24em] text-text-tertiary">Platform Administration</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-text-primary">Platform Settings</h1>
+        <p className="text-text-tertiary text-xs font-medium tracking-[0.24em] uppercase">
+          Platform Administration
+        </p>
+        <h1 className="text-text-primary mt-2 text-3xl font-semibold tracking-tight">
+          Platform Settings
+        </h1>
       </section>
 
       <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-border-default bg-surface-default p-5">
+        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-text-secondary" />
-            <h2 className="text-base font-semibold text-text-primary">General</h2>
+            <Settings className="text-text-secondary h-5 w-5" />
+            <h2 className="text-text-primary text-base font-semibold">General</h2>
           </div>
           <div className="mt-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-text-secondary">Platform Name</label>
+              <label className="text-text-secondary block text-sm font-medium">Platform Name</label>
               <input
                 type="text"
                 defaultValue={settings?.platformName}
@@ -50,53 +54,67 @@ export function PlatformAdminPage() {
                     void updateSettings.mutate({ platformName: e.target.value })
                   }
                 }}
-                className="mt-1 block w-full rounded-xl border border-border-default bg-bg-primary px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+                className="border-border-default bg-bg-primary text-text-primary focus:border-accent mt-1 block w-full rounded-xl border px-3 py-2 text-sm outline-none"
               />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-text-primary">Allow Workspace Creation</p>
-                <p className="text-xs text-text-tertiary">Let users create their own workspaces</p>
+                <p className="text-text-primary text-sm font-medium">Allow Workspace Creation</p>
+                <p className="text-text-tertiary text-xs">Let users create their own workspaces</p>
               </div>
               <button
                 type="button"
                 aria-pressed={Boolean(settings?.allowUserWorkspaceCreation)}
                 disabled={updateSettings.isPending}
-                onClick={() => { void updateSettings.mutate({ allowUserWorkspaceCreation: !settings?.allowUserWorkspaceCreation }) }}
+                onClick={() => {
+                  void updateSettings.mutate({
+                    allowUserWorkspaceCreation: !settings?.allowUserWorkspaceCreation,
+                  })
+                }}
                 className={`relative h-6 w-11 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${settings?.allowUserWorkspaceCreation ? "bg-accent" : "bg-border-default"}`}
               >
-                <span className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${settings?.allowUserWorkspaceCreation ? "translate-x-5" : ""}`} />
+                <span
+                  className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${settings?.allowUserWorkspaceCreation ? "translate-x-5" : ""}`}
+                />
               </button>
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-text-primary">Public Signup</p>
-                <p className="text-xs text-text-tertiary">Allow users to join without invitation</p>
+                <p className="text-text-primary text-sm font-medium">Public Signup</p>
+                <p className="text-text-tertiary text-xs">Allow users to join without invitation</p>
               </div>
               <button
                 type="button"
                 aria-pressed={Boolean(settings?.enablePublicSignup)}
                 disabled={updateSettings.isPending}
-                onClick={() => { void updateSettings.mutate({ enablePublicSignup: !settings?.enablePublicSignup }) }}
+                onClick={() => {
+                  void updateSettings.mutate({ enablePublicSignup: !settings?.enablePublicSignup })
+                }}
                 className={`relative h-6 w-11 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${settings?.enablePublicSignup ? "bg-accent" : "bg-border-default"}`}
               >
-                <span className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${settings?.enablePublicSignup ? "translate-x-5" : ""}`} />
+                <span
+                  className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${settings?.enablePublicSignup ? "translate-x-5" : ""}`}
+                />
               </button>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border-default bg-surface-default p-5">
+        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-text-secondary" />
-            <h2 className="text-base font-semibold text-text-primary">Invite User</h2>
+            <Users className="text-text-secondary h-5 w-5" />
+            <h2 className="text-text-primary text-base font-semibold">Invite User</h2>
           </div>
           <form
             onSubmit={(e) => {
               e.preventDefault()
               if (!inviteEmail.trim()) return
               void createInvitation.mutate(
-                { email: inviteEmail.trim(), role: inviteRole, canCreateWorkspaces: inviteCanCreate },
+                {
+                  email: inviteEmail.trim(),
+                  role: inviteRole,
+                  canCreateWorkspaces: inviteCanCreate,
+                },
                 {
                   onSuccess: () => {
                     setInviteEmail("")
@@ -111,39 +129,45 @@ export function PlatformAdminPage() {
             <input
               type="email"
               value={inviteEmail}
-              onChange={(e) => { setInviteEmail(e.target.value) }}
+              onChange={(e) => {
+                setInviteEmail(e.target.value)
+              }}
               placeholder="user@example.com"
               required
-              className="block w-full rounded-xl border border-border-default bg-bg-primary px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+              className="border-border-default bg-bg-primary text-text-primary focus:border-accent block w-full rounded-xl border px-3 py-2 text-sm outline-none"
             />
             <div className="flex gap-2">
               <select
                 value={inviteRole}
-                onChange={(e) => { setInviteRole(e.target.value) }}
-                className="rounded-xl border border-border-default bg-bg-primary px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+                onChange={(e) => {
+                  setInviteRole(e.target.value)
+                }}
+                className="border-border-default bg-bg-primary text-text-primary focus:border-accent rounded-xl border px-3 py-2 text-sm outline-none"
               >
                 <option value="viewer">Viewer</option>
                 <option value="editor">Editor</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
-              <label className="flex items-center gap-2 text-sm text-text-secondary">
+              <label className="text-text-secondary flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={inviteCanCreate}
-                  onChange={(e) => { setInviteCanCreate(e.target.checked) }}
-                  className="h-4 w-4 rounded border-border-default"
+                  onChange={(e) => {
+                    setInviteCanCreate(e.target.checked)
+                  }}
+                  className="border-border-default h-4 w-4 rounded"
                 />
                 Can create workspaces
               </label>
             </div>
             {createInvitation.isError && (
-              <p className="text-sm text-error">{createInvitation.error?.message ?? "Failed"}</p>
+              <p className="text-error text-sm">{createInvitation.error?.message ?? "Failed"}</p>
             )}
             <button
               type="submit"
               disabled={createInvitation.isPending}
-              className="w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="bg-accent w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {createInvitation.isPending ? "Creating..." : "Generate invite link"}
             </button>
@@ -151,33 +175,52 @@ export function PlatformAdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border-default bg-surface-default p-5">
-        <h2 className="text-base font-semibold text-text-primary">Pending Invitations</h2>
+      <section className="border-border-default bg-surface-default rounded-2xl border p-5">
+        <h2 className="text-text-primary text-base font-semibold">Pending Invitations</h2>
         <div className="mt-4 space-y-2">
           {(invitationsData?.data?.length ?? 0) === 0 ? (
-            <p className="text-sm text-text-tertiary">No pending invitations.</p>
+            <p className="text-text-tertiary text-sm">No pending invitations.</p>
           ) : (
-            (invitationsData?.data ?? []).map((inv: { id: string; email: string; role: string; canCreateWorkspaces: boolean; inviteLink?: string }) => (
-              <div key={inv.id} className="flex items-center justify-between rounded-xl border border-border-muted bg-bg-tertiary px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-text-primary">{inv.email}</p>
-                  <p className="text-xs text-text-tertiary">Role: {inv.role} {inv.canCreateWorkspaces ? "(can create workspaces)" : ""}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const link = inv.inviteLink ?? `${window.location.origin}/join`
-                    void navigator.clipboard.writeText(link)
-                    setCopiedId(inv.id)
-                    setTimeout(() => { setCopiedId(null) }, 2000)
-                  }}
-                  className="flex items-center gap-1 text-sm text-accent hover:underline"
+            (invitationsData?.data ?? []).map(
+              (inv: {
+                id: string
+                email: string
+                role: string
+                canCreateWorkspaces: boolean
+                inviteLink?: string
+              }) => (
+                <div
+                  key={inv.id}
+                  className="border-border-muted bg-bg-tertiary flex items-center justify-between rounded-xl border px-4 py-3"
                 >
-                  {copiedId === inv.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  {copiedId === inv.id ? "Copied" : "Copy link"}
-                </button>
-              </div>
-            ))
+                  <div>
+                    <p className="text-text-primary text-sm font-medium">{inv.email}</p>
+                    <p className="text-text-tertiary text-xs">
+                      Role: {inv.role} {inv.canCreateWorkspaces ? "(can create workspaces)" : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const link = inv.inviteLink ?? `${window.location.origin}/join`
+                      void navigator.clipboard.writeText(link)
+                      setCopiedId(inv.id)
+                      setTimeout(() => {
+                        setCopiedId(null)
+                      }, 2000)
+                    }}
+                    className="text-accent flex items-center gap-1 text-sm hover:underline"
+                  >
+                    {copiedId === inv.id ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                    {copiedId === inv.id ? "Copied" : "Copy link"}
+                  </button>
+                </div>
+              ),
+            )
           )}
         </div>
       </section>

@@ -16,6 +16,8 @@ dist/
 .env
 .env.local
 .env.*.local
+.env.staging
+.env.production
 
 # Database
 *.sqlite
@@ -45,6 +47,7 @@ Thumbs.db
 coverage/
 playwright-report/
 test-results/
+.lighthouseci/
 
 # Logs
 *.log

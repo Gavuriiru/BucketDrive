@@ -7,8 +7,8 @@ import {
   useRestoreFile,
   useRestoreFolder,
   useTrash,
-    type TrashItem,
- } from "@/lib/api"
+  type TrashItem,
+} from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
@@ -82,7 +82,7 @@ export function TrashPage() {
   if (workspacesLoading || trashQuery.isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -90,7 +90,7 @@ export function TrashPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-text-tertiary">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No workspace found</p>
       </div>
     )
   }
@@ -99,17 +99,18 @@ export function TrashPage() {
     <div className="flex h-full flex-col p-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">Trash</h1>
-          <p className="text-xs text-text-tertiary">
+          <h1 className="text-text-primary text-lg font-semibold">Trash</h1>
+          <p className="text-text-tertiary text-xs">
             Items are kept for {retentionDays} days, then auto-purged.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <select
+            aria-label="Sort trash"
             value={sort}
             onChange={(event) => setSort(event.target.value as TrashSort)}
-            className="rounded-lg border border-border-default bg-surface-default px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="border-border-default bg-surface-default text-text-primary focus:border-accent focus:ring-accent rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
           >
             <option value="deleted_at">Deleted date</option>
             <option value="name">Name</option>
@@ -119,7 +120,7 @@ export function TrashPage() {
 
           <button
             onClick={() => setOrder((current) => (current === "desc" ? "asc" : "desc"))}
-            className="rounded-lg border border-border-default bg-surface-default px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+            className="border-border-default bg-surface-default text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg border px-3 py-2 text-sm transition-colors"
           >
             {orderLabel}
           </button>
@@ -127,39 +128,47 @@ export function TrashPage() {
       </div>
 
       {trashQuery.isError && (
-        <div className="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+        <div className="border-error/40 bg-error/10 text-error mb-4 rounded-lg border px-4 py-3 text-sm">
           {trashQuery.error.message}
         </div>
       )}
 
       {items.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-default bg-surface-default p-10 text-center">
-          <Trash2 className="h-10 w-10 text-text-tertiary" />
-          <p className="text-sm font-medium text-text-primary">
+        <div className="border-border-default bg-surface-default flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-10 text-center">
+          <Trash2 className="text-text-tertiary h-10 w-10" />
+          <p className="text-text-primary text-sm font-medium">
             Trash is empty - deleted files will appear here for 30 days
           </p>
-          <p className="max-w-xl text-xs text-text-tertiary">
+          <p className="text-text-tertiary max-w-xl text-xs">
             Delete something from the explorer to verify restore and permanent purge flows.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border-default">
+        <div className="border-border-default overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border-muted bg-surface-default">
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Item</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Location</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Deleted</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Remaining</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Size</th>
-                <th className="w-56 px-4 py-3 text-right text-xs font-medium text-text-tertiary">Actions</th>
+              <tr className="border-border-muted bg-surface-default border-b">
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Item</th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Location
+                </th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Deleted
+                </th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Remaining
+                </th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Size</th>
+                <th className="text-text-tertiary w-56 px-4 py-3 text-right text-xs font-medium">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
                 <tr
                   key={`${item.resourceType}-${item.id}`}
-                  className="border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover"
+                  className="border-border-muted hover:bg-surface-hover border-b transition-colors last:border-b-0"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -167,19 +176,21 @@ export function TrashPage() {
                         {item.resourceType === "file" ? "\uD83D\uDCC4" : "\uD83D\uDCC2"}
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-text-primary">{item.name}</p>
-                        <p className="text-xs capitalize text-text-tertiary">{item.resourceType}</p>
+                        <p className="text-text-primary truncate text-sm font-medium">
+                          {item.name}
+                        </p>
+                        <p className="text-text-tertiary text-xs capitalize">{item.resourceType}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{item.originalLocation}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">
+                  <td className="text-text-secondary px-4 py-3 text-sm">{item.originalLocation}</td>
+                  <td className="text-text-secondary px-4 py-3 text-sm">
                     {new Date(item.deletedAt).toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">
+                  <td className="text-text-secondary px-4 py-3 text-sm">
                     {item.daysRemaining} day{item.daysRemaining === 1 ? "" : "s"}
                   </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">
+                  <td className="text-text-secondary px-4 py-3 text-sm">
                     {item.resourceType === "file" ? formatBytes(item.sizeBytes) : "--"}
                   </td>
                   <td className="px-4 py-3">
@@ -187,18 +198,22 @@ export function TrashPage() {
                       <button
                         onClick={() => handleRestore(item)}
                         disabled={busyItemKey === `${item.resourceType}-${item.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-border-muted px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-default hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
-                        {busyItemKey === `${item.resourceType}-${item.id}` ? "Restoring..." : "Restore"}
+                        {busyItemKey === `${item.resourceType}-${item.id}`
+                          ? "Restoring..."
+                          : "Restore"}
                       </button>
                       <button
                         onClick={() => handlePermanentDelete(item)}
                         disabled={busyItemKey === `${item.resourceType}-${item.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-error/40 px-2.5 py-1.5 text-xs font-medium text-error transition-colors hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="border-error/40 text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        {busyItemKey === `${item.resourceType}-${item.id}` ? "Deleting..." : "Delete permanently"}
+                        {busyItemKey === `${item.resourceType}-${item.id}`
+                          ? "Deleting..."
+                          : "Delete permanently"}
                       </button>
                     </div>
                   </td>
@@ -213,7 +228,7 @@ export function TrashPage() {
         restoreFolder.isError ||
         deleteFileForever.isError ||
         deleteFolderForever.isError) && (
-        <div className="mt-4 rounded-lg border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+        <div className="border-error/40 bg-error/10 text-error mt-4 rounded-lg border px-4 py-3 text-sm">
           {restoreFile.error?.message ??
             restoreFolder.error?.message ??
             deleteFileForever.error?.message ??

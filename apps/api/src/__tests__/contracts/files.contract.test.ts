@@ -30,7 +30,9 @@ describe("files contracts", () => {
     expect(initiate.status).toBe(201)
     const initiated = InitiateUploadResponse.parse(await ctx.json(initiate))
 
-    const session = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/uploads/${initiated.uploadId}`)
+    const session = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/files/uploads/${initiated.uploadId}`,
+    )
     expect(session.status).toBe(200)
     GetUploadSessionResponse.parse(await ctx.json(session))
 
@@ -49,11 +51,15 @@ describe("files contracts", () => {
     expect(getFile.status).toBe(200)
     FileObjectSchema.parse(await ctx.json(getFile))
 
-    const preview = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/${existing.id}/preview`)
+    const preview = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/files/${existing.id}/preview`,
+    )
     expect(preview.status).toBe(200)
     PreviewUrlResponse.parse(await ctx.json(preview))
 
-    const download = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/${existing.id}/download`)
+    const download = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/files/${existing.id}/download`,
+    )
     expect(download.status).toBe(200)
     DownloadUrlResponse.parse(await ctx.json(download))
 
@@ -64,9 +70,12 @@ describe("files contracts", () => {
     expect(renamed.status).toBe(200)
     FileObjectSchema.parse(await ctx.json(renamed))
 
-    const favorite = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/${existing.id}/favorite`, {
-      method: "POST",
-    })
+    const favorite = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/files/${existing.id}/favorite`,
+      {
+        method: "POST",
+      },
+    )
     expect(favorite.status).toBe(200)
     ToggleFavoriteResponse.parse(await ctx.json(favorite))
 
@@ -77,8 +86,15 @@ describe("files contracts", () => {
     expect(tags.status).toBe(200)
     UpdateFileTagsResponse.parse(await ctx.json(tags))
 
-    const thumbnailFile = ctx.seedFile({ originalName: "Image.png", mimeType: "image/png", extension: "png", thumbnailKey: "thumbs/image.webp" })
-    const thumbnail = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/${thumbnailFile.id}/thumbnail`)
+    const thumbnailFile = ctx.seedFile({
+      originalName: "Image.png",
+      mimeType: "image/png",
+      extension: "png",
+      thumbnailKey: "thumbs/image.webp",
+    })
+    const thumbnail = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/files/${thumbnailFile.id}/thumbnail`,
+    )
     expect(thumbnail.status).toBe(200)
     ThumbnailUrlResponse.parse(await ctx.json(thumbnail))
 

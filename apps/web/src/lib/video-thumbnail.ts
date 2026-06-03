@@ -8,7 +8,10 @@ export async function extractVideoFrameFromUrl(url: string): Promise<Blob | null
   return extractVideoFrameFromSource(url, false)
 }
 
-async function extractVideoFrameFromSource(src: string, revokeSource: boolean): Promise<Blob | null> {
+async function extractVideoFrameFromSource(
+  src: string,
+  revokeSource: boolean,
+): Promise<Blob | null> {
   const video = document.createElement("video")
   video.crossOrigin = "anonymous"
   video.muted = true

@@ -33,9 +33,11 @@ vi.mock("@cf-wasm/photon/workerd", () => {
   }
 })
 
-function createMockDB(params: {
-  pendingFiles?: Array<{ id: string; workspaceId: string; storageKey: string; mimeType: string }>
-} = {}) {
+function createMockDB(
+  params: {
+    pendingFiles?: Array<{ id: string; workspaceId: string; storageKey: string; mimeType: string }>
+  } = {},
+) {
   const run = vi.fn().mockResolvedValue(undefined)
   const update = vi.fn(() => ({
     set: vi.fn(() => ({

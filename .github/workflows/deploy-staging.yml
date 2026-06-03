@@ -1,0 +1,39 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      STAGING_D1_DATABASE_ID: ${{ vars.STAGING_D1_DATABASE_ID }}
+      PLAYWRIGHT_BASE_URL: ${{ vars.PLAYWRIGHT_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm staging:prepare
+      - run: pnpm staging:check
+      - run: pnpm db:migrate:staging
+      - run: pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml deploy --env staging
+      - run: pnpm build
+      - run: pnpm perf:bundle
+      - run: pnpm perf:lighthouse
+      - run: pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name bucketdrive --branch staging
+      - run: pnpm test:e2e
+      - run: pnpm test:a11y

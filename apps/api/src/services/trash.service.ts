@@ -1,13 +1,4 @@
-import {
-  and,
-  eq,
-  inArray,
-  isNull,
-  ne,
-  or,
-  sql,
-  type InferSelectModel,
-} from "drizzle-orm"
+import { and, eq, inArray, isNull, ne, or, sql, type InferSelectModel } from "drizzle-orm"
 import type { getDB } from "../lib/db"
 import {
   favorite,
@@ -150,9 +141,10 @@ export class TrashService {
 
     const searchTerm = query.q?.toLowerCase()
     const filtered = searchTerm
-      ? items.filter((item) =>
-          item.name.toLowerCase().includes(searchTerm) ||
-          item.originalLocation.toLowerCase().includes(searchTerm),
+      ? items.filter(
+          (item) =>
+            item.name.toLowerCase().includes(searchTerm) ||
+            item.originalLocation.toLowerCase().includes(searchTerm),
         )
       : items
 
@@ -165,8 +157,11 @@ export class TrashService {
         case "location":
           return a.originalLocation.localeCompare(b.originalLocation) * dir
         case "size":
-          return ((a.resourceType === "file" ? a.sizeBytes : 0) -
-            (b.resourceType === "file" ? b.sizeBytes : 0)) * dir
+          return (
+            ((a.resourceType === "file" ? a.sizeBytes : 0) -
+              (b.resourceType === "file" ? b.sizeBytes : 0)) *
+            dir
+          )
         case "deleted_at":
         default:
           return a.deletedAt.localeCompare(b.deletedAt) * dir
@@ -413,9 +408,13 @@ export class TrashService {
     const folderById = new Map(allFolders.map((row) => [row.id, row]))
     const tree = this.collectFolderTreeFromRows(allFolders, params.folderId)
     const folderIds = tree.map((row) => row.id)
-    const fileRows = allFiles.filter((row) => row.folderId !== null && folderIds.includes(row.folderId))
+    const fileRows = allFiles.filter(
+      (row) => row.folderId !== null && folderIds.includes(row.folderId),
+    )
 
-    const originalParent = target.parentFolderId ? folderById.get(target.parentFolderId) ?? null : null
+    const originalParent = target.parentFolderId
+      ? (folderById.get(target.parentFolderId) ?? null)
+      : null
     const restoredToRoot = !originalParent || originalParent.isDeleted
     const restoredToFolderId = restoredToRoot ? null : originalParent.id
     const restoredName = await this.getUniqueFolderName(
@@ -447,7 +446,9 @@ export class TrashService {
       .sort((a, b) => a.path.length - b.path.length)
 
     for (const row of descendants) {
-      const parentPath = row.parentFolderId ? restoredPathById.get(row.parentFolderId) ?? null : null
+      const parentPath = row.parentFolderId
+        ? (restoredPathById.get(row.parentFolderId) ?? null)
+        : null
       const nextPath = joinPath(parentPath, row.name)
       restoredPathById.set(row.id, nextPath)
 
@@ -471,7 +472,12 @@ export class TrashService {
           deletedAt: null,
           updatedAt: new Date().toISOString(),
         })
-        .where(inArray(fileObject.id, fileRows.map((row) => row.id)))
+        .where(
+          inArray(
+            fileObject.id,
+            fileRows.map((row) => row.id),
+          ),
+        )
         .run()
       await this.reactivateFavorites(fileRows.map((row) => row.id))
     }
@@ -516,10 +522,19 @@ export class TrashService {
       throw new TrashServiceError("FILE_NOT_FOUND", "File not found", 404)
     }
     if (!file.isDeleted) {
-      throw new TrashServiceError("CONFLICT", "File must be in trash before permanent deletion", 409)
+      throw new TrashServiceError(
+        "CONFLICT",
+        "File must be in trash before permanent deletion",
+        409,
+      )
     }
 
-    await this.purgeFiles(params.workspaceId, [file], params.actorId, params.action ?? "file.permanently_deleted")
+    await this.purgeFiles(
+      params.workspaceId,
+      [file],
+      params.actorId,
+      params.action ?? "file.permanently_deleted",
+    )
 
     return { success: true as const, fileId: file.id }
   }
@@ -540,7 +555,11 @@ export class TrashService {
       throw new TrashServiceError("FOLDER_NOT_FOUND", "Folder not found", 404)
     }
     if (!target.isDeleted) {
-      throw new TrashServiceError("CONFLICT", "Folder must be in trash before permanent deletion", 409)
+      throw new TrashServiceError(
+        "CONFLICT",
+        "Folder must be in trash before permanent deletion",
+        409,
+      )
     }
 
     const allFolders = await this.db
@@ -555,7 +574,10 @@ export class TrashService {
           .select()
           .from(fileObject)
           .where(
-            and(eq(fileObject.workspaceId, params.workspaceId), inArray(fileObject.folderId, folderIds)),
+            and(
+              eq(fileObject.workspaceId, params.workspaceId),
+              inArray(fileObject.folderId, folderIds),
+            ),
           )
           .all()
       : []
@@ -588,10 +610,7 @@ export class TrashService {
   }
 
   async purgeExpiredTrash(actorId = "system") {
-    const settings = await this.db
-      .select()
-      .from(workspaceSettings)
-      .all()
+    const settings = await this.db.select().from(workspaceSettings).all()
     const retentionByWorkspaceId = new Map(
       settings.map((row) => [row.workspaceId, row.trashRetentionDays]),
     )
@@ -729,7 +748,9 @@ export class TrashService {
       .run()
   }
 
-  private async deleteSharesForResources(resources: Array<{ resourceType: "file" | "folder"; resourceId: string }>) {
+  private async deleteSharesForResources(
+    resources: Array<{ resourceType: "file" | "folder"; resourceId: string }>,
+  ) {
     const shareIds = await this.findShareIdsForResources(resources)
     if (shareIds.length === 0) return
     await this.db.delete(shareLink).where(inArray(shareLink.id, shareIds)).run()
@@ -743,10 +764,14 @@ export class TrashService {
     const conditions = []
 
     if (fileIds.length > 0) {
-      conditions.push(and(eq(shareLink.resourceType, "file"), inArray(shareLink.resourceId, fileIds)))
+      conditions.push(
+        and(eq(shareLink.resourceType, "file"), inArray(shareLink.resourceId, fileIds)),
+      )
     }
     if (folderIds.length > 0) {
-      conditions.push(and(eq(shareLink.resourceType, "folder"), inArray(shareLink.resourceId, folderIds)))
+      conditions.push(
+        and(eq(shareLink.resourceType, "folder"), inArray(shareLink.resourceId, folderIds)),
+      )
     }
 
     if (conditions.length === 0) return []
@@ -810,7 +835,9 @@ export class TrashService {
       .where(
         and(
           eq(folder.workspaceId, workspaceId),
-          parentFolderId === null ? isNull(folder.parentFolderId) : eq(folder.parentFolderId, parentFolderId),
+          parentFolderId === null
+            ? isNull(folder.parentFolderId)
+            : eq(folder.parentFolderId, parentFolderId),
           eq(folder.isDeleted, false),
           excludeFolderId ? ne(folder.id, excludeFolderId) : undefined,
         ),
@@ -869,12 +896,7 @@ export class TrashService {
     return result
   }
 
-  private async purgeFiles(
-    workspaceId: string,
-    files: FileRow[],
-    actorId: string,
-    action: string,
-  ) {
+  private async purgeFiles(workspaceId: string, files: FileRow[], actorId: string, action: string) {
     if (files.length === 0) return
     const fileIds = files.map((row) => row.id)
 
@@ -882,7 +904,9 @@ export class TrashService {
       await this.storage.delete(row.storageKey)
     }
 
-    await this.deleteSharesForResources(fileIds.map((id) => ({ resourceType: "file" as const, resourceId: id })))
+    await this.deleteSharesForResources(
+      fileIds.map((id) => ({ resourceType: "file" as const, resourceId: id })),
+    )
     await this.db.delete(fileObjectTag).where(inArray(fileObjectTag.fileObjectId, fileIds)).run()
     await this.db.delete(favorite).where(inArray(favorite.fileObjectId, fileIds)).run()
     await this.db.delete(fileObject).where(inArray(fileObject.id, fileIds)).run()

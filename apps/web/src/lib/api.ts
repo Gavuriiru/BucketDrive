@@ -42,10 +42,7 @@ function requireId(value: string | null, label: string): string {
   return value
 }
 
-function buildWorkspacePath(
-  workspaceId: string | null,
-  suffix: string,
-): string {
+function buildWorkspacePath(workspaceId: string | null, suffix: string): string {
   return `/api/workspaces/${requireId(workspaceId, "workspaceId")}${suffix}`
 }
 
@@ -285,7 +282,9 @@ function compareFilesForOptions(a: FileObject, b: FileObject, options: UseFilesO
     if (typeCompare !== 0) return typeCompare * direction
   }
 
-  return a.originalName.localeCompare(b.originalName, undefined, { sensitivity: "base" }) * direction
+  return (
+    a.originalName.localeCompare(b.originalName, undefined, { sensitivity: "base" }) * direction
+  )
 }
 
 export function upsertCompletedFileInFilesCache(
@@ -306,7 +305,9 @@ export function upsertCompletedFileInFilesCache(
 
       const existingIndex = current.data.findIndex((file) => file.id === completedFile.id)
       if (existingIndex >= 0) {
-        const data = current.data.map((file) => (file.id === completedFile.id ? completedFile : file))
+        const data = current.data.map((file) =>
+          file.id === completedFile.id ? completedFile : file,
+        )
         return { ...current, data }
       }
 
@@ -445,10 +446,7 @@ export function useBreadcrumbs(
     queryKey: ["breadcrumbs", workspaceId, folderId],
     queryFn: () =>
       api.get<BreadcrumbItem[]>(
-        buildWorkspacePath(
-          workspaceId,
-          `/folders/${requireId(folderId, "folderId")}/breadcrumbs`,
-        ),
+        buildWorkspacePath(workspaceId, `/folders/${requireId(folderId, "folderId")}/breadcrumbs`),
       ),
     enabled: workspaceId !== null && folderId !== null,
   })
@@ -467,14 +465,13 @@ export function useInitiateUpload(): UseMutationResult<
     InitiateUploadRequest & { workspaceId: string }
   >({
     mutationFn: ({ workspaceId, ...body }) =>
-      api.post<InitiateUploadResponse>(
-        buildWorkspacePath(workspaceId, "/files/upload"),
-        body,
-      ),
+      api.post<InitiateUploadResponse>(buildWorkspacePath(workspaceId, "/files/upload"), body),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["files", variables.workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", variables.workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", variables.workspaceId] })
+      void queryClient.invalidateQueries({
+        queryKey: ["dashboard-overview", variables.workspaceId],
+      })
     },
   })
 }
@@ -488,10 +485,7 @@ export function useCompleteUpload(): UseMutationResult<
 
   return useMutation<FileObject, ApiRequestError, CompleteUploadRequest & { workspaceId: string }>({
     mutationFn: ({ workspaceId, ...body }) =>
-      api.post<FileObject>(
-        buildWorkspacePath(workspaceId, "/files/upload/complete"),
-        body,
-      ),
+      api.post<FileObject>(buildWorkspacePath(workspaceId, "/files/upload/complete"), body),
     onSuccess: (data) => {
       upsertCompletedFileInFilesCache(queryClient, data)
       void queryClient.invalidateQueries({ queryKey: ["files", data.workspaceId] })
@@ -585,8 +579,16 @@ export function getUploadSession(
 
 export function useGetPartSignedUrls(
   workspaceId: string | null,
-): UseMutationResult<GetPartSignedUrlsResponse, ApiRequestError, GetPartSignedUrlsRequest & { sessionId: string }> {
-  return useMutation<GetPartSignedUrlsResponse, ApiRequestError, GetPartSignedUrlsRequest & { sessionId: string }>({
+): UseMutationResult<
+  GetPartSignedUrlsResponse,
+  ApiRequestError,
+  GetPartSignedUrlsRequest & { sessionId: string }
+> {
+  return useMutation<
+    GetPartSignedUrlsResponse,
+    ApiRequestError,
+    GetPartSignedUrlsRequest & { sessionId: string }
+  >({
     mutationFn: ({ sessionId, ...body }) =>
       api.post<GetPartSignedUrlsResponse>(
         buildWorkspacePath(workspaceId, `/files/uploads/${sessionId}/parts`),
@@ -617,16 +619,17 @@ export function useBatchUpload(workspaceId: string | null): UseMutationResult<
 > {
   const queryClient = useQueryClient()
 
-  return useMutation<BatchUploadResponse, ApiRequestError, {
-    items: BatchUploadItemRequest[]
-    parentFolderId?: string | null
-    emptyFolders?: string[]
-  }>({
+  return useMutation<
+    BatchUploadResponse,
+    ApiRequestError,
+    {
+      items: BatchUploadItemRequest[]
+      parentFolderId?: string | null
+      emptyFolders?: string[]
+    }
+  >({
     mutationFn: (body) =>
-      api.post<BatchUploadResponse>(
-        buildWorkspacePath(workspaceId, "/files/batch-upload"),
-        body,
-      ),
+      api.post<BatchUploadResponse>(buildWorkspacePath(workspaceId, "/files/batch-upload"), body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
@@ -677,8 +680,7 @@ export function useThumbnailUrl(
       ),
     enabled: workspaceId !== null && fileId !== null,
     staleTime: 60_000,
-    retry: (failureCount, error) =>
-      error.code === "THUMBNAIL_NOT_FOUND" && failureCount < 5,
+    retry: (failureCount, error) => error.code === "THUMBNAIL_NOT_FOUND" && failureCount < 5,
     retryDelay: 2_000,
     refetchInterval: (query) => {
       const error = query.state.error
@@ -735,10 +737,7 @@ export function useImportR2(
 
   return useMutation<ImportR2Response, ApiRequestError, { prefix?: string } | undefined>({
     mutationFn: (body) =>
-      api.post<ImportR2Response>(
-        buildWorkspacePath(workspaceId, "/files/import-r2"),
-        body ?? {},
-      ),
+      api.post<ImportR2Response>(buildWorkspacePath(workspaceId, "/files/import-r2"), body ?? {}),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
@@ -753,7 +752,8 @@ export function useDashboardOverview(
 ): UseQueryResult<DashboardOverview, ApiRequestError> {
   return useQuery<DashboardOverview, ApiRequestError>({
     queryKey: ["dashboard-overview", workspaceId],
-    queryFn: () => api.get<DashboardOverview>(buildWorkspacePath(workspaceId, "/dashboard/overview")),
+    queryFn: () =>
+      api.get<DashboardOverview>(buildWorkspacePath(workspaceId, "/dashboard/overview")),
     enabled: workspaceId !== null,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
@@ -799,7 +799,8 @@ export function useDashboardSettings(
 ): UseQueryResult<WorkspaceSettings, ApiRequestError> {
   return useQuery<WorkspaceSettings, ApiRequestError>({
     queryKey: ["dashboard-settings", workspaceId],
-    queryFn: () => api.get<WorkspaceSettings>(buildWorkspacePath(workspaceId, "/dashboard/settings")),
+    queryFn: () =>
+      api.get<WorkspaceSettings>(buildWorkspacePath(workspaceId, "/dashboard/settings")),
     enabled: workspaceId !== null,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
@@ -812,7 +813,8 @@ export function useUpdateDashboardSettings(
   const queryClient = useQueryClient()
 
   return useMutation<WorkspaceSettings, ApiRequestError, WorkspaceSettings>({
-    mutationFn: (body) => api.patch<WorkspaceSettings>(buildWorkspacePath(workspaceId, "/dashboard/settings"), body),
+    mutationFn: (body) =>
+      api.patch<WorkspaceSettings>(buildWorkspacePath(workspaceId, "/dashboard/settings"), body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["dashboard-settings", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
@@ -840,9 +842,15 @@ export function useUpdateMemberRole(
 > {
   const queryClient = useQueryClient()
 
-  return useMutation<WorkspaceMemberListItem, ApiRequestError, { memberId: string; role: WorkspaceRole }>({
+  return useMutation<
+    WorkspaceMemberListItem,
+    ApiRequestError,
+    { memberId: string; role: WorkspaceRole }
+  >({
     mutationFn: ({ memberId, role }) =>
-      api.patch<WorkspaceMemberListItem>(buildWorkspacePath(workspaceId, `/members/${memberId}`), { role }),
+      api.patch<WorkspaceMemberListItem>(buildWorkspacePath(workspaceId, `/members/${memberId}`), {
+        role,
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
     },
@@ -856,7 +864,9 @@ export function useRemoveMember(
 
   return useMutation<{ success: true; memberId: string }, ApiRequestError, { memberId: string }>({
     mutationFn: ({ memberId }) =>
-      api.delete<{ success: true; memberId: string }>(buildWorkspacePath(workspaceId, `/members/${memberId}`)),
+      api.delete<{ success: true; memberId: string }>(
+        buildWorkspacePath(workspaceId, `/members/${memberId}`),
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", workspaceId] })
@@ -912,7 +922,9 @@ export function useDeleteTag(
 
   return useMutation<{ success: true; tagId: string }, ApiRequestError, { tagId: string }>({
     mutationFn: ({ tagId }) =>
-      api.delete<{ success: true; tagId: string }>(buildWorkspacePath(workspaceId, `/tags/${tagId}`)),
+      api.delete<{ success: true; tagId: string }>(
+        buildWorkspacePath(workspaceId, `/tags/${tagId}`),
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["tags", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
@@ -935,10 +947,7 @@ export function useRenameFile(
 
   return useMutation<RenameFileResponse, ApiRequestError, { fileId: string; name: string }>({
     mutationFn: ({ fileId, name }) =>
-      api.patch<RenameFileResponse>(
-        buildWorkspacePath(workspaceId, `/files/${fileId}`),
-        { name },
-      ),
+      api.patch<RenameFileResponse>(buildWorkspacePath(workspaceId, `/files/${fileId}`), { name }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
@@ -1042,20 +1051,26 @@ export function usePermanentlyDeleteFile(
 
 export function useToggleFavorite(
   workspaceId: string | null,
-): UseMutationResult<{ fileId: string; isFavorited: boolean }, ApiRequestError, { fileId: string }> {
+): UseMutationResult<
+  { fileId: string; isFavorited: boolean },
+  ApiRequestError,
+  { fileId: string }
+> {
   const queryClient = useQueryClient()
 
-  return useMutation<{ fileId: string; isFavorited: boolean }, ApiRequestError, { fileId: string }>({
-    mutationFn: ({ fileId }) =>
-      api.post<{ fileId: string; isFavorited: boolean }>(
-        buildWorkspacePath(workspaceId, `/files/${fileId}/favorite`),
-      ),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+  return useMutation<{ fileId: string; isFavorited: boolean }, ApiRequestError, { fileId: string }>(
+    {
+      mutationFn: ({ fileId }) =>
+        api.post<{ fileId: string; isFavorited: boolean }>(
+          buildWorkspacePath(workspaceId, `/files/${fileId}/favorite`),
+        ),
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
+        void queryClient.invalidateQueries({ queryKey: ["search", workspaceId] })
+        void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
+      },
     },
-  })
+  )
 }
 
 export function useUpdateFileTags(
@@ -1132,10 +1147,10 @@ export function useUpdateFolder(
     { folderId: string; name?: string; parentFolderId?: string | null }
   >({
     mutationFn: ({ folderId, name, parentFolderId }) =>
-      api.patch<FolderResponse>(
-        buildWorkspacePath(workspaceId, `/folders/${folderId}`),
-        { name, parentFolderId },
-      ),
+      api.patch<FolderResponse>(buildWorkspacePath(workspaceId, `/folders/${folderId}`), {
+        name,
+        parentFolderId,
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
     },
@@ -1225,10 +1240,9 @@ export function useMoveFile(
     { fileId: string; folderId: string | null }
   >({
     mutationFn: ({ fileId, folderId }) =>
-      api.patch<UpdateFileResponse>(
-        buildWorkspacePath(workspaceId, `/files/${fileId}`),
-        { folderId },
-      ),
+      api.patch<UpdateFileResponse>(buildWorkspacePath(workspaceId, `/files/${fileId}`), {
+        folderId,
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["files", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["folders", workspaceId] })
@@ -1263,7 +1277,13 @@ interface UpdateShareRequest {
 
 export function useShares(
   workspaceId: string | null,
-  options?: { scope?: SharesListScope; q?: string; page?: number; limit?: number; enabled?: boolean },
+  options?: {
+    scope?: SharesListScope
+    q?: string
+    page?: number
+    limit?: number
+    enabled?: boolean
+  },
 ): UseQueryResult<ListSharesResponse, ApiRequestError> {
   return useQuery<ListSharesResponse, ApiRequestError>({
     queryKey: ["shares", workspaceId, options],
@@ -1292,8 +1312,7 @@ export function useCreateShare(
   const queryClient = useQueryClient()
 
   return useMutation<ShareLink, ApiRequestError, CreateShareRequest>({
-    mutationFn: (body) =>
-      api.post<ShareLink>(buildWorkspacePath(workspaceId, "/shares"), body),
+    mutationFn: (body) => api.post<ShareLink>(buildWorkspacePath(workspaceId, "/shares"), body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["shares", workspaceId] })
     },
@@ -1319,11 +1338,7 @@ export function useDeleteShare(
 ): UseMutationResult<{ success: boolean; shareId: string }, ApiRequestError, { shareId: string }> {
   const queryClient = useQueryClient()
 
-  return useMutation<
-    { success: boolean; shareId: string },
-    ApiRequestError,
-    { shareId: string }
-  >({
+  return useMutation<{ success: boolean; shareId: string }, ApiRequestError, { shareId: string }>({
     mutationFn: ({ shareId }) =>
       api.delete<{ success: boolean; shareId: string }>(
         buildWorkspacePath(workspaceId, `/shares/${shareId}`),
@@ -1406,10 +1421,7 @@ export function useBrowseShare(
 
   return useMutation<ShareBrowseResult, ApiRequestError, { folderId?: string; password?: string }>({
     mutationFn: (body) =>
-      api.post<ShareBrowseResult>(
-        `/api/shares/${requireId(shareId, "shareId")}/browse`,
-        body,
-      ),
+      api.post<ShareBrowseResult>(`/api/shares/${requireId(shareId, "shareId")}/browse`, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["shareBrowse", shareId] })
     },
@@ -1426,7 +1438,8 @@ export function useInvitations(
 ): UseQueryResult<ListInvitationsResponse, ApiRequestError> {
   return useQuery<ListInvitationsResponse, ApiRequestError>({
     queryKey: ["invitations", workspaceId],
-    queryFn: () => api.get<ListInvitationsResponse>(buildWorkspacePath(workspaceId, "/invitations")),
+    queryFn: () =>
+      api.get<ListInvitationsResponse>(buildWorkspacePath(workspaceId, "/invitations")),
     enabled: workspaceId !== null,
   })
 }
@@ -1459,7 +1472,8 @@ export function useAddMember(
     ApiRequestError,
     { email: string; role: Exclude<WorkspaceRole, "owner"> }
   >({
-    mutationFn: (body) => api.post<CreateInvitationResponse>(buildWorkspacePath(workspaceId, "/members"), body),
+    mutationFn: (body) =>
+      api.post<CreateInvitationResponse>(buildWorkspacePath(workspaceId, "/members"), body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["invitations", workspaceId] })
@@ -1470,10 +1484,18 @@ export function useAddMember(
 
 export function useRevokeInvitation(
   workspaceId: string | null,
-): UseMutationResult<{ success: true; invitationId: string }, ApiRequestError, { invitationId: string }> {
+): UseMutationResult<
+  { success: true; invitationId: string },
+  ApiRequestError,
+  { invitationId: string }
+> {
   const queryClient = useQueryClient()
 
-  return useMutation<{ success: true; invitationId: string }, ApiRequestError, { invitationId: string }>({
+  return useMutation<
+    { success: true; invitationId: string },
+    ApiRequestError,
+    { invitationId: string }
+  >({
     mutationFn: ({ invitationId }) =>
       api.delete<{ success: true; invitationId: string }>(
         buildWorkspacePath(workspaceId, `/invitations/${invitationId}`),
@@ -1484,9 +1506,7 @@ export function useRevokeInvitation(
   })
 }
 
-export function useInvitationByToken(
-  token: string | null,
-): UseQueryResult<
+export function useInvitationByToken(token: string | null): UseQueryResult<
   {
     id: string
     workspaceId: string
@@ -1531,7 +1551,9 @@ export function useAcceptInvitation(): UseMutationResult<
     { token: string }
   >({
     mutationFn: ({ token }) =>
-      api.post<{ success: true; workspaceId: string; role: WorkspaceRole }>(`/api/invitations/${token}/accept`),
+      api.post<{ success: true; workspaceId: string; role: WorkspaceRole }>(
+        `/api/invitations/${token}/accept`,
+      ),
   })
 }
 
@@ -1638,7 +1660,8 @@ export function useMarkRead(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation<{ success: true; id: string }, ApiRequestError, { id: string }>({
-    mutationFn: ({ id }) => api.patch<{ success: true; id: string }>(`/api/notifications/${id}/read`),
+    mutationFn: ({ id }) =>
+      api.patch<{ success: true; id: string }>(`/api/notifications/${id}/read`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["notifications"] })
       void queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] })
@@ -1646,7 +1669,11 @@ export function useMarkRead(): UseMutationResult<
   })
 }
 
-export function useMarkAllRead(): UseMutationResult<{ success: true; count: number }, ApiRequestError, void> {
+export function useMarkAllRead(): UseMutationResult<
+  { success: true; count: number },
+  ApiRequestError,
+  void
+> {
   const queryClient = useQueryClient()
 
   return useMutation<{ success: true; count: number }, ApiRequestError>({
@@ -1668,15 +1695,34 @@ interface PlatformSettingsData {
 }
 
 export function usePlatformMe(): UseQueryResult<
-  { id: string; email: string; name: string; isPlatformAdmin: boolean; canCreateWorkspaces: boolean },
+  {
+    id: string
+    email: string
+    name: string
+    isPlatformAdmin: boolean
+    canCreateWorkspaces: boolean
+  },
   ApiRequestError
 > {
   return useQuery<
-    { id: string; email: string; name: string; isPlatformAdmin: boolean; canCreateWorkspaces: boolean },
+    {
+      id: string
+      email: string
+      name: string
+      isPlatformAdmin: boolean
+      canCreateWorkspaces: boolean
+    },
     ApiRequestError
   >({
     queryKey: ["platform-me"],
-    queryFn: () => api.get<{ id: string; email: string; name: string; isPlatformAdmin: boolean; canCreateWorkspaces: boolean }>("/api/platform/me"),
+    queryFn: () =>
+      api.get<{
+        id: string
+        email: string
+        name: string
+        isPlatformAdmin: boolean
+        canCreateWorkspaces: boolean
+      }>("/api/platform/me"),
   })
 }
 
@@ -1694,7 +1740,8 @@ export function useUpdatePlatformSettings(): UseMutationResult<
 > {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body) => api.patch<{ success: true; settings: PlatformSettingsData }>("/api/platform/settings", body),
+    mutationFn: (body) =>
+      api.patch<{ success: true; settings: PlatformSettingsData }>("/api/platform/settings", body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["platform-settings"] })
     },
@@ -1708,7 +1755,8 @@ export function useJoinPlatform(): UseMutationResult<
 > {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => api.post<{ success: true; workspaceId: string; role: string }>("/api/platform/join"),
+    mutationFn: () =>
+      api.post<{ success: true; workspaceId: string; role: string }>("/api/platform/join"),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
     },
@@ -1716,7 +1764,15 @@ export function useJoinPlatform(): UseMutationResult<
 }
 
 export function useCreateWorkspace(): UseMutationResult<
-  { id: string; name: string; slug: string; ownerId: string; storageQuotaBytes: number; createdAt: string; updatedAt: string },
+  {
+    id: string
+    name: string
+    slug: string
+    ownerId: string
+    storageQuotaBytes: number
+    createdAt: string
+    updatedAt: string
+  },
   ApiRequestError,
   { name: string; slug?: string }
 > {
@@ -1752,7 +1808,10 @@ interface PlatformInvitationData {
   inviteLink?: string
 }
 
-export function usePlatformInvitations(): UseQueryResult<{ data: PlatformInvitationData[] }, ApiRequestError> {
+export function usePlatformInvitations(): UseQueryResult<
+  { data: PlatformInvitationData[] },
+  ApiRequestError
+> {
   return useQuery<{ data: PlatformInvitationData[] }, ApiRequestError>({
     queryKey: ["platform-invitations"],
     queryFn: () => api.get<{ data: PlatformInvitationData[] }>("/api/platform/invitations"),
@@ -1766,7 +1825,8 @@ export function useCreatePlatformInvitation(): UseMutationResult<
 > {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body) => api.post<PlatformInvitationData & { inviteLink: string }>("/api/platform/invitations", body),
+    mutationFn: (body) =>
+      api.post<PlatformInvitationData & { inviteLink: string }>("/api/platform/invitations", body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["platform-invitations"] })
     },
@@ -1781,7 +1841,9 @@ export function useAcceptPlatformInvitation(): UseMutationResult<
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (token) =>
-      api.post<{ success: true; workspaceId: string; role: string }>(`/api/platform/invitations/${token}/accept`),
+      api.post<{ success: true; workspaceId: string; role: string }>(
+        `/api/platform/invitations/${token}/accept`,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
     },

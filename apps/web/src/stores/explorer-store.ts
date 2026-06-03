@@ -120,8 +120,7 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
 
   selectRange: (ids, type, lastIndex) => {
     set((state) => {
-      const current =
-        type === "file" ? state.selectedFileIds : state.selectedFolderIds
+      const current = type === "file" ? state.selectedFileIds : state.selectedFolderIds
       const merged = [...new Set([...current, ...ids])]
       return type === "file"
         ? { selectedFileIds: merged, lastClickedItemIndex: lastIndex }

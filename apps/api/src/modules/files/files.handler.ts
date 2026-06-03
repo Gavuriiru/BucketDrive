@@ -1,15 +1,28 @@
 import { Hono } from "hono"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
-import { buildPublicObjectUrl, createStorageProvider, StorageProviderError } from "../../services/storage"
+import {
+  buildPublicObjectUrl,
+  createStorageProvider,
+  StorageProviderError,
+} from "../../services/storage"
 import { UploadService, UploadError } from "../../services/upload.service"
 import { R2ImportService, syncR2WorkspaceIfStale } from "../../services/r2-import.service"
 import { ThumbnailService } from "../../services/thumbnail.service"
 import { TrashService, TrashServiceError, getWorkspaceRole } from "../../services/trash.service"
 import { getDB } from "../../lib/db"
-import { filterFilesByFolder, hydrateFiles } from "./file-query"
-import { auditLog, favorite, fileObject, fileObjectTag, fileTag, folder, workspaceSettings } from "@bucketdrive/shared/db/schema"
-import { and, eq, inArray, isNull } from "drizzle-orm"
+import { isE2EAuthEnabled } from "../../lib/e2e-auth"
+import { hydrateFiles } from "./file-query"
+import {
+  auditLog,
+  favorite,
+  fileObject,
+  fileObjectTag,
+  fileTag,
+  folder,
+  workspaceSettings,
+} from "@bucketdrive/shared/db/schema"
+import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm"
 import {
   InitiateUploadRequest,
   CompleteUploadRequest,
@@ -34,6 +47,7 @@ interface FilesEnv {
   R2_SECRET_ACCESS_KEY?: string
   R2_ENDPOINT?: string
   R2_BUCKET_NAME?: string
+  E2E_TEST_AUTH?: string
   DB: D1Database
 }
 
@@ -63,45 +77,46 @@ files.get("/", requirePermission("files.read"), async (c) => {
     userId: user.id,
   })
 
-  const rows = await db
-    .select()
-    .from(fileObject)
-    .where(
-      and(
-        eq(fileObject.workspaceId, workspaceId),
-        eq(fileObject.isDeleted, false),
-      ),
-    )
-    .all()
-
-  const filtered = filterFilesByFolder(rows, query.folderId)
-
-  const sorted = [...filtered].sort((a, b) => {
-    const dir = query.order === "desc" ? -1 : 1
-    switch (query.sort) {
-      case "size":
-        return (a.sizeBytes - b.sizeBytes) * dir
-      case "created_at":
-        return a.createdAt.localeCompare(b.createdAt) * dir
-      case "type":
-        return (a.extension ?? "").localeCompare(b.extension ?? "") * dir
-      default:
-        return a.originalName.localeCompare(b.originalName) * dir
-    }
-  })
-
   const page = query.page
   const limit = query.limit
-  const start = (page - 1) * limit
-  const paged = await hydrateFiles(db, workspaceId, user.id, sorted.slice(start, start + limit))
+  const offset = (page - 1) * limit
+  const where = and(
+    eq(fileObject.workspaceId, workspaceId),
+    eq(fileObject.isDeleted, false),
+    query.folderId ? eq(fileObject.folderId, query.folderId) : isNull(fileObject.folderId),
+  )
+  const direction = query.order === "desc" ? desc : asc
+  const orderColumn =
+    query.sort === "size"
+      ? fileObject.sizeBytes
+      : query.sort === "created_at"
+        ? fileObject.createdAt
+        : query.sort === "type"
+          ? fileObject.extension
+          : fileObject.originalName
+
+  const [rows, totalRow] = await Promise.all([
+    db
+      .select()
+      .from(fileObject)
+      .where(where)
+      .orderBy(direction(orderColumn), asc(fileObject.originalName))
+      .limit(limit)
+      .offset(offset)
+      .all(),
+    db.select({ total: count() }).from(fileObject).where(where).get(),
+  ])
+
+  const paged = await hydrateFiles(db, workspaceId, user.id, rows)
+  const total = totalRow?.total ?? 0
 
   return c.json({
     data: paged,
     meta: {
       page,
       limit,
-      total: sorted.length,
-      totalPages: Math.ceil(sorted.length / limit),
+      total,
+      totalPages: Math.ceil(total / limit),
     },
   })
 })
@@ -425,7 +440,10 @@ files.post("/import-r2", requirePermission("workspace.settings.update"), async (
   const role = c.get("workspaceRole")
   const user = c.get("user")
   if (!user.isPlatformAdmin && role !== "owner" && role !== "admin") {
-    return c.json({ code: "FORBIDDEN", message: "Only workspace admins can import R2 objects" }, 403)
+    return c.json(
+      { code: "FORBIDDEN", message: "Only workspace admins can import R2 objects" },
+      403,
+    )
   }
 
   const body = ImportR2Request.parse(await c.req.json().catch(() => ({})))
@@ -442,15 +460,21 @@ files.post("/import-r2", requirePermission("workspace.settings.update"), async (
     return c.json(ImportR2Response.parse(result))
   } catch (err) {
     if (err instanceof StorageProviderError) {
-      return c.json({
-        code: err.code,
-        message: err.message,
-      }, 400)
+      return c.json(
+        {
+          code: err.code,
+          message: err.message,
+        },
+        400,
+      )
     }
-    return c.json({
-      code: "R2_IMPORT_FAILED",
-      message: err instanceof Error ? err.message : "Failed to import R2 objects",
-    }, 400)
+    return c.json(
+      {
+        code: "R2_IMPORT_FAILED",
+        message: err instanceof Error ? err.message : "Failed to import R2 objects",
+      },
+      400,
+    )
   }
 })
 
@@ -644,12 +668,14 @@ files.get("/:fileId/download", requirePermission("files.read"), async (c) => {
     .where(eq(workspaceSettings.workspaceId, workspaceId))
     .get()
 
-  return c.json(DownloadUrlResponse.parse({
-    signedUrl,
-    expiresAt,
-    fileName: file.originalName,
-    publicUrl: buildPublicObjectUrl(settings?.r2PublicBaseUrl, file.storageKey) ?? undefined,
-  }))
+  return c.json(
+    DownloadUrlResponse.parse({
+      signedUrl,
+      expiresAt,
+      fileName: file.originalName,
+      publicUrl: buildPublicObjectUrl(settings?.r2PublicBaseUrl, file.storageKey) ?? undefined,
+    }),
+  )
 })
 
 files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
@@ -709,17 +735,9 @@ files.patch("/:fileId", requirePermission("files.rename"), async (c) => {
     updateSet.folderId = body.folderId
   }
 
-  await db
-    .update(fileObject)
-    .set(updateSet)
-    .where(eq(fileObject.id, fileId))
-    .run()
+  await db.update(fileObject).set(updateSet).where(eq(fileObject.id, fileId)).run()
 
-  const updated = await db
-    .select()
-    .from(fileObject)
-    .where(eq(fileObject.id, fileId))
-    .get()
+  const updated = await db.select().from(fileObject).where(eq(fileObject.id, fileId)).get()
 
   const isMove = body.folderId !== undefined && body.folderId !== file.folderId
   const isRename = body.name !== undefined && body.name !== file.originalName
@@ -846,20 +864,19 @@ files.post("/:fileId/tags", requirePermission("files.tag"), async (c) => {
   await db.delete(fileObjectTag).where(eq(fileObjectTag.fileObjectId, fileId)).run()
 
   if (uniqueTagIds.length > 0) {
-    await db.insert(fileObjectTag).values(
-      uniqueTagIds.map((tagId) => ({
-        id: crypto.randomUUID(),
-        fileObjectId: fileId,
-        tagId,
-      })),
-    ).run()
+    await db
+      .insert(fileObjectTag)
+      .values(
+        uniqueTagIds.map((tagId) => ({
+          id: crypto.randomUUID(),
+          fileObjectId: fileId,
+          tagId,
+        })),
+      )
+      .run()
   }
 
-  const updated = await db
-    .select()
-    .from(fileObject)
-    .where(eq(fileObject.id, fileId))
-    .get()
+  const updated = await db.select().from(fileObject).where(eq(fileObject.id, fileId)).get()
 
   if (!updated) {
     return c.json({ code: "FILE_NOT_FOUND", message: "File not found" }, 404)
@@ -919,7 +936,10 @@ files.delete("/:fileId/permanent", async (c) => {
   }
 
   if (!can(role, "trash.permanent_delete")) {
-    return c.json({ code: "FORBIDDEN", message: "Only owners and admins can permanently delete files" }, 403)
+    return c.json(
+      { code: "FORBIDDEN", message: "Only owners and admins can permanently delete files" },
+      403,
+    )
   }
 
   const trashService = new TrashService(db, createStorageProvider(c.env))
@@ -1047,6 +1067,8 @@ async function syncR2IfStale(params: {
   workspaceId: string
   userId: string
 }): Promise<void> {
+  if (isE2EAuthEnabled(params.env)) return
+
   try {
     const storage = createStorageProvider(params.env)
     await syncR2WorkspaceIfStale({

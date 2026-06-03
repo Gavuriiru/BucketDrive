@@ -137,9 +137,7 @@ export function useExplorerShortcuts({
         const itemToOpen =
           allSelected === 1
             ? items.find(
-                (item) =>
-                  item.id === selectedFileIds[0] ||
-                  item.id === selectedFolderIds[0],
+                (item) => item.id === selectedFileIds[0] || item.id === selectedFolderIds[0],
               )
             : focusedItem
         if (itemToOpen?.type === "file" && onPreviewItem) {
@@ -155,9 +153,7 @@ export function useExplorerShortcuts({
         const itemToPreview =
           allSelected === 1
             ? items.find(
-                (item) =>
-                  item.id === selectedFileIds[0] ||
-                  item.id === selectedFolderIds[0],
+                (item) => item.id === selectedFileIds[0] || item.id === selectedFolderIds[0],
               )
             : focusedItem
         if (itemToPreview && itemToPreview.type === "file" && onPreviewItem) {
@@ -261,7 +257,12 @@ export function useExplorerShortcuts({
   ])
 
   const handleItemClick = useCallback(
-    (id: string, type: "file" | "folder", index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => {
+    (
+      id: string,
+      type: "file" | "folder",
+      index: number,
+      event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+    ) => {
       if (event.ctrlKey || event.metaKey) {
         useExplorerStore.getState().toggleSelect(id, type)
       } else if (event.shiftKey && lastClickedItemIndex !== null) {
@@ -270,11 +271,7 @@ export function useExplorerShortcuts({
         const rangeItems = items.slice(start, end + 1)
         const fileIds = rangeItems.filter((i) => i.type === "file").map((i) => i.id)
         const folderIds = rangeItems.filter((i) => i.type === "folder").map((i) => i.id)
-        selectRange(
-          type === "file" ? fileIds : folderIds,
-          type,
-          index,
-        )
+        selectRange(type === "file" ? fileIds : folderIds, type, index)
         if (folderIds.length > 0) {
           useExplorerStore.getState().selectRange(folderIds, "folder", index)
         }

@@ -15,7 +15,7 @@
 
   --color-text-primary: #11181c;
   --color-text-secondary: #687076;
-  --color-text-tertiary: #889096;
+  --color-text-tertiary: #687076;
   --color-text-link: #0068d6;
 
   --color-border-default: #dfe3e6;
@@ -52,28 +52,60 @@
   --animate-swipe-out: swipe-out 200ms ease-in;
 
   @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
   @keyframes fade-out {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
   }
   @keyframes slide-in-up {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
   @keyframes scale-in {
-    from { opacity: 0; transform: scale(0.96); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
   @keyframes slide-in {
-    from { opacity: 0; transform: translateX(100%); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
   @keyframes swipe-out {
-    from { opacity: 1; transform: translateX(0); }
-    to { opacity: 0; transform: translateX(100%); }
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(100%);
+    }
   }
 }
 
@@ -102,13 +134,13 @@
 
   --color-text-primary: #ededed;
   --color-text-secondary: #a0a0a0;
-  --color-text-tertiary: #707070;
+  --color-text-tertiary: #a0a0a0;
   --color-text-link: #5096e9;
 
   --color-border-default: #2a2a2a;
   --color-border-muted: #1f1f1f;
 
-  --color-accent: #5096e9;
+  --color-accent: #0068d6;
 
   --color-success: #3cb179;
   --color-warning: #e09e3b;

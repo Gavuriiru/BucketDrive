@@ -60,11 +60,7 @@ export class NotificationsService {
         .limit(limit)
         .offset(offset)
         .all(),
-      db
-        .select({ total: count() })
-        .from(notification)
-        .where(eq(notification.userId, userId))
-        .get(),
+      db.select({ total: count() }).from(notification).where(eq(notification.userId, userId)).get(),
     ])
 
     const total = totalRow?.total ?? 0

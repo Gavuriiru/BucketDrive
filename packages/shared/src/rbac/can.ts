@@ -55,11 +55,7 @@ export function canWithInheritance(
   const base = can(role, permission, resourceOwnerId, userId)
   if (base) return true
 
-  if (
-    permission === "folders.read" &&
-    context?.hasParentReadAccess &&
-    can(role, "folders.read")
-  ) {
+  if (permission === "folders.read" && context?.hasParentReadAccess && can(role, "folders.read")) {
     return true
   }
 

@@ -47,22 +47,22 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
   if (!isOpen && !hasItems) return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-border-default bg-bg-primary shadow-lg">
-      <div className="flex items-center justify-between border-b border-border-muted px-4 py-3">
+    <div className="border-border-default bg-bg-primary fixed right-4 bottom-4 z-50 w-80 rounded-xl border shadow-lg">
+      <div className="border-border-muted flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-text-primary">Uploads</span>
+          <span className="text-text-primary text-sm font-medium">Uploads</span>
           {queuedCount > 0 && (
-            <span className="rounded-full bg-accent/10 px-1.5 py-0.5 text-xs font-medium text-accent">
+            <span className="bg-accent/10 text-accent rounded-full px-1.5 py-0.5 text-xs font-medium">
               {queuedCount}
             </span>
           )}
           {failedCount > 0 && (
-            <span className="rounded-full bg-error/10 px-1.5 py-0.5 text-xs font-medium text-error">
+            <span className="bg-error/10 text-error rounded-full px-1.5 py-0.5 text-xs font-medium">
               {failedCount} failed
             </span>
           )}
           {pausedCount > 0 && (
-            <span className="rounded-full bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning">
+            <span className="bg-warning/10 text-warning rounded-full px-1.5 py-0.5 text-xs font-medium">
               {pausedCount} paused
             </span>
           )}
@@ -70,7 +70,7 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
         <div className="flex items-center gap-1">
           <button
             onClick={clearCompleted}
-            className="rounded p-1 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
+            className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded p-1 transition-colors"
             aria-label="Clear completed"
           >
             <X className="h-4 w-4" />
@@ -95,7 +95,7 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
       {!isOpen && hasItems && (
         <button
           onClick={() => setOpen(true)}
-          className="flex w-full items-center justify-center gap-2 border-t border-border-muted px-4 py-2 text-xs text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
+          className="border-border-muted text-text-tertiary hover:bg-surface-hover hover:text-text-primary flex w-full items-center justify-center gap-2 border-t px-4 py-2 text-xs transition-colors"
         >
           {queuedCount > 0
             ? `${String(queuedCount)} uploading`
@@ -131,60 +131,56 @@ function UploadQueueItem({
   const showChunkProgress = totalChunks > 1 && item.status === "uploading"
 
   return (
-    <div className="border-b border-border-muted px-4 py-2.5 last:border-b-0">
+    <div className="border-border-muted border-b px-4 py-2.5 last:border-b-0">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 shrink-0">
           {item.status === "uploading" ? (
-            <Loader2 className="h-5 w-5 animate-spin text-accent" />
+            <Loader2 className="text-accent h-5 w-5 animate-spin" />
           ) : item.status === "completed" ? (
-            <CheckCircle className="h-5 w-5 text-success" />
+            <CheckCircle className="text-success h-5 w-5" />
           ) : item.status === "failed" ? (
-            <AlertCircle className="h-5 w-5 text-error" />
+            <AlertCircle className="text-error h-5 w-5" />
           ) : item.status === "paused" ? (
-            <Pause className="h-5 w-5 text-warning" />
+            <Pause className="text-warning h-5 w-5" />
           ) : (
-            <File className="h-5 w-5 text-text-tertiary" />
+            <File className="text-text-tertiary h-5 w-5" />
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="truncate text-sm text-text-primary">{item.fileName}</p>
-            <span className="shrink-0 text-xs text-text-tertiary">
-              {formatSize(item.fileSize)}
-            </span>
+            <p className="text-text-primary truncate text-sm">{item.fileName}</p>
+            <span className="text-text-tertiary shrink-0 text-xs">{formatSize(item.fileSize)}</span>
           </div>
 
-          {(item.status === "uploading" || item.status === "queued" || item.status === "paused") && (
-            <ProgressBar value={item.progress} className="mt-1.5" />
-          )}
+          {(item.status === "uploading" ||
+            item.status === "queued" ||
+            item.status === "paused") && <ProgressBar value={item.progress} className="mt-1.5" />}
 
           {showChunkProgress && (
-            <p className="mt-0.5 text-xs text-text-tertiary">
+            <p className="text-text-tertiary mt-0.5 text-xs">
               Part {doneChunks}/{totalChunks} · {Math.round(item.progress)}%
             </p>
           )}
 
           {!showChunkProgress && item.status === "uploading" && (
-            <p className="mt-0.5 text-xs text-text-tertiary">{Math.round(item.progress)}%</p>
+            <p className="text-text-tertiary mt-0.5 text-xs">{Math.round(item.progress)}%</p>
           )}
 
-          {item.status === "completed" && (
-            <p className="mt-0.5 text-xs text-success">Uploaded</p>
-          )}
+          {item.status === "completed" && <p className="text-success mt-0.5 text-xs">Uploaded</p>}
 
           {item.status === "failed" && (
             <div className="mt-0.5 flex items-center gap-2">
-              <p className="text-xs text-error">{item.error ?? "Failed"}</p>
+              <p className="text-error text-xs">{item.error ?? "Failed"}</p>
               <button
                 onClick={onRetry}
-                className="flex items-center gap-1 text-xs text-accent underline transition-colors hover:text-text-primary"
+                className="text-accent hover:text-text-primary flex items-center gap-1 text-xs underline transition-colors"
               >
                 <RotateCcw className="h-3 w-3" />
                 Retry
               </button>
               <button
                 onClick={onRemove}
-                className="text-xs text-text-tertiary underline transition-colors hover:text-text-primary"
+                className="text-text-tertiary hover:text-text-primary text-xs underline transition-colors"
               >
                 Dismiss
               </button>
@@ -193,17 +189,17 @@ function UploadQueueItem({
 
           {item.status === "paused" && (
             <div className="mt-0.5 flex items-center gap-2">
-              <p className="text-xs text-warning">Paused</p>
+              <p className="text-warning text-xs">Paused</p>
               <button
                 onClick={onResume}
-                className="flex items-center gap-1 text-xs text-accent underline transition-colors hover:text-text-primary"
+                className="text-accent hover:text-text-primary flex items-center gap-1 text-xs underline transition-colors"
               >
                 <Play className="h-3 w-3" />
                 Resume
               </button>
               <button
                 onClick={onCancel}
-                className="text-xs text-text-tertiary underline transition-colors hover:text-text-primary"
+                className="text-text-tertiary hover:text-text-primary text-xs underline transition-colors"
               >
                 Cancel
               </button>
@@ -212,10 +208,10 @@ function UploadQueueItem({
 
           {item.status === "queued" && (
             <div className="mt-0.5 flex items-center gap-2">
-              <p className="text-xs text-text-tertiary">Waiting</p>
+              <p className="text-text-tertiary text-xs">Waiting</p>
               <button
                 onClick={onCancel}
-                className="text-xs text-text-tertiary underline transition-colors hover:text-text-primary"
+                className="text-text-tertiary hover:text-text-primary text-xs underline transition-colors"
               >
                 Cancel
               </button>
@@ -226,14 +222,14 @@ function UploadQueueItem({
             <div className="mt-0.5 flex items-center gap-2">
               <button
                 onClick={onPause}
-                className="flex items-center gap-1 text-xs text-text-tertiary underline transition-colors hover:text-text-primary"
+                className="text-text-tertiary hover:text-text-primary flex items-center gap-1 text-xs underline transition-colors"
               >
                 <Pause className="h-3 w-3" />
                 Pause
               </button>
               <button
                 onClick={onCancel}
-                className="text-xs text-text-tertiary underline transition-colors hover:text-text-primary"
+                className="text-text-tertiary hover:text-text-primary text-xs underline transition-colors"
               >
                 Cancel
               </button>

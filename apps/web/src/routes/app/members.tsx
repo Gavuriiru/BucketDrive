@@ -8,7 +8,7 @@ import {
   useRevokeInvitation,
   useTransferOwnership,
   useUpdateMemberRole,
-   } from "@/lib/api"
+} from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { can, type WorkspaceRole } from "@bucketdrive/shared"
 
@@ -36,14 +36,16 @@ export function MembersPage() {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<Exclude<WorkspaceRole, "owner">>("editor")
   const [activeTab, setActiveTab] = useState<Tab>("members")
-  const [createdInvite, setCreatedInvite] = useState<{ inviteLink: string; email: string } | null>(null)
+  const [createdInvite, setCreatedInvite] = useState<{ inviteLink: string; email: string } | null>(
+    null,
+  )
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null)
 
   if (workspacesLoading || membersQuery.isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -51,7 +53,7 @@ export function MembersPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-text-tertiary">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No workspace found</p>
       </div>
     )
   }
@@ -62,104 +64,104 @@ export function MembersPage() {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Members</h1>
-        <p className="mt-2 text-sm text-text-secondary">
+        <h1 className="text-text-primary text-2xl font-semibold">Members</h1>
+        <p className="text-text-secondary mt-2 text-sm">
           Invite members by email, manage roles, and transfer workspace ownership.
         </p>
       </div>
 
       {canInviteMembers && (
-        <div className="rounded-2xl border border-border-default bg-surface-default p-5">
-          <h2 className="text-base font-semibold text-text-primary">Invite Member</h2>
-          <p className="mt-1 text-xs text-text-tertiary">
+        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
+          <h2 className="text-text-primary text-base font-semibold">Invite Member</h2>
+          <p className="text-text-tertiary mt-1 text-xs">
             Send an invitation link by email. The recipient can join by signing in with the invited
             email.
           </p>
 
-        <form
-          className="mt-4 flex flex-col gap-3 md:flex-row"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (!email.trim()) return
-            addMember.mutate(
-              { email: email.trim(), role },
-              {
-                onSuccess: (data) => {
-                  setEmail("")
-                  setRole("editor")
-                  setCreatedInvite({ inviteLink: data.inviteLink, email: data.email })
+          <form
+            className="mt-4 flex flex-col gap-3 md:flex-row"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (!email.trim()) return
+              addMember.mutate(
+                { email: email.trim(), role },
+                {
+                  onSuccess: (data) => {
+                    setEmail("")
+                    setRole("editor")
+                    setCreatedInvite({ inviteLink: data.inviteLink, email: data.email })
+                  },
                 },
-              },
-            )
-          }}
-        >
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="user@company.com"
-            className="flex-1 rounded-xl border border-border-default bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-tertiary focus:border-accent focus:ring-1 focus:ring-accent"
-          />
-          <select
-            value={role}
-            onChange={(event) => setRole(event.target.value as Exclude<WorkspaceRole, "owner">)}
-            className="rounded-xl border border-border-default bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              )
+            }}
           >
-            {inviteRoles.map((entry) => (
-              <option key={entry} value={entry}>
-                {entry}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            disabled={addMember.isPending}
-            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {addMember.isPending ? "Sending..." : "Send invite"}
-          </button>
-        </form>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="user@company.com"
+              className="border-border-default bg-bg-tertiary text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
+            />
+            <select
+              value={role}
+              onChange={(event) => setRole(event.target.value as Exclude<WorkspaceRole, "owner">)}
+              className="border-border-default bg-bg-tertiary text-text-primary focus:border-accent focus:ring-accent rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
+            >
+              {inviteRoles.map((entry) => (
+                <option key={entry} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              disabled={addMember.isPending}
+              className="bg-accent rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {addMember.isPending ? "Sending..." : "Send invite"}
+            </button>
+          </form>
 
-        {createdInvite && (
-          <div className="mt-4 rounded-xl border border-accent/30 bg-accent/10 p-4">
-            <p className="text-sm font-medium text-text-primary">
-              Invitation sent to {createdInvite.email}
-            </p>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                readOnly
-                value={createdInvite.inviteLink}
-                className="flex-1 rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-xs text-text-secondary outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(createdInvite.inviteLink)
-                  setCopiedInviteId("created")
-                  window.setTimeout(() => setCopiedInviteId(null), 2000)
-                }}
-                className="rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
-              >
-                {copiedInviteId === "created" ? "Copied" : "Copy link"}
-              </button>
+          {createdInvite && (
+            <div className="border-accent/30 bg-accent/10 mt-4 rounded-xl border p-4">
+              <p className="text-text-primary text-sm font-medium">
+                Invitation sent to {createdInvite.email}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  readOnly
+                  value={createdInvite.inviteLink}
+                  className="border-border-default bg-bg-tertiary text-text-secondary flex-1 rounded-lg border px-3 py-2 text-xs outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(createdInvite.inviteLink)
+                    setCopiedInviteId("created")
+                    window.setTimeout(() => setCopiedInviteId(null), 2000)
+                  }}
+                  className="bg-accent rounded-lg px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                >
+                  {copiedInviteId === "created" ? "Copied" : "Copy link"}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {addMember.isError && (
-          <p className="mt-3 text-sm text-error">{addMember.error.message}</p>
-        )}
+          {addMember.isError && (
+            <p className="text-error mt-3 text-sm">{addMember.error.message}</p>
+          )}
         </div>
       )}
 
-      <div className="flex items-center gap-4 border-b border-border-default">
+      <div className="border-border-default flex items-center gap-4 border-b">
         <button
           type="button"
           onClick={() => setActiveTab("members")}
           className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
             activeTab === "members"
               ? "border-accent text-accent"
-              : "border-transparent text-text-tertiary hover:text-text-secondary"
+              : "text-text-tertiary hover:text-text-secondary border-transparent"
           }`}
         >
           Members ({members.length})
@@ -170,7 +172,7 @@ export function MembersPage() {
           className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
             activeTab === "invitations"
               ? "border-accent text-accent"
-              : "border-transparent text-text-tertiary hover:text-text-secondary"
+              : "text-text-tertiary hover:text-text-secondary border-transparent"
           }`}
         >
           Pending Invitations ({invitations.length})
@@ -178,37 +180,43 @@ export function MembersPage() {
       </div>
 
       {activeTab === "members" && (
-        <div className="overflow-hidden rounded-2xl border border-border-default bg-surface-default">
+        <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border-muted bg-bg-tertiary">
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">User</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Joined</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Role</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-text-tertiary">Actions</th>
+              <tr className="border-border-muted bg-bg-tertiary border-b">
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">User</th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Email
+                </th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Joined
+                </th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Role</th>
+                <th className="text-text-tertiary px-4 py-3 text-right text-xs font-medium">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {members.map((entry) => (
                 <tr
                   key={entry.id}
-                  className="border-b border-border-muted last:border-b-0 hover:bg-surface-hover"
+                  className="border-border-muted hover:bg-surface-hover border-b last:border-b-0"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {entry.image ? (
                         <img src={entry.image} alt={entry.name} className="h-9 w-9 rounded-full" />
                       ) : (
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-medium text-white">
+                        <div className="bg-accent flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium text-white">
                           {entry.name.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <span className="text-sm font-medium text-text-primary">{entry.name}</span>
+                      <span className="text-text-primary text-sm font-medium">{entry.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{entry.email}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">
+                  <td className="text-text-secondary px-4 py-3 text-sm">{entry.email}</td>
+                  <td className="text-text-secondary px-4 py-3 text-sm">
                     {new Date(entry.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
@@ -221,7 +229,7 @@ export function MembersPage() {
                         })
                       }
                       disabled={!canManageMembers}
-                      className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-sm capitalize text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+                      className="border-border-default bg-bg-tertiary text-text-primary focus:border-accent focus:ring-accent rounded-lg border px-3 py-2 text-sm capitalize outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {editableRoles.map((availableRole) => (
                         <option key={availableRole} value={availableRole}>
@@ -235,7 +243,7 @@ export function MembersPage() {
                       {isOwner && ownershipTransferRecipientRoles.has(entry.role) && (
                         <button
                           onClick={() => setTransferTargetId(entry.userId)}
-                          className="rounded-lg border border-accent/40 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
+                          className="border-accent/40 text-accent hover:bg-accent/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                         >
                           Transfer ownership
                         </button>
@@ -243,12 +251,14 @@ export function MembersPage() {
                       {can(currentUserRole, "users.remove") && (
                         <button
                           onClick={() => {
-                            const confirmed = window.confirm(`Remove ${entry.name} from this workspace?`)
+                            const confirmed = window.confirm(
+                              `Remove ${entry.name} from this workspace?`,
+                            )
                             if (confirmed) {
                               removeMember.mutate({ memberId: entry.id })
                             }
                           }}
-                          className="rounded-lg border border-error/40 px-3 py-2 text-xs font-medium text-error transition-colors hover:bg-error/10"
+                          className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                         >
                           Remove
                         </button>
@@ -261,7 +271,7 @@ export function MembersPage() {
           </table>
 
           {members.length === 0 && (
-            <div className="px-4 py-8 text-center text-sm text-text-tertiary">
+            <div className="text-text-tertiary px-4 py-8 text-center text-sm">
               No members found.
             </div>
           )}
@@ -269,27 +279,35 @@ export function MembersPage() {
       )}
 
       {activeTab === "invitations" && (
-        <div className="overflow-hidden rounded-2xl border border-border-default bg-surface-default">
+        <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border-muted bg-bg-tertiary">
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Invited by</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-tertiary">Expires</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-text-tertiary">Actions</th>
+              <tr className="border-border-muted bg-bg-tertiary border-b">
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Email
+                </th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Role</th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Invited by
+                </th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
+                  Expires
+                </th>
+                <th className="text-text-tertiary px-4 py-3 text-right text-xs font-medium">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {invitations.map((entry) => (
                 <tr
                   key={entry.id}
-                  className="border-b border-border-muted last:border-b-0 hover:bg-surface-hover"
+                  className="border-border-muted hover:bg-surface-hover border-b last:border-b-0"
                 >
-                  <td className="px-4 py-3 text-sm text-text-primary">{entry.email}</td>
-                  <td className="px-4 py-3 text-sm capitalize text-text-secondary">{entry.role}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{entry.invitedByName}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">
+                  <td className="text-text-primary px-4 py-3 text-sm">{entry.email}</td>
+                  <td className="text-text-secondary px-4 py-3 text-sm capitalize">{entry.role}</td>
+                  <td className="text-text-secondary px-4 py-3 text-sm">{entry.invitedByName}</td>
+                  <td className="text-text-secondary px-4 py-3 text-sm">
                     {new Date(entry.expiresAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -301,11 +319,14 @@ export function MembersPage() {
                           void navigator.clipboard.writeText(link)
                           setCopiedInviteId(entry.id)
                           window.setTimeout(
-                            () => setCopiedInviteId((current) => (current === entry.id ? null : current)),
+                            () =>
+                              setCopiedInviteId((current) =>
+                                current === entry.id ? null : current,
+                              ),
                             2000,
                           )
                         }}
-                        className="rounded-lg border border-border-default px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover"
+                        className="border-border-default text-text-secondary hover:bg-surface-hover rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                       >
                         {copiedInviteId === entry.id ? "Copied" : "Copy link"}
                       </button>
@@ -316,7 +337,7 @@ export function MembersPage() {
                             revokeInvitation.mutate({ invitationId: entry.id })
                           }
                         }}
-                        className="rounded-lg border border-error/40 px-3 py-2 text-xs font-medium text-error transition-colors hover:bg-error/10"
+                        className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                       >
                         Revoke
                       </button>
@@ -328,7 +349,7 @@ export function MembersPage() {
           </table>
 
           {invitations.length === 0 && (
-            <div className="px-4 py-8 text-center text-sm text-text-tertiary">
+            <div className="text-text-tertiary px-4 py-8 text-center text-sm">
               No pending invitations.
             </div>
           )}
@@ -337,16 +358,16 @@ export function MembersPage() {
 
       {transferTargetId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-2xl border border-border-default bg-surface-default p-6 shadow-lg">
-            <h3 className="text-lg font-semibold text-text-primary">Transfer Ownership</h3>
-            <p className="mt-2 text-sm text-text-secondary">
-              You are about to transfer ownership of this workspace. You will be downgraded to admin.
-              This action cannot be undone.
+          <div className="border-border-default bg-surface-default w-full max-w-md rounded-2xl border p-6 shadow-lg">
+            <h3 className="text-text-primary text-lg font-semibold">Transfer Ownership</h3>
+            <p className="text-text-secondary mt-2 text-sm">
+              You are about to transfer ownership of this workspace. You will be downgraded to
+              admin. This action cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setTransferTargetId(null)}
-                className="rounded-xl border border-border-default px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-hover"
+                className="border-border-default text-text-secondary hover:bg-surface-hover rounded-xl border px-4 py-2 text-sm font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -362,20 +383,23 @@ export function MembersPage() {
                   )
                 }}
                 disabled={transferOwnership.isPending}
-                className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="bg-accent rounded-xl px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {transferOwnership.isPending ? "Transferring..." : "Confirm Transfer"}
               </button>
             </div>
             {transferOwnership.isError && (
-              <p className="mt-3 text-sm text-error">{transferOwnership.error.message}</p>
+              <p className="text-error mt-3 text-sm">{transferOwnership.error.message}</p>
             )}
           </div>
         </div>
       )}
 
-      {(membersQuery.isError || updateMemberRole.isError || removeMember.isError || revokeInvitation.isError) && (
-        <div className="rounded-xl border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+      {(membersQuery.isError ||
+        updateMemberRole.isError ||
+        removeMember.isError ||
+        revokeInvitation.isError) && (
+        <div className="border-error/40 bg-error/10 text-error rounded-xl border px-4 py-3 text-sm">
           {membersQuery.error?.message ??
             updateMemberRole.error?.message ??
             removeMember.error?.message ??

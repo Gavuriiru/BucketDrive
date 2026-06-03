@@ -19,7 +19,7 @@ function readXmlValue(xml: string, tag: string): string | undefined {
 }
 
 async function main() {
-  const aws4fetch = await import(requireFromApi.resolve("aws4fetch")) as {
+  const aws4fetch = (await import(requireFromApi.resolve("aws4fetch"))) as {
     AwsClient: AwsClientConstructor
   }
   const vars = loadEnvFiles()
@@ -89,7 +89,9 @@ async function main() {
   const allowOrigin = corsResponse.headers.get("Access-Control-Allow-Origin")
   const allowMethods = corsResponse.headers.get("Access-Control-Allow-Methods")
 
-  console.log(`Presigned PUT CORS status: ${String(corsResponse.status)} ${corsResponse.statusText}`)
+  console.log(
+    `Presigned PUT CORS status: ${String(corsResponse.status)} ${corsResponse.statusText}`,
+  )
   console.log(`CORS allow-origin: ${allowOrigin ?? "missing"}`)
   console.log(`CORS allow-methods: ${allowMethods ?? "missing"}`)
 

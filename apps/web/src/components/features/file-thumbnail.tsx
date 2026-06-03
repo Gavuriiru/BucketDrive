@@ -71,7 +71,7 @@ export function FileThumbnail({
 
   if (isLoading) {
     return (
-      <div className={`animate-pulse rounded-md bg-surface-hover ${className ?? ""}`}>
+      <div className={`bg-surface-hover animate-pulse rounded-md ${className ?? ""}`}>
         {fallback}
       </div>
     )

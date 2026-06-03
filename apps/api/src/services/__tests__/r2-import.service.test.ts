@@ -3,7 +3,13 @@ import { drizzle } from "drizzle-orm/better-sqlite3"
 import { eq } from "drizzle-orm"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import * as schema from "@bucketdrive/shared/db/schema"
-import { bucket, fileObject, folder, workspace, workspaceSettings } from "@bucketdrive/shared/db/schema"
+import {
+  bucket,
+  fileObject,
+  folder,
+  workspace,
+  workspaceSettings,
+} from "@bucketdrive/shared/db/schema"
 import { R2ImportService, syncAllR2Workspaces } from "../r2-import.service"
 import type { StorageProvider } from "../storage"
 
@@ -105,7 +111,9 @@ CREATE TABLE audit_log (
 );
 `
 
-function createStorage(objects: Awaited<ReturnType<StorageProvider["list"]>>["objects"]): StorageProvider {
+function createStorage(
+  objects: Awaited<ReturnType<StorageProvider["list"]>>["objects"],
+): StorageProvider {
   const storage: StorageProvider = {
     list: vi.fn().mockImplementation((options?: { prefix?: string }) => {
       const filtered = options?.prefix
@@ -135,26 +143,32 @@ describe("R2ImportService sync", () => {
     db = drizzle(sqlite, { schema })
     dbMock.getDB.mockReturnValue(db)
 
-    db.insert(workspace).values({
-      id: "workspace-1",
-      name: "Workspace 1",
-      slug: "workspace-1",
-      ownerId: "owner-1",
-      isDeleted: false,
-    }).run()
+    db.insert(workspace)
+      .values({
+        id: "workspace-1",
+        name: "Workspace 1",
+        slug: "workspace-1",
+        ownerId: "owner-1",
+        isDeleted: false,
+      })
+      .run()
 
-    db.insert(bucket).values({
-      id: "bucket-1",
-      workspaceId: "workspace-1",
-      name: "test-bucket",
-      provider: "r2",
-      visibility: "private",
-    }).run()
+    db.insert(bucket)
+      .values({
+        id: "bucket-1",
+        workspaceId: "workspace-1",
+        name: "test-bucket",
+        provider: "r2",
+        visibility: "private",
+      })
+      .run()
 
-    db.insert(workspaceSettings).values({
-      id: "settings-1",
-      workspaceId: "workspace-1",
-    }).run()
+    db.insert(workspaceSettings)
+      .values({
+        id: "settings-1",
+        workspaceId: "workspace-1",
+      })
+      .run()
   })
 
   afterEach(() => {
@@ -163,9 +177,11 @@ describe("R2ImportService sync", () => {
   })
 
   it("imports new R2 objects", async () => {
-    const service = new R2ImportService(createStorage([
-      { key: "docs/AGENTS.md", size: 128, uploaded: new Date("2026-05-29T00:00:00.000Z") },
-    ]))
+    const service = new R2ImportService(
+      createStorage([
+        { key: "docs/AGENTS.md", size: 128, uploaded: new Date("2026-05-29T00:00:00.000Z") },
+      ]),
+    )
 
     const result = await service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" })
     const files = db.select().from(fileObject).all()
@@ -177,9 +193,9 @@ describe("R2ImportService sync", () => {
   })
 
   it("preserves R2 folder paths instead of flattening nested objects into root", async () => {
-    const service = new R2ImportService(createStorage([
-      { key: "bucketdrive/videos/demo.mp4", size: 128 },
-    ]))
+    const service = new R2ImportService(
+      createStorage([{ key: "bucketdrive/videos/demo.mp4", size: 128 }]),
+    )
 
     const result = await service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" })
     const folders = db.select().from(folder).all()
@@ -192,13 +208,15 @@ describe("R2ImportService sync", () => {
   })
 
   it("infers video mime types when R2 reports generic octet-stream", async () => {
-    const service = new R2ImportService(createStorage([
-      {
-        key: "videos/trailer.mov",
-        size: 128,
-        httpMetadata: { contentType: "application/octet-stream" },
-      },
-    ]))
+    const service = new R2ImportService(
+      createStorage([
+        {
+          key: "videos/trailer.mov",
+          size: 128,
+          httpMetadata: { contentType: "application/octet-stream" },
+        },
+      ]),
+    )
 
     const result = await service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" })
     const [file] = db.select().from(fileObject).all()
@@ -208,21 +226,25 @@ describe("R2ImportService sync", () => {
   })
 
   it("updates existing metadata without duplicating files", async () => {
-    db.insert(fileObject).values({
-      id: "file-1",
-      workspaceId: "workspace-1",
-      bucketId: "bucket-1",
-      ownerId: "user-1",
-      storageKey: "report.txt",
-      originalName: "report.txt",
-      mimeType: "text/plain",
-      extension: ".txt",
-      sizeBytes: 10,
-    }).run()
+    db.insert(fileObject)
+      .values({
+        id: "file-1",
+        workspaceId: "workspace-1",
+        bucketId: "bucket-1",
+        ownerId: "user-1",
+        storageKey: "report.txt",
+        originalName: "report.txt",
+        mimeType: "text/plain",
+        extension: ".txt",
+        sizeBytes: 10,
+      })
+      .run()
 
-    const service = new R2ImportService(createStorage([
-      { key: "report.txt", size: 20, httpMetadata: { contentType: "text/markdown" } },
-    ]))
+    const service = new R2ImportService(
+      createStorage([
+        { key: "report.txt", size: 20, httpMetadata: { contentType: "text/markdown" } },
+      ]),
+    )
 
     const result = await service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" })
     const files = db.select().from(fileObject).all()
@@ -234,17 +256,19 @@ describe("R2ImportService sync", () => {
   })
 
   it("moves active database files missing from R2 to trash", async () => {
-    db.insert(fileObject).values({
-      id: "file-1",
-      workspaceId: "workspace-1",
-      bucketId: "bucket-1",
-      ownerId: "user-1",
-      storageKey: "missing.txt",
-      originalName: "missing.txt",
-      mimeType: "text/plain",
-      extension: ".txt",
-      sizeBytes: 10,
-    }).run()
+    db.insert(fileObject)
+      .values({
+        id: "file-1",
+        workspaceId: "workspace-1",
+        bucketId: "bucket-1",
+        ownerId: "user-1",
+        storageKey: "missing.txt",
+        originalName: "missing.txt",
+        mimeType: "text/plain",
+        extension: ".txt",
+        sizeBytes: 10,
+      })
+      .run()
 
     const service = new R2ImportService(createStorage([]))
 
@@ -257,23 +281,27 @@ describe("R2ImportService sync", () => {
   })
 
   it("does not restore files already in trash", async () => {
-    db.insert(fileObject).values({
-      id: "file-1",
-      workspaceId: "workspace-1",
-      bucketId: "bucket-1",
-      ownerId: "user-1",
-      storageKey: "trashed.txt",
-      originalName: "trashed.txt",
-      mimeType: "text/plain",
-      extension: ".txt",
-      sizeBytes: 10,
-      isDeleted: true,
-      deletedAt: "2026-05-29T00:00:00.000Z",
-    }).run()
+    db.insert(fileObject)
+      .values({
+        id: "file-1",
+        workspaceId: "workspace-1",
+        bucketId: "bucket-1",
+        ownerId: "user-1",
+        storageKey: "trashed.txt",
+        originalName: "trashed.txt",
+        mimeType: "text/plain",
+        extension: ".txt",
+        sizeBytes: 10,
+        isDeleted: true,
+        deletedAt: "2026-05-29T00:00:00.000Z",
+      })
+      .run()
 
-    const service = new R2ImportService(createStorage([
-      { key: "trashed.txt", size: 10, httpMetadata: { contentType: "text/plain" } },
-    ]))
+    const service = new R2ImportService(
+      createStorage([
+        { key: "trashed.txt", size: 10, httpMetadata: { contentType: "text/plain" } },
+      ]),
+    )
 
     const result = await service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" })
     const [file] = db.select().from(fileObject).all()
@@ -283,25 +311,27 @@ describe("R2ImportService sync", () => {
   })
 
   it("records sync failure without changing existing files", async () => {
-    db.insert(fileObject).values({
-      id: "file-1",
-      workspaceId: "workspace-1",
-      bucketId: "bucket-1",
-      ownerId: "user-1",
-      storageKey: "safe.txt",
-      originalName: "safe.txt",
-      mimeType: "text/plain",
-      extension: ".txt",
-      sizeBytes: 10,
-    }).run()
+    db.insert(fileObject)
+      .values({
+        id: "file-1",
+        workspaceId: "workspace-1",
+        bucketId: "bucket-1",
+        ownerId: "user-1",
+        storageKey: "safe.txt",
+        originalName: "safe.txt",
+        mimeType: "text/plain",
+        extension: ".txt",
+        sizeBytes: 10,
+      })
+      .run()
 
     const storage = createStorage([])
     storage.list = vi.fn().mockRejectedValueOnce(new Error("R2 unavailable"))
     const service = new R2ImportService(storage)
 
-    await expect(service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" })).rejects.toThrow(
-      "R2 unavailable",
-    )
+    await expect(
+      service.syncWorkspace({ workspaceId: "workspace-1", userId: "user-1" }),
+    ).rejects.toThrow("R2 unavailable")
 
     const [file] = db.select().from(fileObject).all()
     const [settings] = db.select().from(workspaceSettings).all()
@@ -312,24 +342,30 @@ describe("R2ImportService sync", () => {
   })
 
   it("syncs all active R2 workspaces with workspace-owned prefixes", async () => {
-    db.insert(workspace).values({
-      id: "workspace-2",
-      name: "Workspace 2",
-      slug: "workspace-2",
-      ownerId: "owner-2",
-      isDeleted: false,
-    }).run()
-    db.insert(bucket).values({
-      id: "bucket-2",
-      workspaceId: "workspace-2",
-      name: "test-bucket-2",
-      provider: "r2",
-      visibility: "private",
-    }).run()
-    db.insert(workspaceSettings).values({
-      id: "settings-2",
-      workspaceId: "workspace-2",
-    }).run()
+    db.insert(workspace)
+      .values({
+        id: "workspace-2",
+        name: "Workspace 2",
+        slug: "workspace-2",
+        ownerId: "owner-2",
+        isDeleted: false,
+      })
+      .run()
+    db.insert(bucket)
+      .values({
+        id: "bucket-2",
+        workspaceId: "workspace-2",
+        name: "test-bucket-2",
+        provider: "r2",
+        visibility: "private",
+      })
+      .run()
+    db.insert(workspaceSettings)
+      .values({
+        id: "settings-2",
+        workspaceId: "workspace-2",
+      })
+      .run()
 
     const storage = createStorage([
       { key: "workspace/workspace-1/files/upload-1/report.txt", size: 128 },
@@ -349,24 +385,30 @@ describe("R2ImportService sync", () => {
   })
 
   it("skips deleted workspaces during global sync", async () => {
-    db.insert(workspace).values({
-      id: "workspace-2",
-      name: "Deleted Workspace",
-      slug: "deleted-workspace",
-      ownerId: "owner-2",
-      isDeleted: true,
-    }).run()
-    db.insert(bucket).values({
-      id: "bucket-2",
-      workspaceId: "workspace-2",
-      name: "deleted-bucket",
-      provider: "r2",
-      visibility: "private",
-    }).run()
-    db.insert(workspaceSettings).values({
-      id: "settings-2",
-      workspaceId: "workspace-2",
-    }).run()
+    db.insert(workspace)
+      .values({
+        id: "workspace-2",
+        name: "Deleted Workspace",
+        slug: "deleted-workspace",
+        ownerId: "owner-2",
+        isDeleted: true,
+      })
+      .run()
+    db.insert(bucket)
+      .values({
+        id: "bucket-2",
+        workspaceId: "workspace-2",
+        name: "deleted-bucket",
+        provider: "r2",
+        visibility: "private",
+      })
+      .run()
+    db.insert(workspaceSettings)
+      .values({
+        id: "settings-2",
+        workspaceId: "workspace-2",
+      })
+      .run()
 
     const result = await syncAllR2Workspaces({
       storage: createStorage([
@@ -381,24 +423,30 @@ describe("R2ImportService sync", () => {
   })
 
   it("continues global sync when one workspace fails", async () => {
-    db.insert(workspace).values({
-      id: "workspace-2",
-      name: "Workspace 2",
-      slug: "workspace-2",
-      ownerId: "owner-2",
-      isDeleted: false,
-    }).run()
-    db.insert(bucket).values({
-      id: "bucket-2",
-      workspaceId: "workspace-2",
-      name: "test-bucket-2",
-      provider: "r2",
-      visibility: "private",
-    }).run()
-    db.insert(workspaceSettings).values({
-      id: "settings-2",
-      workspaceId: "workspace-2",
-    }).run()
+    db.insert(workspace)
+      .values({
+        id: "workspace-2",
+        name: "Workspace 2",
+        slug: "workspace-2",
+        ownerId: "owner-2",
+        isDeleted: false,
+      })
+      .run()
+    db.insert(bucket)
+      .values({
+        id: "bucket-2",
+        workspaceId: "workspace-2",
+        name: "test-bucket-2",
+        provider: "r2",
+        visibility: "private",
+      })
+      .run()
+    db.insert(workspaceSettings)
+      .values({
+        id: "settings-2",
+        workspaceId: "workspace-2",
+      })
+      .run()
 
     const storage = createStorage([
       { key: "workspace/workspace-2/files/upload-2/photo.jpg", size: 256 },

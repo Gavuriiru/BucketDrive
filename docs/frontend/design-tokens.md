@@ -169,20 +169,20 @@ extend: {
 
 ## Usage Rules
 
-| Component | Radius |
-|---|---|
-| Button | `radius-xl` (18px) |
-| Input / Select | `radius-xl` (18px) |
-| Card | `radius-2xl` (24px) |
-| Modal / Dialog | `radius-2xl` (24px) |
-| Dropdown / Popover | `radius-xl` (18px) |
-| Tabs trigger | `radius-xl` (18px) |
-| Badge / Tag | `radius-full` (9999px) |
-| Toast | `radius-xl` (18px) |
-| Sidebar items | `radius-md` (10px) |
-| Explorer items (grid) | `radius-lg` (14px) |
-| Explorer items (list) | `radius-md` (10px) |
-| Avatar | `radius-full` (9999px) |
+| Component             | Radius                 |
+| --------------------- | ---------------------- |
+| Button                | `radius-xl` (18px)     |
+| Input / Select        | `radius-xl` (18px)     |
+| Card                  | `radius-2xl` (24px)    |
+| Modal / Dialog        | `radius-2xl` (24px)    |
+| Dropdown / Popover    | `radius-xl` (18px)     |
+| Tabs trigger          | `radius-xl` (18px)     |
+| Badge / Tag           | `radius-full` (9999px) |
+| Toast                 | `radius-xl` (18px)     |
+| Sidebar items         | `radius-md` (10px)     |
+| Explorer items (grid) | `radius-lg` (14px)     |
+| Explorer items (list) | `radius-md` (10px)     |
+| Avatar                | `radius-full` (9999px) |
 
 ---
 
@@ -196,20 +196,16 @@ extend: {
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
 
   /* Card / Dropdown */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06),
-               0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
 
   /* Modal / Dialog */
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08),
-               0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
 
   /* Popover / Elevated card */
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1),
-               0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.04);
 
   /* Dragging */
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.16),
-               0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06);
 
   /* Focus ring */
   --shadow-focus: 0 0 0 3px rgba(0, 104, 214, 0.4);
@@ -217,14 +213,10 @@ extend: {
 
 .dark {
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3),
-               0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4),
-               0 0 0 1px rgba(255, 255, 255, 0.06);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5),
-               0 0 0 1px rgba(255, 255, 255, 0.06);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6),
-               0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
   --shadow-focus: 0 0 0 3px rgba(80, 150, 233, 0.4);
 }
 ```
@@ -237,10 +229,9 @@ extend: {
 
 ```css
 :root {
-  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
-               "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code",
-               Menlo, Monaco, Consolas, monospace;
+  --font-sans:
+    "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, Monaco, Consolas, monospace;
 }
 ```
 
@@ -248,14 +239,22 @@ extend: {
 
 ```css
 :root {
-  --text-xs:   0.75rem;   /* 12px */  line-height: 1rem;      /* 16px */
-  --text-sm:   0.8125rem; /* 13px */  line-height: 1.25rem;   /* 20px */
-  --text-base: 0.875rem;  /* 14px */  line-height: 1.375rem;  /* 22px */
-  --text-md:   0.9375rem; /* 15px */  line-height: 1.5rem;    /* 24px */
-  --text-lg:   1.0625rem; /* 17px */  line-height: 1.625rem;  /* 26px */
-  --text-xl:   1.25rem;   /* 20px */  line-height: 1.75rem;   /* 28px */
-  --text-2xl:  1.5rem;    /* 24px */  line-height: 2rem;      /* 32px */
-  --text-3xl:  1.875rem;  /* 30px */  line-height: 2.25rem;   /* 36px */
+  --text-xs: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  --text-sm: 0.8125rem; /* 13px */
+  line-height: 1.25rem; /* 20px */
+  --text-base: 0.875rem; /* 14px */
+  line-height: 1.375rem; /* 22px */
+  --text-md: 0.9375rem; /* 15px */
+  line-height: 1.5rem; /* 24px */
+  --text-lg: 1.0625rem; /* 17px */
+  line-height: 1.625rem; /* 26px */
+  --text-xl: 1.25rem; /* 20px */
+  line-height: 1.75rem; /* 28px */
+  --text-2xl: 1.5rem; /* 24px */
+  line-height: 2rem; /* 32px */
+  --text-3xl: 1.875rem; /* 30px */
+  line-height: 2.25rem; /* 36px */
 }
 
 /* Use px values because the design uses 8px baseline */
@@ -276,22 +275,22 @@ extend: {
 
 ## Usage Rules
 
-| Context | Size | Weight | Color |
-|---|---|---|---|
-| Page title (sidebar header) | `text-lg` (17px) | `semibold` | `text-primary` |
-| Section heading | `text-xl` (20px) | `semibold` | `text-primary` |
-| Body text | `text-base` (14px) | `regular` | `text-primary` |
-| Secondary text (metadata) | `text-sm` (13px) | `regular` | `text-secondary` |
-| Tertiary text (timestamps, help) | `text-xs` (12px) | `regular` | `text-tertiary` |
-| File names (grid) | `text-base` (14px) | `medium` | `text-primary` |
-| File names (list) | `text-base` (14px) | `medium` | `text-primary` |
-| Button labels | `text-base` (14px) | `medium` | `text-primary` or `text-inverse` |
-| Modal title | `text-xl` (20px) | `semibold` | `text-primary` |
-| Badge / Tag | `text-xs` (12px) | `medium` | `text-primary` |
-| Sidebar items | `text-base` (14px) | `medium` | `text-primary` |
-| Breadcrumb | `text-sm` (13px) | `regular` | `text-secondary` |
-| Command palette input | `text-lg` (17px) | `regular` | `text-primary` |
-| Code / monospace | `text-sm` (13px) | `regular` | `text-primary` |
+| Context                          | Size               | Weight     | Color                            |
+| -------------------------------- | ------------------ | ---------- | -------------------------------- |
+| Page title (sidebar header)      | `text-lg` (17px)   | `semibold` | `text-primary`                   |
+| Section heading                  | `text-xl` (20px)   | `semibold` | `text-primary`                   |
+| Body text                        | `text-base` (14px) | `regular`  | `text-primary`                   |
+| Secondary text (metadata)        | `text-sm` (13px)   | `regular`  | `text-secondary`                 |
+| Tertiary text (timestamps, help) | `text-xs` (12px)   | `regular`  | `text-tertiary`                  |
+| File names (grid)                | `text-base` (14px) | `medium`   | `text-primary`                   |
+| File names (list)                | `text-base` (14px) | `medium`   | `text-primary`                   |
+| Button labels                    | `text-base` (14px) | `medium`   | `text-primary` or `text-inverse` |
+| Modal title                      | `text-xl` (20px)   | `semibold` | `text-primary`                   |
+| Badge / Tag                      | `text-xs` (12px)   | `medium`   | `text-primary`                   |
+| Sidebar items                    | `text-base` (14px) | `medium`   | `text-primary`                   |
+| Breadcrumb                       | `text-sm` (13px)   | `regular`  | `text-secondary`                 |
+| Command palette input            | `text-lg` (17px)   | `regular`  | `text-primary`                   |
+| Code / monospace                 | `text-sm` (13px)   | `regular`  | `text-primary`                   |
 
 ---
 
@@ -315,13 +314,13 @@ extend: {
 
 ## Usage Rules
 
-| Context | Size |
-|---|---|
-| Inline with text (buttons, links) | `icon-sm` (16px) |
+| Context                                | Size             |
+| -------------------------------------- | ---------------- |
+| Inline with text (buttons, links)      | `icon-sm` (16px) |
 | Standalone (sidebar items, menu items) | `icon-md` (20px) |
-| Large (empty states, hero sections) | `icon-lg` (24px) |
-| Extra large (file type previews) | `icon-xl` (32px) |
-| Within badges/tags | `icon-xs` (12px) |
+| Large (empty states, hero sections)    | `icon-lg` (24px) |
+| Extra large (file type previews)       | `icon-xl` (32px) |
+| Within badges/tags                     | `icon-xs` (12px) |
 
 ---
 
@@ -343,26 +342,26 @@ extend: {
 
 ```css
 :root {
-  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);  /* Material standard */
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);         /* Enter */
-  --ease-in: cubic-bezier(0.4, 0, 1, 1);          /* Exit */
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);    /* Both */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1); /* Material standard */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1); /* Enter */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* Exit */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1); /* Both */
 }
 ```
 
 ## Usage
 
-| Animation | Duration | Easing |
-|---|---|---|
-| Modal open | `duration-normal` (200ms) | `ease-out` |
-| Modal close | `duration-fast` (150ms) | `ease-in` |
-| Dropdown open | `duration-fast` (150ms) | `ease-out` |
+| Animation          | Duration                   | Easing         |
+| ------------------ | -------------------------- | -------------- |
+| Modal open         | `duration-normal` (200ms)  | `ease-out`     |
+| Modal close        | `duration-fast` (150ms)    | `ease-in`      |
+| Dropdown open      | `duration-fast` (150ms)    | `ease-out`     |
 | Hover color change | `duration-instant` (100ms) | `ease-default` |
-| Toast enter | `duration-normal` (200ms) | `ease-out` |
-| Toast exit | `duration-fast` (150ms) | `ease-in` |
-| Drag feedback | `duration-instant` (100ms) | `ease-out` |
-| Page transition | `duration-fast` (150ms) | `ease-out` |
-| Skeleton pulse | 1.5s infinite | `ease-in-out` |
+| Toast enter        | `duration-normal` (200ms)  | `ease-out`     |
+| Toast exit         | `duration-fast` (150ms)    | `ease-in`      |
+| Drag feedback      | `duration-instant` (100ms) | `ease-out`     |
+| Page transition    | `duration-fast` (150ms)    | `ease-out`     |
+| Skeleton pulse     | 1.5s infinite              | `ease-in-out`  |
 
 ---
 
@@ -379,11 +378,11 @@ extend: {
 }
 ```
 
-| Breakpoint | Target |
-|---|---|
-| `< 768px` | Mobile (sidebar hidden, full-width explorer) |
+| Breakpoint       | Target                                              |
+| ---------------- | --------------------------------------------------- |
+| `< 768px`        | Mobile (sidebar hidden, full-width explorer)        |
 | `768px - 1024px` | Tablet (collapsible sidebar, adjusted grid columns) |
-| `> 1024px` | Desktop (full layout, sidebar + panel + explorer) |
+| `> 1024px`       | Desktop (full layout, sidebar + panel + explorer)   |
 
 ---
 

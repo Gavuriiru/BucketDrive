@@ -12,7 +12,7 @@ import {
   useToggleFavorite,
   useBatchUpload,
   type BreadcrumbItem,
- } from "@/lib/api"
+} from "@/lib/api"
 import { useUndoableMutations } from "@/hooks/use-undoable-mutations"
 import { getTagColorClasses } from "@/lib/tag-colors"
 import { TagPickerDialog } from "@/components/features/tag-picker-dialog"
@@ -28,11 +28,14 @@ import { Breadcrumbs } from "@/components/features/breadcrumbs"
 import { ShareModal } from "@/components/features/share-modal"
 import { FilePreview } from "@/components/features/file-preview"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
-import { FILE_COMMAND_EVENT, type FileCommandAction } from "@/components/shared/commands/file-operations"
+import {
+  FILE_COMMAND_EVENT,
+  type FileCommandAction,
+} from "@/components/shared/commands/file-operations"
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import { useNavigate, useRouterState } from "@tanstack/react-router"
-import { can } from "@bucketdrive/shared"
+import type { WorkspaceRole } from "@bucketdrive/shared"
 
 const typeFilterOptions = [
   { value: "all", label: "All files" },
@@ -42,6 +45,22 @@ const typeFilterOptions = [
   { value: "audio", label: "Audio" },
   { value: "archives", label: "Archives" },
 ] as const
+
+const workspaceRoles: readonly WorkspaceRole[] = [
+  "owner",
+  "admin",
+  "manager",
+  "editor",
+  "viewer",
+  "guest",
+]
+
+function normalizeWorkspaceRole(role: unknown): WorkspaceRole {
+  const normalized = typeof role === "string" ? role.split(",")[0]?.trim().toLowerCase() : "viewer"
+  return workspaceRoles.includes(normalized as WorkspaceRole)
+    ? (normalized as WorkspaceRole)
+    : "viewer"
+}
 
 export function FilesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -111,18 +130,26 @@ export function FilesPage() {
   const workspace = workspacesData?.data?.[0] ?? null
   const workspaceId = workspace?.id ?? null
   const workspaceName = workspace?.name ?? "Workspace"
-  const canUpload = workspace ? can(workspace.role, "files.upload") : false
-  const canCreateFolder = workspace ? can(workspace.role, "folders.create") : false
-  const canRenameFile = workspace ? can(workspace.role, "files.rename") : false
-  const canRenameFolder = workspace ? can(workspace.role, "folders.rename") : false
-  const canMoveFile = workspace ? can(workspace.role, "files.move") : false
-  const canMoveFolder = workspace ? can(workspace.role, "folders.move") : false
-  const canDeleteFile = workspace ? can(workspace.role, "files.delete") : false
-  const canDeleteFolder = workspace ? can(workspace.role, "folders.delete") : false
-  const canShareFile = workspace ? can(workspace.role, "files.share") : false
-  const canShareFolder = workspace ? can(workspace.role, "folders.share") : false
-  const canFavorite = workspace ? can(workspace.role, "files.favorite") : false
-  const canTag = workspace ? can(workspace.role, "files.tag") : false
+  const workspaceRole = normalizeWorkspaceRole(workspace?.role)
+  const canEditContent =
+    workspaceRole === "owner" ||
+    workspaceRole === "admin" ||
+    workspaceRole === "manager" ||
+    workspaceRole === "editor"
+  const canManageContent =
+    workspaceRole === "owner" || workspaceRole === "admin" || workspaceRole === "manager"
+  const canUpload = Boolean(workspace) && canEditContent
+  const canCreateFolder = Boolean(workspace) && canEditContent
+  const canRenameFile = Boolean(workspace) && canEditContent
+  const canRenameFolder = Boolean(workspace) && canEditContent
+  const canMoveFile = Boolean(workspace) && canEditContent
+  const canMoveFolder = Boolean(workspace) && canEditContent
+  const canDeleteFile = Boolean(workspace) && canManageContent
+  const canDeleteFolder = Boolean(workspace) && canManageContent
+  const canShareFile = Boolean(workspace) && canEditContent
+  const canShareFolder = Boolean(workspace) && canEditContent
+  const canFavorite = Boolean(workspace) && canEditContent
+  const canTag = Boolean(workspace) && canEditContent
 
   const { data: filesData, isLoading: filesLoading } = useFiles(workspaceId, {
     folderId: currentFolderId,
@@ -136,19 +163,10 @@ export function FilesPage() {
   const { data: searchData, isLoading: searchLoading } = useSearchFiles(workspaceId, {
     q: debouncedQuery || undefined,
     type: dashboardSearch.type,
-    tags:
-      dashboardSearch.selectedTagIds.length > 0
-        ? dashboardSearch.selectedTagIds
-        : undefined,
+    tags: dashboardSearch.selectedTagIds.length > 0 ? dashboardSearch.selectedTagIds : undefined,
     favorite: dashboardSearch.favoriteOnly || undefined,
-    sort:
-      !debouncedQuery && dashboardSearch.sort === "relevance"
-        ? sort
-        : dashboardSearch.sort,
-    order:
-      !debouncedQuery && dashboardSearch.sort === "relevance"
-        ? order
-        : dashboardSearch.order,
+    sort: !debouncedQuery && dashboardSearch.sort === "relevance" ? sort : dashboardSearch.sort,
+    order: !debouncedQuery && dashboardSearch.sort === "relevance" ? order : dashboardSearch.order,
     page: 1,
     limit: 100,
     enabled: isSearchActive,
@@ -162,8 +180,8 @@ export function FilesPage() {
   const { data: breadcrumbsData } = useBreadcrumbs(workspaceId, currentFolderId)
   const { data: tagsData } = useTags(workspaceId)
 
-  const files = isSearchActive ? searchData?.data ?? [] : filesData?.data ?? []
-  const folders = isSearchActive ? [] : foldersData?.data ?? []
+  const files = isSearchActive ? (searchData?.data ?? []) : (filesData?.data ?? [])
+  const folders = isSearchActive ? [] : (foldersData?.data ?? [])
   const isLoading = isSearchActive ? searchLoading : filesLoading || foldersLoading
   const allTags = tagsData?.data ?? []
 
@@ -252,10 +270,9 @@ export function FilesPage() {
       if (!workspaceId) return
       const fetchUrl = async () => {
         setDownloadError(null)
-        const res = await fetch(
-          `/api/workspaces/${workspaceId}/files/${fileId}/download`,
-          { credentials: "include" },
-        )
+        const res = await fetch(`/api/workspaces/${workspaceId}/files/${fileId}/download`, {
+          credentials: "include",
+        })
         if (!res.ok) {
           const data = (await res.json().catch(() => null)) as { message?: string } | null
           throw new Error(data?.message ?? "Download failed")
@@ -506,7 +523,8 @@ export function FilesPage() {
 
   const handleFilesDrop = useCallback(
     async (entries: Array<{ file: File; relativePath: string }>, emptyFolders: string[]) => {
-      const hasStructure = entries.some((e) => e.relativePath.includes("/")) || emptyFolders.length > 0
+      const hasStructure =
+        entries.some((e) => e.relativePath.includes("/")) || emptyFolders.length > 0
       if (!hasStructure) {
         addFiles(
           entries.map((e) => ({
@@ -604,7 +622,7 @@ export function FilesPage() {
     totalSelected > 0 &&
     (selectedFileIds.length === 0 || canDeleteFile) &&
     (selectedFolderIds.length === 0 || canDeleteFolder)
-  const totalFiles = isSearchActive ? searchData?.meta.total ?? 0 : filesData?.meta?.total ?? 0
+  const totalFiles = isSearchActive ? (searchData?.meta.total ?? 0) : (filesData?.meta?.total ?? 0)
   const selectedTagNames = allTags.filter((tag) => dashboardSearch.selectedTagIds.includes(tag.id))
   const fileForTagDialog = files.find((file) => file.id === tagDialogFileId) ?? null
   const sensors = useSensors(
@@ -618,7 +636,7 @@ export function FilesPage() {
   if (wsLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -627,8 +645,8 @@ export function FilesPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="text-center">
-          <p className="text-sm font-medium text-text-primary">No workspace found</p>
-          <p className="mt-1 text-xs text-text-tertiary">
+          <p className="text-text-primary text-sm font-medium">No workspace found</p>
+          <p className="text-text-tertiary mt-1 text-xs">
             Create a workspace to start uploading files.
           </p>
         </div>
@@ -638,7 +656,11 @@ export function FilesPage() {
 
   return (
     <>
-      <div className="flex h-full flex-col p-6">
+      <div
+        className="flex h-full flex-col p-6"
+        data-testid="files-page"
+        data-workspace-role={workspaceRole}
+      >
         {!isSearchActive && (
           <div className="mb-4">
             <Breadcrumbs
@@ -651,10 +673,10 @@ export function FilesPage() {
 
         <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-text-primary">
+            <h1 className="text-text-primary text-lg font-semibold">
               {isSearchActive ? "Search results" : "Files"}
             </h1>
-            <p className="text-xs text-text-tertiary">
+            <p className="text-text-tertiary text-xs">
               {isSearchActive
                 ? `${totalFiles} results across ${workspaceName}`
                 : `${totalFiles} files${foldersData?.data?.length ? ` · ${foldersData.data.length} folders` : ""}`}
@@ -662,7 +684,7 @@ export function FilesPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-lg border border-border-muted bg-surface-default p-0.5">
+            <div className="border-border-muted bg-surface-default flex rounded-lg border p-0.5">
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
@@ -692,7 +714,7 @@ export function FilesPage() {
               <button
                 type="button"
                 onClick={handleCreateFolder}
-                className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                className="border-border-muted bg-surface-default text-text-primary hover:bg-surface-hover inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
               >
                 <FolderPlus className="h-4 w-4" />
                 New Folder
@@ -702,7 +724,7 @@ export function FilesPage() {
               <button
                 type="button"
                 onClick={handleFileSelect}
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+                className="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
               >
                 <Upload className="h-4 w-4" />
                 Upload
@@ -719,12 +741,12 @@ export function FilesPage() {
         </div>
 
         {downloadError && (
-          <div className="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+          <div className="border-error/40 bg-error/10 text-error mb-4 rounded-lg border px-4 py-3 text-sm">
             {downloadError}
           </div>
         )}
 
-        <div className="mb-4 space-y-3 rounded-2xl border border-border-default bg-surface-default p-4">
+        <div className="border-border-default bg-surface-default mb-4 space-y-3 rounded-2xl border p-4">
           <div className="flex flex-wrap gap-2">
             {typeFilterOptions.map((option) => (
               <button
@@ -750,7 +772,9 @@ export function FilesPage() {
                   : "bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
               }`}
             >
-              <Star className={`h-3.5 w-3.5 ${dashboardSearch.favoriteOnly ? "fill-warning" : ""}`} />
+              <Star
+                className={`h-3.5 w-3.5 ${dashboardSearch.favoriteOnly ? "fill-warning" : ""}`}
+              />
               Favorites
             </button>
 
@@ -761,7 +785,7 @@ export function FilesPage() {
                   onChange={(event) =>
                     setDashboardSort(event.target.value as typeof dashboardSearch.sort)
                   }
-                  className="rounded-full border border-border-default bg-surface-secondary px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-accent"
+                  className="border-border-default bg-surface-secondary text-text-primary focus:border-accent rounded-full border px-3 py-1.5 text-xs font-medium outline-none"
                 >
                   {debouncedQuery && <option value="relevance">Relevance</option>}
                   <option value="name">Name</option>
@@ -774,14 +798,14 @@ export function FilesPage() {
                   onClick={() =>
                     setDashboardOrder(dashboardSearch.order === "asc" ? "desc" : "asc")
                   }
-                  className="rounded-full bg-surface-secondary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                  className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
                 >
                   {dashboardSearch.order === "asc" ? "Ascending" : "Descending"}
                 </button>
                 <button
                   type="button"
                   onClick={clearDashboardSearch}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                  className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
                 >
                   <X className="h-3.5 w-3.5" />
                   Clear search
@@ -792,7 +816,7 @@ export function FilesPage() {
 
           {allTags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+              <span className="text-text-tertiary text-xs font-medium tracking-wide uppercase">
                 Tags
               </span>
               {allTags.map((tag) => {
@@ -826,18 +850,19 @@ export function FilesPage() {
           {isSearchActive && (
             <div className="flex flex-wrap gap-2">
               {debouncedQuery && (
-                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                <span className="bg-accent/10 text-accent rounded-full px-3 py-1 text-xs font-medium">
                   Query: {debouncedQuery}
                 </span>
               )}
               {dashboardSearch.favoriteOnly && (
-                <span className="rounded-full bg-warning/10 px-3 py-1 text-xs font-medium text-warning">
+                <span className="bg-warning/10 text-warning rounded-full px-3 py-1 text-xs font-medium">
                   Favorites only
                 </span>
               )}
               {dashboardSearch.type !== "all" && (
-                <span className="rounded-full bg-surface-secondary px-3 py-1 text-xs font-medium text-text-primary">
-                  Type: {typeFilterOptions.find((option) => option.value === dashboardSearch.type)?.label}
+                <span className="bg-surface-secondary text-text-primary rounded-full px-3 py-1 text-xs font-medium">
+                  Type:{" "}
+                  {typeFilterOptions.find((option) => option.value === dashboardSearch.type)?.label}
                 </span>
               )}
               {selectedTagNames.map((tag) => (
@@ -856,8 +881,8 @@ export function FilesPage() {
         </div>
 
         {totalSelected > 1 && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg border border-accent bg-accent/10 px-4 py-2">
-            <span className="text-sm font-medium text-text-primary">
+          <div className="border-accent bg-accent/10 mb-3 flex items-center gap-2 rounded-lg border px-4 py-2">
+            <span className="text-text-primary text-sm font-medium">
               {totalSelected} items selected
             </span>
             <div className="flex-1" />
@@ -865,7 +890,7 @@ export function FilesPage() {
               <button
                 type="button"
                 onClick={handleDeleteSelected}
-                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-error transition-colors hover:bg-error/10"
+                className="text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Delete selected
@@ -874,7 +899,7 @@ export function FilesPage() {
             <button
               type="button"
               onClick={() => clearSelection()}
-              className="rounded-md px-3 py-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
+              className="text-text-tertiary hover:text-text-primary rounded-md px-3 py-1.5 text-sm transition-colors"
             >
               Cancel
             </button>
@@ -903,7 +928,11 @@ export function FilesPage() {
                 onContextDelete={
                   canDeleteFile || canDeleteFolder
                     ? (id, type) => {
-                        if ((type === "folder" && !canDeleteFolder) || (type === "file" && !canDeleteFile)) return
+                        if (
+                          (type === "folder" && !canDeleteFolder) ||
+                          (type === "file" && !canDeleteFile)
+                        )
+                          return
                         if (type === "folder") {
                           void undoable.deleteFolder(id)
                         } else {
@@ -927,12 +956,8 @@ export function FilesPage() {
                       }
                     : undefined
                 }
-                onContextMove={
-                  canMoveFile || canMoveFolder ? handleContextMove : undefined
-                }
-                onContextShare={
-                  canShareFile || canShareFolder ? handleContextShare : undefined
-                }
+                onContextMove={canMoveFile || canMoveFolder ? handleContextMove : undefined}
+                onContextShare={canShareFile || canShareFolder ? handleContextShare : undefined}
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
               />
             ) : (
@@ -954,7 +979,11 @@ export function FilesPage() {
                 onContextDelete={
                   canDeleteFile || canDeleteFolder
                     ? (id, type) => {
-                        if ((type === "folder" && !canDeleteFolder) || (type === "file" && !canDeleteFile)) return
+                        if (
+                          (type === "folder" && !canDeleteFolder) ||
+                          (type === "file" && !canDeleteFile)
+                        )
+                          return
                         if (type === "folder") {
                           void undoable.deleteFolder(id)
                         } else {
@@ -978,24 +1007,22 @@ export function FilesPage() {
                       }
                     : undefined
                 }
-                onContextMove={
-                  canMoveFile || canMoveFolder ? handleContextMove : undefined
-                }
-                onContextShare={
-                  canShareFile || canShareFolder ? handleContextShare : undefined
-                }
+                onContextMove={canMoveFile || canMoveFolder ? handleContextMove : undefined}
+                onContextShare={canShareFile || canShareFolder ? handleContextShare : undefined}
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
               />
             )}
             <DragOverlay dropAnimation={null}>
               {activeDragItem ? (
-                <div className="flex items-center gap-2 rounded-lg border border-accent bg-surface-default px-3 py-2 shadow-lg">
+                <div className="border-accent bg-surface-default flex items-center gap-2 rounded-lg border px-3 py-2 shadow-lg">
                   {activeDragItem.type === "folder" ? (
-                    <FolderPlus className="h-4 w-4 text-text-tertiary" />
+                    <FolderPlus className="text-text-tertiary h-4 w-4" />
                   ) : (
-                    <Upload className="h-4 w-4 text-text-tertiary" />
+                    <Upload className="text-text-tertiary h-4 w-4" />
                   )}
-                  <span className="text-sm font-medium text-text-primary">{activeDragItem.name}</span>
+                  <span className="text-text-primary text-sm font-medium">
+                    {activeDragItem.name}
+                  </span>
                 </div>
               ) : null}
             </DragOverlay>
@@ -1004,24 +1031,25 @@ export function FilesPage() {
 
         {workspaceId && <UploadQueue workspaceId={workspaceId} />}
 
-        {previewFileId && (() => {
-          const previewFile = files.find((f) => f.id === previewFileId)
-          if (!previewFile || !workspaceId) return null
-          const fileIds = files.map((f) => f.id)
-          const currentIndex = fileIds.indexOf(previewFileId)
-          return (
-            <FilePreview
-              file={previewFile}
-              workspaceId={workspaceId}
-              hasNext={currentIndex >= 0 && currentIndex < fileIds.length - 1}
-              hasPrev={currentIndex > 0}
-              onNext={handlePreviewNext}
-              onPrev={handlePreviewPrev}
-              onClose={handleClosePreview}
-              onDownload={handleContextDownload}
-            />
-          )
-        })()}
+        {previewFileId &&
+          (() => {
+            const previewFile = files.find((f) => f.id === previewFileId)
+            if (!previewFile || !workspaceId) return null
+            const fileIds = files.map((f) => f.id)
+            const currentIndex = fileIds.indexOf(previewFileId)
+            return (
+              <FilePreview
+                file={previewFile}
+                workspaceId={workspaceId}
+                hasNext={currentIndex >= 0 && currentIndex < fileIds.length - 1}
+                hasPrev={currentIndex > 0}
+                onNext={handlePreviewNext}
+                onPrev={handlePreviewPrev}
+                onClose={handleClosePreview}
+                onDownload={handleContextDownload}
+              />
+            )
+          })()}
 
         <ShareModal
           open={shareModal.open}

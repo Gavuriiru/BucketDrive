@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-template-expressions */
 import { useState, useCallback } from "react"
 import { ChevronRight, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react"
-import { useFolders, useWorkspaces, useCreateFolder, useUpdateFolder, useDeleteFolder } from "@/lib/api"
+import {
+  useFolders,
+  useWorkspaces,
+  useCreateFolder,
+  useUpdateFolder,
+  useDeleteFolder,
+} from "@/lib/api"
 import { useExplorerStore } from "@/stores/explorer-store"
 import { useNavigate } from "@tanstack/react-router"
 import * as ContextMenu from "@radix-ui/react-context-menu"
@@ -44,19 +50,9 @@ function TreeNode({
       <ContextMenu.Root>
         <ContextMenu.Trigger asChild>
           <div
-            role="button"
-            tabIndex={0}
-            onClick={handleNavigate}
-            onKeyDown={(e) => {
-              if (e.target !== e.currentTarget) return
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                handleNavigate()
-              }
-            }}
-            className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover ${
+            className={`hover:bg-surface-hover flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
               isActive ? "bg-surface-active text-text-primary" : "text-text-secondary"
-            } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-muted`}
+            } focus-visible:ring-border-muted focus-visible:ring-1 focus-visible:outline-none`}
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
           >
             <button
@@ -70,25 +66,31 @@ function TreeNode({
               }`}
               aria-label={expanded ? "Collapse" : "Expand"}
             >
-              <ChevronRight className="h-3 w-3 text-text-tertiary" />
+              <ChevronRight className="text-text-tertiary h-3 w-3" />
             </button>
-            {isActive ? (
-              <FolderOpen className="h-4 w-4 shrink-0 text-accent" />
-            ) : (
-              <Folder className="h-4 w-4 shrink-0 text-text-tertiary" />
-            )}
-            <span className="truncate">{folder.name}</span>
+            <button
+              type="button"
+              onClick={handleNavigate}
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left focus-visible:outline-none"
+            >
+              {isActive ? (
+                <FolderOpen className="text-accent h-4 w-4 shrink-0" />
+              ) : (
+                <Folder className="text-text-tertiary h-4 w-4 shrink-0" />
+              )}
+              <span className="truncate">{folder.name}</span>
+            </button>
           </div>
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
-          <ContextMenu.Content className="z-50 min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-default p-1.5 shadow-lg">
+          <ContextMenu.Content className="border-border-default bg-surface-default z-50 min-w-[160px] overflow-hidden rounded-lg border p-1.5 shadow-lg">
             <ContextMenu.Item
               className={contextMenuItemClass}
               onClick={() => {
                 onCreateSubfolder(folder.id)
               }}
             >
-              <FolderPlus className="h-3.5 w-3.5 text-text-tertiary" />
+              <FolderPlus className="text-text-tertiary h-3.5 w-3.5" />
               New Subfolder
             </ContextMenu.Item>
             <ContextMenu.Item
@@ -97,7 +99,7 @@ function TreeNode({
                 onRename(folder.id, folder.name)
               }}
             >
-              <Pencil className="h-3.5 w-3.5 text-text-tertiary" />
+              <Pencil className="text-text-tertiary h-3.5 w-3.5" />
               Rename
             </ContextMenu.Item>
             <ContextMenu.Item
@@ -106,7 +108,7 @@ function TreeNode({
                 onDelete(folder.id, folder.name)
               }}
             >
-              <Trash2 className="h-3.5 w-3.5 text-text-tertiary" />
+              <Trash2 className="text-text-tertiary h-3.5 w-3.5" />
               Delete
             </ContextMenu.Item>
           </ContextMenu.Content>
@@ -193,13 +195,13 @@ export function FolderTree() {
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between px-3 py-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+        <span className="text-text-tertiary text-[11px] font-semibold tracking-wider uppercase">
           Folders
         </span>
         <button
           type="button"
           onClick={handleCreateRootFolder}
-          className="rounded p-0.5 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
+          className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded p-0.5 transition-colors"
           aria-label="New root folder"
         >
           <FolderPlus className="h-3.5 w-3.5" />
@@ -210,13 +212,11 @@ export function FolderTree() {
         onClick={() => {
           handleNavigate(null)
         }}
-        className={`flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover ${
-          currentFolderId === null
-            ? "bg-surface-active text-text-primary"
-            : "text-text-secondary"
+        className={`hover:bg-surface-hover flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-left text-xs transition-colors ${
+          currentFolderId === null ? "bg-surface-active text-text-primary" : "text-text-secondary"
         }`}
       >
-        <FolderOpen className="h-4 w-4 shrink-0 text-text-tertiary" />
+        <FolderOpen className="text-text-tertiary h-4 w-4 shrink-0" />
         <span className="truncate">All Files</span>
       </button>
       {rootFolders.map((folder) => (

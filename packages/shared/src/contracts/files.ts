@@ -37,13 +37,15 @@ export const CompleteUploadRequest = z.object({
   fileName: z.string().min(1).max(255),
   mimeType: z.string(),
   folderId: z.string().uuid().nullable().optional(),
-  parts: z.array(
-    z.object({
-      partNumber: z.number().int().positive(),
-      etag: z.string(),
-      sizeBytes: z.number().int().positive(),
-    })
-  ).optional(),
+  parts: z
+    .array(
+      z.object({
+        partNumber: z.number().int().positive(),
+        etag: z.string(),
+        sizeBytes: z.number().int().positive(),
+      }),
+    )
+    .optional(),
 })
 
 export const DownloadUrlResponse = z.object({

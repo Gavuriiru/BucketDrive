@@ -27,6 +27,16 @@ const MIME_CATEGORY_PREFIXES: Record<Exclude<SearchCategory, "all">, string[]> =
   ],
 }
 
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size))
+  }
+
+  return chunks
+}
+
 export function getMimePrefixesForCategory(type: SearchCategory): string[] {
   return type === "all" ? [] : MIME_CATEGORY_PREFIXES[type]
 }
@@ -45,7 +55,7 @@ export function filterFilesByFolder<T extends { folderId: string | null }>(
 export function buildFtsQuery(raw: string): string {
   const tokens = raw
     .trim()
-    .replace(/[^\p{L}\p{N}\s.\-_]/gu, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .map((token) => token.trim())
     .filter(Boolean)
@@ -65,30 +75,42 @@ export async function hydrateFiles(
   }
 
   const fileIds = rows.map((row) => row.id)
+  const fileIdChunks = chunk(fileIds, 80)
 
-  const [tagLinks, favorites] = await Promise.all([
-    db
-      .select({
-        fileObjectId: fileObjectTag.fileObjectId,
-        tagId: fileObjectTag.tagId,
-      })
-      .from(fileObjectTag)
-      .where(inArray(fileObjectTag.fileObjectId, fileIds))
-      .all(),
-    db
-      .select({
-        fileObjectId: favorite.fileObjectId,
-      })
-      .from(favorite)
-      .where(
-        and(
-          eq(favorite.userId, userId),
-          eq(favorite.isActive, true),
-          inArray(favorite.fileObjectId, fileIds),
-        ),
-      )
-      .all(),
+  const [tagLinkChunks, favoriteChunks] = await Promise.all([
+    Promise.all(
+      fileIdChunks.map((ids) =>
+        db
+          .select({
+            fileObjectId: fileObjectTag.fileObjectId,
+            tagId: fileObjectTag.tagId,
+          })
+          .from(fileObjectTag)
+          .where(inArray(fileObjectTag.fileObjectId, ids))
+          .all(),
+      ),
+    ),
+    Promise.all(
+      fileIdChunks.map((ids) =>
+        db
+          .select({
+            fileObjectId: favorite.fileObjectId,
+          })
+          .from(favorite)
+          .where(
+            and(
+              eq(favorite.userId, userId),
+              eq(favorite.isActive, true),
+              inArray(favorite.fileObjectId, ids),
+            ),
+          )
+          .all(),
+      ),
+    ),
   ])
+
+  const tagLinks = tagLinkChunks.flat()
+  const favorites = favoriteChunks.flat()
 
   const tagIds = Array.from(new Set(tagLinks.map((link) => link.tagId)))
   const tags =

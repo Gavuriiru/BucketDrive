@@ -10,11 +10,20 @@ import {
   CreatePlatformInvitationResponse,
   AcceptPlatformInvitationResponse,
 } from "@bucketdrive/shared"
-import { platformSettings, member, workspaceInvitation, user as userSchema } from "@bucketdrive/shared/db/schema"
+import {
+  platformSettings,
+  member,
+  workspaceInvitation,
+  user as userSchema,
+} from "@bucketdrive/shared/db/schema"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePlatformAdmin } from "../../middleware/platform-admin"
 import { getDB } from "../../lib/db"
-import { ensureOrganizationForWorkspace, syncMemberToLegacyWorkspaceMember, syncWorkspaceMemberships } from "../../lib/workspace-membership"
+import {
+  ensureOrganizationForWorkspace,
+  syncMemberToLegacyWorkspaceMember,
+  syncWorkspaceMemberships,
+} from "../../lib/workspace-membership"
 import type { WorkspaceRole } from "@bucketdrive/shared"
 
 interface PlatformEnv {
@@ -23,7 +32,13 @@ interface PlatformEnv {
 }
 
 interface PlatformVariables {
-  user: { id: string; email: string; name: string; isPlatformAdmin: boolean; canCreateWorkspaces: boolean }
+  user: {
+    id: string
+    email: string
+    name: string
+    isPlatformAdmin: boolean
+    canCreateWorkspaces: boolean
+  }
 }
 
 const INVITE_EXPIRY_DAYS = 7
@@ -56,12 +71,14 @@ platform.get("/settings", async (c) => {
     })
   }
 
-  return c.json(PlatformSettingsResponse.parse({
-    platformName: settings.platformName,
-    defaultWorkspaceId: settings.defaultWorkspaceId,
-    allowUserWorkspaceCreation: settings.allowUserWorkspaceCreation,
-    enablePublicSignup: settings.enablePublicSignup,
-  }))
+  return c.json(
+    PlatformSettingsResponse.parse({
+      platformName: settings.platformName,
+      defaultWorkspaceId: settings.defaultWorkspaceId,
+      allowUserWorkspaceCreation: settings.allowUserWorkspaceCreation,
+      enablePublicSignup: settings.enablePublicSignup,
+    }),
+  )
 })
 
 // Protected: update platform settings (platform admin only)
@@ -89,8 +106,12 @@ platform.patch("/settings", authMiddleware, requirePlatformAdmin, async (c) => {
       .update(platformSettings)
       .set({
         platformName: body.platformName ?? settings.platformName,
-        defaultWorkspaceId: body.defaultWorkspaceId !== undefined ? body.defaultWorkspaceId : settings.defaultWorkspaceId,
-        allowUserWorkspaceCreation: body.allowUserWorkspaceCreation ?? settings.allowUserWorkspaceCreation,
+        defaultWorkspaceId:
+          body.defaultWorkspaceId !== undefined
+            ? body.defaultWorkspaceId
+            : settings.defaultWorkspaceId,
+        allowUserWorkspaceCreation:
+          body.allowUserWorkspaceCreation ?? settings.allowUserWorkspaceCreation,
         enablePublicSignup: body.enablePublicSignup ?? settings.enablePublicSignup,
         updatedAt: now,
       })
@@ -103,15 +124,17 @@ platform.patch("/settings", authMiddleware, requirePlatformAdmin, async (c) => {
     return c.json({ code: "INTERNAL_ERROR", message: "Failed to retrieve platform settings" }, 500)
   }
 
-  return c.json(UpdatePlatformSettingsResponse.parse({
-    success: true,
-    settings: {
-      platformName: settings.platformName,
-      defaultWorkspaceId: settings.defaultWorkspaceId,
-      allowUserWorkspaceCreation: settings.allowUserWorkspaceCreation,
-      enablePublicSignup: settings.enablePublicSignup,
-    },
-  }))
+  return c.json(
+    UpdatePlatformSettingsResponse.parse({
+      success: true,
+      settings: {
+        platformName: settings.platformName,
+        defaultWorkspaceId: settings.defaultWorkspaceId,
+        allowUserWorkspaceCreation: settings.allowUserWorkspaceCreation,
+        enablePublicSignup: settings.enablePublicSignup,
+      },
+    }),
+  )
 })
 
 // Protected: join default workspace (auto-add user to platform default workspace)
@@ -126,7 +149,10 @@ platform.post("/join", authMiddleware, async (c) => {
 
   const workspaceId = settings.defaultWorkspaceId
 
-  await Promise.all([ensureOrganizationForWorkspace(db, workspaceId), syncWorkspaceMemberships(db, workspaceId)])
+  await Promise.all([
+    ensureOrganizationForWorkspace(db, workspaceId),
+    syncWorkspaceMemberships(db, workspaceId),
+  ])
 
   // Check if already a member
   const existing = await db
@@ -141,11 +167,13 @@ platform.post("/join", authMiddleware, async (c) => {
       .from(member)
       .where(and(eq(member.organizationId, workspaceId), eq(member.userId, currentUser.id)))
       .get()
-    return c.json(PlatformJoinResponse.parse({
-      success: true,
-      workspaceId,
-      role: (existingRole?.role ?? "viewer") as WorkspaceRole,
-    }))
+    return c.json(
+      PlatformJoinResponse.parse({
+        success: true,
+        workspaceId,
+        role: (existingRole?.role ?? "viewer") as WorkspaceRole,
+      }),
+    )
   }
 
   const now = new Date().toISOString()
@@ -160,11 +188,13 @@ platform.post("/join", authMiddleware, async (c) => {
   await db.insert(member).values(newMember).run()
   await syncMemberToLegacyWorkspaceMember(db, workspaceId, currentUser.id, "viewer")
 
-  return c.json(PlatformJoinResponse.parse({
-    success: true,
-    workspaceId,
-    role: "viewer",
-  }))
+  return c.json(
+    PlatformJoinResponse.parse({
+      success: true,
+      workspaceId,
+      role: "viewer",
+    }),
+  )
 })
 
 // Protected: create platform invitation (platform admin only)
@@ -180,10 +210,17 @@ platform.post("/invitations", authMiddleware, requirePlatformAdmin, async (c) =>
   }
 
   const workspaceId = settings.defaultWorkspaceId
-  await Promise.all([ensureOrganizationForWorkspace(db, workspaceId), syncWorkspaceMemberships(db, workspaceId)])
+  await Promise.all([
+    ensureOrganizationForWorkspace(db, workspaceId),
+    syncWorkspaceMemberships(db, workspaceId),
+  ])
 
   // Check if email is already a member
-  const targetUser = await db.select({ id: userSchema.id }).from(userSchema).where(eq(userSchema.email, body.email.toLowerCase())).get()
+  const targetUser = await db
+    .select({ id: userSchema.id })
+    .from(userSchema)
+    .where(eq(userSchema.email, body.email.toLowerCase()))
+    .get()
   if (targetUser) {
     const alreadyMember = await db
       .select({ id: member.id })
@@ -209,7 +246,10 @@ platform.post("/invitations", authMiddleware, requirePlatformAdmin, async (c) =>
     .get()
 
   if (existingInvite) {
-    return c.json({ code: "CONFLICT", message: "Pending invitation already exists for this email" }, 409)
+    return c.json(
+      { code: "CONFLICT", message: "Pending invitation already exists for this email" },
+      409,
+    )
   }
 
   const now = new Date()
@@ -235,16 +275,19 @@ platform.post("/invitations", authMiddleware, requirePlatformAdmin, async (c) =>
   const base = appUrl?.replace(/\/$/, "") ?? ""
   const inviteLink = `${base}/join?token=${token}`
 
-  return c.json(CreatePlatformInvitationResponse.parse({
-    id: createdInvitation.id,
-    email: createdInvitation.email,
-    role: createdInvitation.role,
-    canCreateWorkspaces: createdInvitation.canCreateWorkspaces,
-    status: createdInvitation.status,
-    expiresAt: createdInvitation.expiresAt,
-    createdAt: createdInvitation.createdAt,
-    inviteLink,
-  }), 201)
+  return c.json(
+    CreatePlatformInvitationResponse.parse({
+      id: createdInvitation.id,
+      email: createdInvitation.email,
+      role: createdInvitation.role,
+      canCreateWorkspaces: createdInvitation.canCreateWorkspaces,
+      status: createdInvitation.status,
+      expiresAt: createdInvitation.expiresAt,
+      createdAt: createdInvitation.createdAt,
+      inviteLink,
+    }),
+    201,
+  )
 })
 
 // Protected: list platform invitations (platform admin only)
@@ -320,12 +363,18 @@ platform.post("/invitations/:token/accept", authMiddleware, async (c) => {
   }
 
   if (invite.email.toLowerCase() !== currentUser.email.toLowerCase()) {
-    return c.json({ code: "FORBIDDEN", message: "This invitation is for a different email address" }, 403)
+    return c.json(
+      { code: "FORBIDDEN", message: "This invitation is for a different email address" },
+      403,
+    )
   }
 
   const workspaceId = invite.workspaceId
 
-  await Promise.all([ensureOrganizationForWorkspace(db, workspaceId), syncWorkspaceMemberships(db, workspaceId)])
+  await Promise.all([
+    ensureOrganizationForWorkspace(db, workspaceId),
+    syncWorkspaceMemberships(db, workspaceId),
+  ])
 
   // Check if already a member
   const existing = await db
@@ -351,7 +400,12 @@ platform.post("/invitations/:token/accept", authMiddleware, async (c) => {
     }
 
     await db.insert(member).values(newMember).run()
-    await syncMemberToLegacyWorkspaceMember(db, workspaceId, currentUser.id, invite.role as WorkspaceRole)
+    await syncMemberToLegacyWorkspaceMember(
+      db,
+      workspaceId,
+      currentUser.id,
+      invite.role as WorkspaceRole,
+    )
 
     await db
       .update(workspaceInvitation)
@@ -369,11 +423,13 @@ platform.post("/invitations/:token/accept", authMiddleware, async (c) => {
       .run()
   }
 
-  return c.json(AcceptPlatformInvitationResponse.parse({
-    success: true,
-    workspaceId,
-    role: invite.role as WorkspaceRole,
-  }))
+  return c.json(
+    AcceptPlatformInvitationResponse.parse({
+      success: true,
+      workspaceId,
+      role: invite.role as WorkspaceRole,
+    }),
+  )
 })
 
 export const platformHandler = platform

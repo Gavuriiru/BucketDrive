@@ -19,7 +19,7 @@ export function ToastContainer() {
       {toasts.map((toast) => (
         <ToastPrimitive.Root
           key={toast.id}
-          className={`group relative flex w-full items-start gap-3 rounded-xl border p-4 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[state=closed]:animate-fade-out data-[state=open]:animate-slide-in data-[swipe=end]:animate-swipe-out ${variantStyles[toast.variant]}`}
+          className={`group data-[state=closed]:animate-fade-out data-[state=open]:animate-slide-in data-[swipe=end]:animate-swipe-out relative flex w-full items-start gap-3 rounded-xl border p-4 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] ${variantStyles[toast.variant]}`}
           open
           duration={toast.duration ?? 5000}
           onOpenChange={(open) => {
@@ -45,7 +45,7 @@ export function ToastContainer() {
                     toast.action?.onClick()
                     dismissToast(toast.id)
                   }}
-                  className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent/90"
+                  className="bg-accent hover:bg-accent/90 rounded-md px-3 py-1.5 text-xs font-medium text-white transition-colors"
                 >
                   {toast.action.label}
                 </button>
@@ -53,7 +53,7 @@ export function ToastContainer() {
             )}
           </div>
           <ToastPrimitive.Close
-            className="rounded-md p-1 text-text-tertiary transition-colors hover:text-text-primary"
+            className="text-text-tertiary hover:text-text-primary rounded-md p-1 transition-colors"
             aria-label="Close"
             onClick={() => dismissToast(toast.id)}
           >

@@ -9,9 +9,9 @@ export function ProgressBar({ value, className = "", size = "sm" }: ProgressBarP
   const height = size === "sm" ? "h-1" : "h-2"
 
   return (
-    <div className={`w-full overflow-hidden rounded-full bg-surface-hover ${height} ${className}`}>
+    <div className={`bg-surface-hover w-full overflow-hidden rounded-full ${height} ${className}`}>
       <div
-        className={`h-full rounded-full bg-accent transition-all duration-300 ease-out ${clamped < 100 ? "animate-pulse" : ""}`}
+        className={`bg-accent h-full rounded-full transition-all duration-300 ease-out ${clamped < 100 ? "animate-pulse" : ""}`}
         style={{ width: `${String(clamped)}%` }}
       />
     </div>

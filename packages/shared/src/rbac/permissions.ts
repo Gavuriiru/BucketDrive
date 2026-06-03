@@ -51,10 +51,7 @@ const SHARED_PERMISSIONS: readonly Permission[] = [
   "shares.revoke",
 ]
 
-const SHARE_ADMIN_PERMISSIONS: readonly Permission[] = [
-  ...SHARED_PERMISSIONS,
-  "shares.manage_all",
-]
+const SHARE_ADMIN_PERMISSIONS: readonly Permission[] = [...SHARED_PERMISSIONS, "shares.manage_all"]
 
 const EDITOR_FILE_PERMISSIONS: readonly Permission[] = [
   "files.read",
@@ -75,11 +72,7 @@ const EDITOR_FOLDER_PERMISSIONS: readonly Permission[] = [
   "folders.share",
 ]
 
-const VIEWER_PERMISSIONS: readonly Permission[] = [
-  "files.read",
-  "folders.read",
-  "shares.read",
-]
+const VIEWER_PERMISSIONS: readonly Permission[] = ["files.read", "folders.read", "shares.read"]
 
 const MANAGER_PERMISSIONS: readonly Permission[] = [
   ...EDITOR_FILE_PERMISSIONS,
@@ -96,22 +89,13 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "audit.export",
 ]
 
-const GUEST_PERMISSIONS: readonly Permission[] = [
-  "files.read",
-  "folders.read",
-]
+const GUEST_PERMISSIONS: readonly Permission[] = ["files.read", "folders.read"]
 
 export const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
   owner: [...ALL_PERMISSIONS],
-  admin: ALL_PERMISSIONS.filter(
-    (p) => p !== "workspace.delete" && p !== "workspace.transfer",
-  ),
+  admin: ALL_PERMISSIONS.filter((p) => p !== "workspace.delete" && p !== "workspace.transfer"),
   manager: [...MANAGER_PERMISSIONS],
-  editor: [
-    ...EDITOR_FILE_PERMISSIONS,
-    ...EDITOR_FOLDER_PERMISSIONS,
-    ...SHARED_PERMISSIONS,
-  ],
+  editor: [...EDITOR_FILE_PERMISSIONS, ...EDITOR_FOLDER_PERMISSIONS, ...SHARED_PERMISSIONS],
   viewer: [...VIEWER_PERMISSIONS],
   guest: [...GUEST_PERMISSIONS],
 }

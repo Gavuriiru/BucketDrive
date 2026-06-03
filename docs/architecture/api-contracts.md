@@ -6,6 +6,7 @@ This document defines the API contracts for the platform using **TypeScript + Zo
 source of truth. Contracts are shared between frontend and backend via `packages/shared`.
 
 The contract system ensures:
+
 - Type-safe API calls on the frontend (TanStack Query)
 - Runtime validation on the backend (Hono + Zod middleware)
 - Automatic type inference (no manual type duplication)
@@ -131,6 +132,7 @@ List files in a workspace, optionally filtered by folder.
 Initiate file upload. Returns signed upload URL.
 
 **Request**:
+
 ```ts
 export const InitiateUploadRequest = z.object({
   workspaceId: z.string().uuid(),
@@ -143,6 +145,7 @@ export const InitiateUploadRequest = z.object({
 ```
 
 **Response**:
+
 ```ts
 export const InitiateUploadResponse = z.object({
   uploadId: z.string().uuid(),
@@ -151,6 +154,7 @@ export const InitiateUploadResponse = z.object({
   storageKey: z.string(),
 })
 ```
+
 **Auth**: Required
 **Permission**: `files.upload`
 
@@ -159,14 +163,17 @@ export const InitiateUploadResponse = z.object({
 Confirm upload completion.
 
 **Request**:
+
 ```ts
 export const CompleteUploadRequest = z.object({
   uploadId: z.string().uuid(),
-  parts: z.array(z.object({
-    partNumber: z.number().int().positive(),
-    etag: z.string(),
-    sizeBytes: z.number().int().positive(),
-  })),
+  parts: z.array(
+    z.object({
+      partNumber: z.number().int().positive(),
+      etag: z.string(),
+      sizeBytes: z.number().int().positive(),
+    }),
+  ),
 })
 ```
 
@@ -180,6 +187,7 @@ Get signed download URL for a file.
 
 **Request**: path params
 **Response**:
+
 ```ts
 export const DownloadUrlResponse = z.object({
   signedUrl: z.string().url(),
@@ -187,6 +195,7 @@ export const DownloadUrlResponse = z.object({
   fileName: z.string(),
 })
 ```
+
 **Auth**: Required
 **Permission**: `files.read`
 
@@ -195,12 +204,14 @@ export const DownloadUrlResponse = z.object({
 Rename or move a file.
 
 **Request**:
+
 ```ts
 export const UpdateFileRequest = z.object({
   name: z.string().min(1).max(255).optional(),
   folderId: z.string().uuid().nullable().optional(),
 })
 ```
+
 **Response**: `FileObjectSchema`
 **Auth**: Required
 **Permission**: `files.rename` / `files.move`
@@ -234,11 +245,13 @@ Toggle favorite status.
 Add/remove tags from a file.
 
 **Request**:
+
 ```ts
 export const UpdateFileTagsRequest = z.object({
   tagIds: z.array(z.string().uuid()),
 })
 ```
+
 **Response**: `FileObjectSchema` (with tags)
 **Auth**: Required
 **Permission**: `files.tag`
@@ -280,6 +293,7 @@ List shares in a workspace.
 Create a share link.
 
 **Request**:
+
 ```ts
 export const CreateShareRequest = z.object({
   resourceId: z.string().uuid(),
@@ -307,11 +321,13 @@ Revoke a share link.
 Public endpoint — validate password and get access token.
 
 **Request**:
+
 ```ts
 export const ShareAccessRequest = z.object({
   password: z.string().optional(),
 })
 ```
+
 **Response**: signed URL or explorer data
 **Auth**: None (public)
 
@@ -324,6 +340,7 @@ export const ShareAccessRequest = z.object({
 Search files by name, tag, or mime type.
 
 **Request**:
+
 ```ts
 export const SearchRequest = z.object({
   q: z.string().min(1).max(200),
@@ -334,6 +351,7 @@ export const SearchRequest = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
 })
 ```
+
 **Response**: `PaginatedResponseSchema(FileObjectSchema)`
 **Auth**: Required
 **Permission**: `files.read`
@@ -375,21 +393,27 @@ Get workspace details.
 Get storage usage statistics.
 
 **Response**:
+
 ```ts
 export const StorageInfoResponse = z.object({
   totalBytes: z.number(),
   usedBytes: z.number(),
   trashBytes: z.number(),
   quotaBytes: z.number().nullable(),
-  largestFiles: z.array(z.object({
-    id: z.string().uuid(),
-    name: z.string(),
-    sizeBytes: z.number(),
-  })).max(10),
+  largestFiles: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string(),
+        sizeBytes: z.number(),
+      }),
+    )
+    .max(10),
   fileCount: z.number(),
   folderCount: z.number(),
 })
 ```
+
 **Auth**: Required
 **Permission**: `files.read`
 
@@ -471,6 +495,7 @@ All errors follow this structure:
 ```
 
 Error codes (from `packages/shared/src/schemas/common.ts`):
+
 - `UNAUTHORIZED` — not authenticated
 - `FORBIDDEN` — authenticated but lacks permission
 - `NOT_FOUND` — resource does not exist

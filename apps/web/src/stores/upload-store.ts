@@ -54,7 +54,9 @@ interface PersistedUploadItem {
 interface UploadState {
   items: UploadItem[]
   isOpen: boolean
-  addFiles: (entries: Array<File | { file: File; relativePath?: string; targetFolderId?: string }>) => void
+  addFiles: (
+    entries: Array<File | { file: File; relativePath?: string; targetFolderId?: string }>,
+  ) => void
   addItems: (items: UploadItem[]) => void
   removeItem: (id: string) => void
   updateItem: (id: string, updates: Partial<UploadItem>) => void
@@ -72,10 +74,7 @@ export const useUploadStore = create<UploadState>()(
       isOpen: false,
 
       addFiles: (
-        entries: Array<
-          | File
-          | { file: File; relativePath?: string; targetFolderId?: string }
-        >,
+        entries: Array<File | { file: File; relativePath?: string; targetFolderId?: string }>,
       ) => {
         const newItems: UploadItem[] = entries.map((entry) => {
           const file = entry instanceof File ? entry : entry.file
@@ -117,9 +116,7 @@ export const useUploadStore = create<UploadState>()(
 
       updateItem: (id: string, updates: Partial<UploadItem>) => {
         set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
-          ),
+          items: state.items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
         }))
       },
 
@@ -139,7 +136,9 @@ export const useUploadStore = create<UploadState>()(
         set((state) => {
           const existingIds = new Set(state.items.map((i) => i.id))
           const hydrated = persisted
-            .filter((p) => !existingIds.has(p.id) && p.status !== "completed" && p.status !== "cancelled")
+            .filter(
+              (p) => !existingIds.has(p.id) && p.status !== "completed" && p.status !== "cancelled",
+            )
             .map((p) => ({
               ...p,
               file: null as File | null,

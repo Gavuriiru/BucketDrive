@@ -80,9 +80,7 @@ invitations.get("/", requirePermission("users.invite"), async (c) => {
 
   // Query all users and filter since inArray support varies across SQLite drivers
   const allInviters =
-    inviterIds.length > 0
-      ? await db.select({ id: user.id, name: user.name }).from(user).all()
-      : []
+    inviterIds.length > 0 ? await db.select({ id: user.id, name: user.name }).from(user).all() : []
   const inviterMap = new Map(allInviters.map((u) => [u.id, u.name]))
 
   const data = rows.map((row) =>
@@ -95,7 +93,12 @@ invitations.get("/", requirePermission("users.invite"), async (c) => {
   return c.json(
     ListInvitationsResponse.parse({
       data,
-      meta: { page: 1, limit: data.length || 1, total: data.length, totalPages: data.length > 0 ? 1 : 0 },
+      meta: {
+        page: 1,
+        limit: data.length || 1,
+        total: data.length,
+        totalPages: data.length > 0 ? 1 : 0,
+      },
     }),
   )
 })
@@ -111,7 +114,10 @@ invitations.post("/", requirePermission("users.invite"), async (c) => {
   const body = CreateInvitationRequest.parse(await c.req.json())
   const appUrl = c.env.APP_URL
 
-  await Promise.all([ensureOrganizationForWorkspace(db, workspaceId), syncWorkspaceMemberships(db, workspaceId)])
+  await Promise.all([
+    ensureOrganizationForWorkspace(db, workspaceId),
+    syncWorkspaceMemberships(db, workspaceId),
+  ])
 
   // Check if already a member
   const existingMember = await db
@@ -125,7 +131,11 @@ invitations.post("/", requirePermission("users.invite"), async (c) => {
   }
 
   // Check if email is already a member
-  const targetUser = await db.select({ id: user.id }).from(user).where(eq(user.email, body.email.toLowerCase())).get()
+  const targetUser = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, body.email.toLowerCase()))
+    .get()
   if (targetUser) {
     const alreadyMember = await db
       .select({ id: member.id })
@@ -151,7 +161,10 @@ invitations.post("/", requirePermission("users.invite"), async (c) => {
     .get()
 
   if (existingInvite) {
-    return c.json({ code: "CONFLICT", message: "Pending invitation already exists for this email" }, 409)
+    return c.json(
+      { code: "CONFLICT", message: "Pending invitation already exists for this email" },
+      409,
+    )
   }
 
   const now = new Date()
@@ -180,7 +193,11 @@ invitations.post("/", requirePermission("users.invite"), async (c) => {
     metadata: { email: body.email, role: body.role },
   })
 
-  const ws = await db.select({ name: workspace.name, slug: workspace.slug }).from(workspace).where(eq(workspace.id, workspaceId)).get()
+  const ws = await db
+    .select({ name: workspace.name, slug: workspace.slug })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId))
+    .get()
 
   return c.json(
     {
@@ -204,7 +221,10 @@ invitations.delete("/:invitationId", requirePermission("users.invite"), async (c
   const workspaceId = c.req.param("workspaceId")
   const invitationId = c.req.param("invitationId")
   if (!workspaceId || !invitationId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and invitationId are required" }, 400)
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and invitationId are required" },
+      400,
+    )
   }
 
   const actor = c.get("user")
@@ -213,7 +233,12 @@ invitations.delete("/:invitationId", requirePermission("users.invite"), async (c
   const target = await db
     .select()
     .from(workspaceInvitation)
-    .where(and(eq(workspaceInvitation.id, invitationId), eq(workspaceInvitation.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(workspaceInvitation.id, invitationId),
+        eq(workspaceInvitation.workspaceId, workspaceId),
+      ),
+    )
     .get()
 
   if (!target) {
@@ -264,8 +289,16 @@ publicInvitations.get("/:token", async (c) => {
     return c.json({ code: "SHARE_EXPIRED", message: "Invitation has expired" }, 410)
   }
 
-  const ws = await db.select({ name: workspace.name, slug: workspace.slug }).from(workspace).where(eq(workspace.id, invite.workspaceId)).get()
-  const inviter = await db.select({ name: user.name }).from(user).where(eq(user.id, invite.invitedBy)).get()
+  const ws = await db
+    .select({ name: workspace.name, slug: workspace.slug })
+    .from(workspace)
+    .where(eq(workspace.id, invite.workspaceId))
+    .get()
+  const inviter = await db
+    .select({ name: user.name })
+    .from(user)
+    .where(eq(user.id, invite.invitedBy))
+    .get()
 
   return c.json(
     InvitationDetailResponse.parse({
@@ -309,12 +342,18 @@ publicInvitations.post("/:token/accept", authMiddleware, async (c) => {
   }
 
   if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
-    return c.json({ code: "FORBIDDEN", message: "This invitation is for a different email address" }, 403)
+    return c.json(
+      { code: "FORBIDDEN", message: "This invitation is for a different email address" },
+      403,
+    )
   }
 
   const workspaceId = invite.workspaceId
 
-  await Promise.all([ensureOrganizationForWorkspace(db, workspaceId), syncWorkspaceMemberships(db, workspaceId)])
+  await Promise.all([
+    ensureOrganizationForWorkspace(db, workspaceId),
+    syncWorkspaceMemberships(db, workspaceId),
+  ])
 
   // Check if already a member
   const existing = await db
@@ -330,7 +369,13 @@ publicInvitations.post("/:token/accept", authMiddleware, async (c) => {
       .set({ status: "accepted", acceptedAt: now, updatedAt: now })
       .where(eq(workspaceInvitation.id, invite.id))
       .run()
-    return c.json(AcceptInvitationResponse.parse({ success: true, workspaceId, role: invite.role as WorkspaceRole }))
+    return c.json(
+      AcceptInvitationResponse.parse({
+        success: true,
+        workspaceId,
+        role: invite.role as WorkspaceRole,
+      }),
+    )
   }
 
   const createdAt = now
@@ -361,7 +406,11 @@ publicInvitations.post("/:token/accept", authMiddleware, async (c) => {
 
   // Notify inviter that their invitation was accepted
   const notifications = new NotificationsService()
-  const ws = await db.select({ name: workspace.name }).from(workspace).where(eq(workspace.id, workspaceId)).get()
+  const ws = await db
+    .select({ name: workspace.name })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId))
+    .get()
   await notifications.createNotification({
     userId: invite.invitedBy,
     workspaceId,

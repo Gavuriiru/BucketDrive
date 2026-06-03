@@ -20,7 +20,9 @@ describe("notifications contracts", () => {
     expect(count.status).toBe(200)
     UnreadCountResponse.parse(await ctx.json(count))
 
-    const read = await ctx.request(`/api/notifications/${notification.id}/read`, { method: "PATCH" })
+    const read = await ctx.request(`/api/notifications/${notification.id}/read`, {
+      method: "PATCH",
+    })
     expect(read.status).toBe(200)
     MarkReadResponse.parse(await ctx.json(read))
 

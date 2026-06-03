@@ -124,6 +124,7 @@ pnpm dev
 ```
 
 This runs:
+
 - **Frontend**: `http://localhost:5173` (Vite dev server with HMR)
 - **Backend**: `http://localhost:8787` (Wrangler dev server with live reload)
 
@@ -168,8 +169,10 @@ pnpm r2:verify       # Verify configured R2 S3 credentials can list the bucket
 ```bash
 pnpm test:unit       # Unit tests (Vitest)
 pnpm test:contracts  # API contract tests
-pnpm test:e2e        # E2E tests (Playwright, requires staging env)
-pnpm test:all        # Run all tests
+pnpm test:e2e        # E2E tests (Playwright; local runs use E2E_TEST_AUTH fixtures)
+pnpm test:a11y       # Accessibility checks (Playwright + axe-core)
+pnpm perf:check      # Build + bundle budget + Lighthouse CI
+pnpm perf:benchmark  # 10,000-file Explorer benchmark
 ```
 
 See [Testing Strategy](testing-strategy.md) for details.
@@ -193,12 +196,14 @@ pnpm format:check    # Check formatting without writing
 pnpm build           # Build all apps
 
 # Deploy to Cloudflare (staging)
+STAGING_D1_DATABASE_ID=<database-id> pnpm staging:prepare
+pnpm staging:check
 pnpm db:migrate:staging
-npx wrangler deploy --env staging
-npx wrangler pages deploy apps/web/dist --project-name bucketdrive --branch staging
+pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml deploy --env staging
+pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name bucketdrive --branch staging
 
 # Deploy to production (via CI, triggered by v* tag)
-npx wrangler deploy --env production
+pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml deploy --env production
 ```
 
 See [CI/CD](ci-cd.md) for the full pipeline.
@@ -241,6 +246,7 @@ BucketDrive/
 ## `wrangler dev` fails with R2 binding error
 
 Make sure your `wrangler.toml` has correct R2 bucket bindings and that the bucket exists:
+
 ```bash
 npx wrangler r2 bucket create bucketdrive-dev
 ```
@@ -258,6 +264,7 @@ Wrangler dev stores local D1 data under `.wrangler/state/v3/d1`. Removing only
 ## OAuth callback URL mismatch
 
 Verify the callback URLs exactly match:
+
 - GitHub: `http://localhost:8787/api/auth/callback/github`
 - Google: `http://localhost:8787/api/auth/callback/google`
 

@@ -1,6 +1,13 @@
 import { and, eq, isNull } from "drizzle-orm"
 import { getDB } from "../lib/db"
-import { auditLog, bucket, fileObject, folder, workspace, workspaceSettings } from "@bucketdrive/shared/db/schema"
+import {
+  auditLog,
+  bucket,
+  fileObject,
+  folder,
+  workspace,
+  workspaceSettings,
+} from "@bucketdrive/shared/db/schema"
 import type { StorageProvider } from "./storage"
 
 const DEFAULT_MIME_TYPE = "application/octet-stream"
@@ -196,7 +203,11 @@ export class R2ImportService {
         for (const object of page.objects) {
           result.scanned += 1
 
-          if (!object.key || object.key.endsWith("/") || isInternalObjectKey(params.workspaceId, object.key)) {
+          if (
+            !object.key ||
+            object.key.endsWith("/") ||
+            isInternalObjectKey(params.workspaceId, object.key)
+          ) {
             result.skipped += 1
             continue
           }
@@ -205,7 +216,10 @@ export class R2ImportService {
 
           try {
             const normalized = normalizeObjectKey(object.key)
-            const mimeType = getObjectMimeType(object.httpMetadata?.contentType, normalized.fileName)
+            const mimeType = getObjectMimeType(
+              object.httpMetadata?.contentType,
+              normalized.fileName,
+            )
             const existing = existingByKey.get(object.key)
 
             if (existing) {

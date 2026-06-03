@@ -77,9 +77,7 @@ export function createAuth(env: AuthEnv, requestOrigin?: string) {
         path: "/",
       },
     },
-    trustedOrigins: [
-      ...configuredOrigins,
-    ],
+    trustedOrigins: [...configuredOrigins],
     plugins: [
       organization({
         creatorRole: "owner",

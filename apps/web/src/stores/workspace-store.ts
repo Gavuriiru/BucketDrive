@@ -26,13 +26,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const state = get()
     const validId = workspaces.find((w) => w.id === state.currentWorkspaceId)
       ? state.currentWorkspaceId
-      : workspaces[0]?.id ?? null
+      : (workspaces[0]?.id ?? null)
     set({ workspaces, currentWorkspaceId: validId })
   },
-  setCurrentWorkspaceId: (id) => { set({ currentWorkspaceId: id }) },
+  setCurrentWorkspaceId: (id) => {
+    set({ currentWorkspaceId: id })
+  },
   getCurrentWorkspace: () => {
     const state = get()
-    return state.workspaces.find((w) => w.id === state.currentWorkspaceId) ?? state.workspaces[0] ?? null
+    return (
+      state.workspaces.find((w) => w.id === state.currentWorkspaceId) ?? state.workspaces[0] ?? null
+    )
   },
 }))
 

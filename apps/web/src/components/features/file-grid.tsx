@@ -60,7 +60,7 @@ function renderTagPreview(file: FileObject) {
         </span>
       ))}
       {hiddenCount > 0 && (
-        <span className="rounded-full bg-surface-hover px-2 py-0.5 text-[10px] text-text-secondary">
+        <span className="bg-surface-hover text-text-secondary rounded-full px-2 py-0.5 text-[10px]">
           +{hiddenCount}
         </span>
       )}
@@ -77,7 +77,12 @@ interface FolderGridCardProps {
   isSelected: boolean
   isFocused: boolean
   onFolderClick: (folderId: string) => void
-  onItemClick: (id: string, type: "file" | "folder", index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => void
+  onItemClick: (
+    id: string,
+    type: "file" | "folder",
+    index: number,
+    event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+  ) => void
   onContextOpen?: (_id: string, _type: "file" | "folder") => void
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
@@ -130,10 +135,10 @@ function FolderGridCard({
       itemId={folder.id}
       itemType="folder"
       onOpen={() => onFolderClick(folder.id)}
-      onRename={() => onContextRename?.(folder.id, "folder")}
-      onDelete={() => onContextDelete?.(folder.id, "folder")}
-      onMove={() => onContextMove?.(folder.id, "folder")}
-      onShare={() => onContextShare?.(folder.id, "folder")}
+      onRename={onContextRename ? () => onContextRename(folder.id, "folder") : undefined}
+      onDelete={onContextDelete ? () => onContextDelete(folder.id, "folder") : undefined}
+      onMove={onContextMove ? () => onContextMove(folder.id, "folder") : undefined}
+      onShare={onContextShare ? () => onContextShare(folder.id, "folder") : undefined}
       onCopy={() => {
         setClipboard({
           action: "copy",
@@ -161,9 +166,9 @@ function FolderGridCard({
             : isOver
               ? "border-accent bg-accent/10"
               : isSelected
-                ? "border-accent bg-accent/10 ring-1 ring-accent"
+                ? "border-accent bg-accent/10 ring-accent ring-1"
                 : isFocused
-                  ? "border-border-default ring-1 ring-border-muted"
+                  ? "border-border-default ring-border-muted ring-1"
                   : "border-border-muted"
         }`}
       >
@@ -171,7 +176,7 @@ function FolderGridCard({
           <button
             type="button"
             aria-label="Drag folder"
-            className="absolute right-2 top-2 rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-surface-default hover:text-text-primary group-hover:opacity-100"
+            className="text-text-tertiary hover:bg-surface-default hover:text-text-primary absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
             onClick={(e) => e.stopPropagation()}
             {...draggable.attributes}
             {...draggable.listeners}
@@ -179,13 +184,13 @@ function FolderGridCard({
             <GripVertical className="h-4 w-4" />
           </button>
         )}
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-surface-hover text-text-tertiary group-hover:text-accent">
+        <div className="bg-surface-hover text-text-tertiary group-hover:text-accent mb-3 flex h-12 w-12 items-center justify-center rounded-lg">
           <FolderOpen className="h-7 w-7" />
         </div>
-        <span className="mb-0.5 line-clamp-2 w-full break-words text-xs font-medium text-text-primary">
+        <span className="text-text-primary mb-0.5 line-clamp-2 w-full text-xs font-medium break-words">
           {folder.name}
         </span>
-        <span className="text-[10px] text-text-tertiary">Folder</span>
+        <span className="text-text-tertiary text-[10px]">Folder</span>
       </div>
     </FileContextMenu>
   )
@@ -197,7 +202,12 @@ interface FileGridCardProps {
   workspaceId: string
   isSelected: boolean
   isFocused: boolean
-  onItemClick: (id: string, type: "file" | "folder", index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => void
+  onItemClick: (
+    id: string,
+    type: "file" | "folder",
+    index: number,
+    event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+  ) => void
   onContextOpen?: (id: string, type: "file" | "folder") => void
   onContextPreview?: (id: string) => void
   onContextDownload?: (id: string) => void
@@ -242,15 +252,15 @@ function FileGridCard({
       itemId={file.id}
       itemType="file"
       onOpen={() => onContextOpen?.(file.id, "file")}
-      onPreview={() => onContextPreview?.(file.id)}
-      onDownload={() => onContextDownload?.(file.id)}
-      onRename={() => onContextRename?.(file.id, "file")}
-      onDelete={() => onContextDelete?.(file.id, "file")}
-      onFavorite={() => onContextFavorite?.(file.id)}
+      onPreview={onContextPreview ? () => onContextPreview(file.id) : undefined}
+      onDownload={onContextDownload ? () => onContextDownload(file.id) : undefined}
+      onRename={onContextRename ? () => onContextRename(file.id, "file") : undefined}
+      onDelete={onContextDelete ? () => onContextDelete(file.id, "file") : undefined}
+      onFavorite={onContextFavorite ? () => onContextFavorite(file.id) : undefined}
       favoriteLabel={file.isFavorited ? "Remove favorite" : "Add favorite"}
-      onTags={() => onContextTags?.(file.id)}
-      onMove={() => onContextMove?.(file.id, "file")}
-      onShare={() => onContextShare?.(file.id, "file")}
+      onTags={onContextTags ? () => onContextTags(file.id) : undefined}
+      onMove={onContextMove ? () => onContextMove(file.id, "file") : undefined}
+      onShare={onContextShare ? () => onContextShare(file.id, "file") : undefined}
       onCopy={() => {
         setClipboard({
           action: "copy",
@@ -264,6 +274,7 @@ function FileGridCard({
         data-item-id={file.id}
         data-item-type="file"
         data-item-index={index}
+        data-testid="file-card"
         onClick={(e) => {
           if (dndEnabled && isDragging) return
           if (e.shiftKey || e.ctrlKey || e.metaKey) {
@@ -276,9 +287,9 @@ function FileGridCard({
           isDragging
             ? "opacity-50"
             : isSelected
-              ? "border-accent bg-accent/10 ring-1 ring-accent"
+              ? "border-accent bg-accent/10 ring-accent ring-1"
               : isFocused
-                ? "border-border-default ring-1 ring-border-muted"
+                ? "border-border-default ring-border-muted ring-1"
                 : "border-border-muted"
         }`}
       >
@@ -286,7 +297,7 @@ function FileGridCard({
           <button
             type="button"
             aria-label="Drag file"
-            className="absolute right-2 top-2 rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-surface-default hover:text-text-primary group-hover:opacity-100"
+            className="text-text-tertiary hover:bg-surface-default hover:text-text-primary absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
             onClick={(e) => e.stopPropagation()}
             {...attributes}
             {...listeners}
@@ -294,7 +305,7 @@ function FileGridCard({
             <GripVertical className="h-4 w-4" />
           </button>
         )}
-        <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-surface-hover text-2xl">
+        <div className="bg-surface-hover mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg text-2xl">
           <FileThumbnail
             workspaceId={workspaceId}
             fileId={file.id}
@@ -305,12 +316,12 @@ function FileGridCard({
           />
         </div>
         <div className="mb-0.5 flex w-full items-center justify-center gap-1">
-          <span className="line-clamp-2 break-words text-xs font-medium text-text-primary">
+          <span className="text-text-primary line-clamp-2 text-xs font-medium break-words">
             {file.originalName}
           </span>
-          {file.isFavorited && <Star className="h-3.5 w-3.5 fill-warning text-warning" />}
+          {file.isFavorited && <Star className="fill-warning text-warning h-3.5 w-3.5" />}
         </div>
-        <span className="text-[10px] text-text-tertiary">
+        <span className="text-text-tertiary text-[10px]">
           {formatSize(file.sizeBytes)} &middot; {formatDate(file.updatedAt)}
         </span>
         {renderTagPreview(file)}
@@ -325,7 +336,12 @@ interface FileGridProps {
   files: FileObject[]
   isLoading: boolean
   onFolderClick: (folderId: string) => void
-  onItemClick: (id: string, type: "file" | "folder", index: number, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => void
+  onItemClick: (
+    id: string,
+    type: "file" | "folder",
+    index: number,
+    event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+  ) => void
   onContextOpen?: (id: string, type: "file" | "folder") => void
   onContextPreview?: (id: string) => void
   onContextDownload?: (id: string) => void
@@ -373,10 +389,13 @@ export function FileGrid({
     return (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="animate-pulse rounded-xl border border-border-muted bg-surface-default p-4">
-            <div className="mx-auto mb-3 h-12 w-12 rounded-lg bg-surface-hover" />
-            <div className="mx-auto mb-2 h-3 w-20 rounded bg-surface-hover" />
-            <div className="mx-auto h-2.5 w-14 rounded bg-surface-hover" />
+          <div
+            key={i}
+            className="border-border-muted bg-surface-default animate-pulse rounded-xl border p-4"
+          >
+            <div className="bg-surface-hover mx-auto mb-3 h-12 w-12 rounded-lg" />
+            <div className="bg-surface-hover mx-auto mb-2 h-3 w-20 rounded" />
+            <div className="bg-surface-hover mx-auto h-2.5 w-14 rounded" />
           </div>
         ))}
       </div>
@@ -386,8 +405,8 @@ export function FileGrid({
   if (folders.length === 0 && files.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-16">
-        <Folder className="h-12 w-12 text-text-tertiary" />
-        <p className="text-sm text-text-tertiary">No files yet — drag files here to upload</p>
+        <Folder className="text-text-tertiary h-12 w-12" />
+        <p className="text-text-tertiary text-sm">No files yet — drag files here to upload</p>
       </div>
     )
   }

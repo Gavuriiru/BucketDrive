@@ -16,6 +16,7 @@ is scoped to a workspace. A user may belong to multiple workspaces with differen
 Workspace data must NEVER leak between workspaces.
 
 A user authenticated to workspace A must not:
+
 - See files from workspace B
 - Access shares from workspace B
 - Enumerate members from workspace B
@@ -24,6 +25,7 @@ A user authenticated to workspace A must not:
 ## 2. Role Per Workspace
 
 A user's role is workspace-specific. The same user may be:
+
 - Owner of workspace A
 - Editor of workspace B
 - Viewer of workspace C
@@ -62,6 +64,7 @@ Purged (all data permanently removed from R2 and D1)
 ## Automatic (First Signup)
 
 When a user signs up for the first time:
+
 1. Better Auth creates the user account
 2. A default workspace is created with the user as Owner
 3. System roles (Owner, Admin, Editor, Viewer) are seeded
@@ -71,6 +74,7 @@ When a user signs up for the first time:
 ## Manual (Dashboard)
 
 Authenticated users can create additional workspaces:
+
 ```
 POST /api/workspaces
 body: { name, slug }
@@ -247,48 +251,48 @@ After 30 days:
 
 Stored in `WorkspaceSettings` table. Configurable by owner/admin.
 
-| Setting | Type | Default | Description |
-|---|---|---|---|
-| `defaultShareExpirationDays` | int | 30 | Default expiration for new share links |
-| `enablePublicSignup` | bool | false | Allow email/password signup for this workspace |
-| `allowedMimeTypes` | string[] | [] (all allowed) | Restrict uploads to specific MIME types |
-| `maxFileSizeBytes` | int | 5GB | Maximum upload size per file |
-| `storageQuotaBytes` | int | 10GB | Total storage limit (enforced on upload) |
-| `brandingLogoUrl` | string | null | Custom logo URL for share pages |
-| `brandingName` | string | null | Custom name for share pages |
-| `trashRetentionDays` | int | 30 | Days before trash is auto-purged |
+| Setting                      | Type     | Default          | Description                                    |
+| ---------------------------- | -------- | ---------------- | ---------------------------------------------- |
+| `defaultShareExpirationDays` | int      | 30               | Default expiration for new share links         |
+| `enablePublicSignup`         | bool     | false            | Allow email/password signup for this workspace |
+| `allowedMimeTypes`           | string[] | [] (all allowed) | Restrict uploads to specific MIME types        |
+| `maxFileSizeBytes`           | int      | 5GB              | Maximum upload size per file                   |
+| `storageQuotaBytes`          | int      | 10GB             | Total storage limit (enforced on upload)       |
+| `brandingLogoUrl`            | string   | null             | Custom logo URL for share pages                |
+| `brandingName`               | string   | null             | Custom name for share pages                    |
+| `trashRetentionDays`         | int      | 30               | Days before trash is auto-purged               |
 
 ---
 
 # API Endpoints Summary
 
-| Method | Path | Permission |
-|---|---|---|
-| `GET` | `/api/workspaces` | Authenticated |
-| `POST` | `/api/workspaces` | Authenticated |
-| `GET` | `/api/workspaces/:id` | Workspace member |
-| `PATCH` | `/api/workspaces/:id` | `workspace.manage` |
-| `DELETE` | `/api/workspaces/:id` | Owner only |
-| `GET` | `/api/workspaces/:id/members` | Workspace member |
-| `POST` | `/api/workspaces/:id/members` | `users.invite` |
-| `PATCH` | `/api/workspaces/:id/members/:uid` | `users.update_roles` |
-| `DELETE` | `/api/workspaces/:id/members/:uid` | `users.remove` |
-| `POST` | `/api/workspaces/:id/transfer-ownership` | Owner only |
+| Method   | Path                                     | Permission           |
+| -------- | ---------------------------------------- | -------------------- |
+| `GET`    | `/api/workspaces`                        | Authenticated        |
+| `POST`   | `/api/workspaces`                        | Authenticated        |
+| `GET`    | `/api/workspaces/:id`                    | Workspace member     |
+| `PATCH`  | `/api/workspaces/:id`                    | `workspace.manage`   |
+| `DELETE` | `/api/workspaces/:id`                    | Owner only           |
+| `GET`    | `/api/workspaces/:id/members`            | Workspace member     |
+| `POST`   | `/api/workspaces/:id/members`            | `users.invite`       |
+| `PATCH`  | `/api/workspaces/:id/members/:uid`       | `users.update_roles` |
+| `DELETE` | `/api/workspaces/:id/members/:uid`       | `users.remove`       |
+| `POST`   | `/api/workspaces/:id/transfer-ownership` | Owner only           |
 
 ---
 
 # Audit Events
 
-| Event | Logged |
-|---|---|
-| `workspace.created` | actorId, workspaceId, workspaceName |
-| `workspace.deleted` | actorId, workspaceId |
-| `workspace.restored` | actorId, workspaceId |
-| `member.invited` | actorId, targetEmail, role |
-| `member.joined` | userId, workspaceId, role |
-| `member.removed` | actorId, targetUserId, workspaceId |
-| `role.changed` | actorId, targetUserId, oldRole, newRole |
-| `ownership.transferred` | oldOwnerId, newOwnerId, workspaceId |
+| Event                   | Logged                                  |
+| ----------------------- | --------------------------------------- |
+| `workspace.created`     | actorId, workspaceId, workspaceName     |
+| `workspace.deleted`     | actorId, workspaceId                    |
+| `workspace.restored`    | actorId, workspaceId                    |
+| `member.invited`        | actorId, targetEmail, role              |
+| `member.joined`         | userId, workspaceId, role               |
+| `member.removed`        | actorId, targetUserId, workspaceId      |
+| `role.changed`          | actorId, targetUserId, oldRole, newRole |
+| `ownership.transferred` | oldOwnerId, newOwnerId, workspaceId     |
 
 ---
 

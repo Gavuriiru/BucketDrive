@@ -5,6 +5,7 @@
 This document defines the testing approach for the entire platform.
 
 Testing ensures:
+
 - Correctness of business logic (RBAC, sharing, uploads)
 - Contract consistency between frontend and backend
 - Accessibility compliance
@@ -37,6 +38,7 @@ Testing is mandatory. Untested critical paths must not reach production.
 **Tool**: TypeScript strict mode + Zod schemas
 
 All code must:
+
 - Pass `tsc --noEmit` with strict mode enabled
 - Use Zod for all API boundaries (shared contracts in `packages/shared`)
 - Never use `any`, `as unknown as T`, or unchecked type assertions
@@ -53,14 +55,14 @@ All code must:
 
 ## What to Unit Test
 
-| Domain | Examples |
-|---|---|
-| **RBAC engine** | `can(user, "files.delete")` true/false for each role |
-| **Zod validators** | Valid/invalid payloads for every request schema |
-| **Storage provider** | Mocked provider: upload returns signed URL shape, delete confirms |
-| **Share validation** | Expired share → denied, locked share → denied, valid → allowed |
-| **Utilities** | Slug generation, path sanitization, checksum verification |
-| **Permission composition** | Role inheritance, workspace scoping |
+| Domain                     | Examples                                                          |
+| -------------------------- | ----------------------------------------------------------------- |
+| **RBAC engine**            | `can(user, "files.delete")` true/false for each role              |
+| **Zod validators**         | Valid/invalid payloads for every request schema                   |
+| **Storage provider**       | Mocked provider: upload returns signed URL shape, delete confirms |
+| **Share validation**       | Expired share → denied, locked share → denied, valid → allowed    |
+| **Utilities**              | Slug generation, path sanitization, checksum verification         |
+| **Permission composition** | Role inheritance, workspace scoping                               |
 
 ## Example
 
@@ -116,7 +118,7 @@ describe("GET /api/workspaces/:id/files", () => {
 
   it("returns 401 without auth", async () => {
     const res = await worker.fetch("/api/workspaces/test-ws/files", {
-      headers: {} // no cookie
+      headers: {}, // no cookie
     })
     expect(res.status).toBe(401)
   })
@@ -137,18 +139,20 @@ describe("GET /api/workspaces/:id/files", () => {
 **Location**: `apps/web/e2e/`
 
 E2E tests simulate real user flows in a real browser against a staging environment.
+Local E2E runs use `E2E_TEST_AUTH=true` with seeded users and guarded fixture endpoints so OAuth
+and external storage credentials are not required for deterministic browser tests.
 
 ## Critical User Journeys
 
-| Journey | Priority |
-|---|---|
-| **Auth**: Login with OAuth → session persists → logout | Critical |
-| **Upload**: Navigate to folder → drag file → see progress → file appears | Critical |
+| Journey                                                                                                   | Priority |
+| --------------------------------------------------------------------------------------------------------- | -------- |
+| **Auth**: Login with OAuth → session persists → logout                                                    | Critical |
+| **Upload**: Navigate to folder → drag file → see progress → file appears                                  | Critical |
 | **Share**: Create share link with password → external user accesses → password validates → downloads file | Critical |
-| **RBAC**: Viewer tries to delete file → API blocks it → UI hides delete button | Critical |
-| **Search**: Type query → results appear → filters work → clear returns to browse | High |
-| **Workspace**: Owner invites user → user accepts → user sees correct workspace | High |
-| **Trash**: Delete file → appears in trash → restore → appears in original folder | High |
+| **RBAC**: Viewer tries to delete file → API blocks it → UI hides delete button                            | Critical |
+| **Search**: Type query → results appear → filters work → clear returns to browse                          | High     |
+| **Workspace**: Owner invites user → user accepts → user sees correct workspace                            | High     |
+| **Trash**: Delete file → appears in trash → restore → appears in original folder                          | High     |
 
 ## Example
 
@@ -228,23 +232,23 @@ Critical components: file explorer, share modal, login page, settings.
 
 # Performance Testing
 
-- Lighthouse CI in GitHub Actions for PRs
-- Bundle size check on every push (compare against baseline)
-- Virtualization benchmark: render 10,000 files in < 500ms
+- `pnpm perf:lighthouse` runs Lighthouse CI against the built web app preview with minimum scores: Performance 90, Accessibility 95, Best Practices 95
+- `pnpm perf:bundle` builds the repo and fails when any gzipped web JS asset exceeds 500 kB
+- `pnpm perf:benchmark` seeds a 10,000-file E2E workspace fixture, verifies the paginated Explorer API responds in under 500 ms, then checks page render and scroll
 
 ---
 
 # Test Matrix by Component
 
-| Component | Unit | Contract | E2E | A11y |
-|---|---|---|---|---|
-| RBAC engine | Yes | — | Yes | — |
-| Upload service | Yes | Yes | Yes | — |
-| File explorer | — | Yes | Yes | Yes |
-| Share system | Yes | Yes | Yes | Yes |
-| Search | Yes | Yes | Yes | Yes |
-| Auth middleware | Yes | Yes | Yes | Yes |
-| Design system | Yes (snapshot) | — | — | Yes |
+| Component       | Unit           | Contract | E2E | A11y |
+| --------------- | -------------- | -------- | --- | ---- |
+| RBAC engine     | Yes            | —        | Yes | —    |
+| Upload service  | Yes            | Yes      | Yes | —    |
+| File explorer   | —              | Yes      | Yes | Yes  |
+| Share system    | Yes            | Yes      | Yes | Yes  |
+| Search          | Yes            | Yes      | Yes | Yes  |
+| Auth middleware | Yes            | Yes      | Yes | Yes  |
+| Design system   | Yes (snapshot) | —        | —   | Yes  |
 
 ---
 
@@ -255,7 +259,8 @@ pnpm test:unit        # Vitest — unit tests
 pnpm test:contracts   # Vitest — contract tests against test D1
 pnpm test:e2e         # Playwright — critical user journeys
 pnpm test:a11y        # Playwright + axe-core — accessibility
-pnpm test:all         # Run everything (CI)
+pnpm perf:check       # Build + bundle budget + Lighthouse CI
+pnpm perf:benchmark   # 10,000-file Explorer benchmark
 ```
 
 ---

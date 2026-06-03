@@ -5,6 +5,7 @@
 This document defines the high-level architecture of the platform.
 
 The system is a modern cloud storage platform focused on:
+
 - file management
 - secure sharing
 - RBAC
@@ -13,6 +14,7 @@ The system is a modern cloud storage platform focused on:
 - scalable storage abstraction
 
 The architecture must prioritize:
+
 - scalability
 - maintainability
 - modularity
@@ -48,6 +50,7 @@ The architecture must prioritize:
 Frontend application.
 
 Responsibilities:
+
 - user interface
 - navigation
 - uploads
@@ -58,6 +61,7 @@ Responsibilities:
 - sharing management
 
 Tech stack:
+
 - React 19 + TypeScript + Vite (SPA)
 - TailwindCSS
 - shadcn/ui
@@ -66,6 +70,7 @@ Tech stack:
 - TanStack Query
 
 The frontend must NEVER:
+
 - directly access the database
 - directly access storage providers
 - enforce security rules alone
@@ -77,6 +82,7 @@ The frontend must NEVER:
 Main backend API.
 
 Responsibilities:
+
 - authentication
 - RBAC enforcement
 - file metadata
@@ -86,6 +92,7 @@ Responsibilities:
 - signed URL generation
 
 The API is the source of truth for:
+
 - permissions
 - ownership
 - business logic
@@ -97,6 +104,7 @@ The API is the source of truth for:
 Background processing services.
 
 Responsibilities:
+
 - thumbnail generation
 - metadata extraction
 - file indexing
@@ -115,6 +123,7 @@ Workers must be isolated from frontend concerns.
 Shared design system.
 
 Contains:
+
 - reusable components
 - tokens
 - typography
@@ -131,6 +140,7 @@ All frontend applications must use this package.
 Authentication system abstraction.
 
 Responsibilities:
+
 - session handling
 - OAuth
 - Zero Trust integration
@@ -144,6 +154,7 @@ Responsibilities:
 Storage abstraction layer.
 
 This package isolates:
+
 - Cloudflare R2
 - S3-compatible providers
 - signed uploads
@@ -171,11 +182,13 @@ interface StorageProvider {
 Authorization engine.
 
 Responsibilities:
+
 - permission checks
 - role composition
 - policy evaluation
 
 The application must NEVER:
+
 - hardcode permissions
 - check roles directly
 
@@ -198,12 +211,14 @@ if (user.role === "admin")
 Database layer.
 
 Responsibilities:
+
 - schema definitions
 - migrations
 - database access
 - query utilities
 
 Must expose:
+
 - typed queries
 - reusable repositories
 - transaction helpers
@@ -215,6 +230,7 @@ Must expose:
 Shared utilities and types.
 
 Contains:
+
 - shared TypeScript types
 - constants
 - helpers
@@ -230,6 +246,7 @@ Contains:
 Represents authenticated platform users.
 
 Capabilities:
+
 - upload files
 - create shares
 - manage resources
@@ -242,6 +259,7 @@ Capabilities:
 Logical organizational unit.
 
 Contains:
+
 - users
 - buckets
 - files
@@ -257,6 +275,7 @@ A user may belong to multiple workspaces.
 Logical storage container.
 
 Maps to:
+
 - R2 buckets
 - future S3-compatible providers
 
@@ -269,6 +288,7 @@ Buckets are isolated by workspace ownership.
 Represents stored files.
 
 Contains:
+
 - metadata
 - ownership
 - path
@@ -285,6 +305,7 @@ File binary data is NOT stored in the database.
 Virtual organizational structure.
 
 Folders may:
+
 - contain files
 - contain nested folders
 - inherit permissions
@@ -296,6 +317,7 @@ Folders may:
 Represents external resource sharing.
 
 Capabilities:
+
 - expiration
 - password protection
 - readonly access
@@ -372,6 +394,7 @@ Security is enforced server-side.
 Frontend permissions are NOT trusted.
 
 All sensitive operations require:
+
 - authentication
 - RBAC validation
 - ownership validation
@@ -384,11 +407,13 @@ All sensitive operations require:
 Authentication provider: **Better Auth** (runs in Cloudflare Worker, D1-backed)
 
 Supported methods:
+
 - OAuth (GitHub, Google)
 - Email/password credentials
 - Session-based authentication (HTTPOnly cookies)
 
 Authentication responsibilities:
+
 - Identity validation
 - Session management (creation, refresh, revocation)
 - Multi-workspace membership resolution
@@ -445,6 +470,7 @@ The platform supports:
 Between authenticated users.
 
 Capabilities:
+
 - readonly
 - editor
 - manager
@@ -456,6 +482,7 @@ Capabilities:
 Public readonly links.
 
 Capabilities:
+
 - optional password
 - expiration
 - direct download
@@ -480,11 +507,13 @@ Access Denied  → 403 (or lock after 10 failures)
 Readonly folder browsing interface.
 
 Capabilities:
+
 - navigation
 - file previews
 - individual downloads
 
 Restrictions:
+
 - no modification
 - no uploads
 - no deletes
@@ -494,6 +523,7 @@ Restrictions:
 # Frontend Architecture
 
 Frontend architecture must prioritize:
+
 - modularity
 - accessibility
 - composability
@@ -506,9 +536,11 @@ Frontend architecture must prioritize:
 ### Server State
 
 Managed using:
+
 - TanStack Query
 
 Examples:
+
 - file lists
 - workspace data
 - shares
@@ -519,9 +551,11 @@ Examples:
 ### Client UI State
 
 Managed using:
+
 - Zustand
 
 Examples:
+
 - modal visibility
 - selected files
 - drag state
@@ -532,11 +566,13 @@ Examples:
 # UI Architecture
 
 UI must use:
+
 - reusable primitives
 - shared tokens
 - semantic components
 
 Avoid:
+
 - duplicated layouts
 - one-off components
 - visual inconsistency
@@ -546,6 +582,7 @@ Avoid:
 # Performance Architecture
 
 Required:
+
 - virtualization
 - lazy loading
 - route splitting
@@ -559,6 +596,7 @@ Large directories must remain performant.
 # Background Processing
 
 Workers handle:
+
 - thumbnails
 - metadata extraction
 - search indexing
@@ -572,6 +610,7 @@ Heavy operations must NEVER block UI interactions.
 # Audit Logging
 
 Critical actions must generate logs:
+
 - uploads
 - deletions
 - permission changes
@@ -579,6 +618,7 @@ Critical actions must generate logs:
 - login attempts
 
 Logs must include:
+
 - actor
 - action
 - resource
@@ -590,6 +630,7 @@ Logs must include:
 # Error Handling
 
 All systems must provide:
+
 - typed errors
 - structured responses
 - user-friendly messaging
@@ -602,6 +643,7 @@ Avoid generic failures.
 # Future Scalability
 
 The architecture must support future:
+
 - multi-region storage
 - realtime collaboration
 - file versioning

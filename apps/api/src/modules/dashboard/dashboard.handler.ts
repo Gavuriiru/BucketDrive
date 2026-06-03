@@ -21,7 +21,10 @@ import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
 import { buildStorageTrend, parseAllowedMimeTypes } from "./dashboard.utils"
-import { ensureOrganizationForWorkspace, syncWorkspaceMemberships } from "../../lib/workspace-membership"
+import {
+  ensureOrganizationForWorkspace,
+  syncWorkspaceMemberships,
+} from "../../lib/workspace-membership"
 
 interface DashboardEnv {
   DB: D1Database
@@ -49,75 +52,80 @@ dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
     ensureWorkspaceSettingsRow(db, workspaceId),
   ])
 
-  const [workspaceRow, fileCountRow, folderCountRow, shareCountRow, memberCountRow, usageRow, largestFiles, auditRows, storageRows] =
-    await Promise.all([
-      db.select().from(workspace).where(eq(workspace.id, workspaceId)).get(),
-      db
-        .select({ value: count() })
-        .from(fileObject)
-        .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
-        .get(),
-      db
-        .select({ value: count() })
-        .from(folder)
-        .where(and(eq(folder.workspaceId, workspaceId), eq(folder.isDeleted, false)))
-        .get(),
-      db
-        .select({ value: count() })
-        .from(shareLink)
-        .where(and(eq(shareLink.workspaceId, workspaceId), eq(shareLink.isActive, true)))
-        .get(),
-      db
-        .select({ value: count() })
-        .from(member)
-        .where(eq(member.organizationId, workspaceId))
-        .get(),
-      db
-        .select({
-          value: sql<number>`coalesce(sum(${fileObject.sizeBytes}), 0)`,
-        })
-        .from(fileObject)
-        .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
-        .get(),
-      db
-        .select({
-          id: fileObject.id,
-          name: fileObject.originalName,
-          sizeBytes: fileObject.sizeBytes,
-          mimeType: fileObject.mimeType,
-          createdAt: fileObject.createdAt,
-        })
-        .from(fileObject)
-        .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
-        .orderBy(desc(fileObject.sizeBytes), desc(fileObject.createdAt))
-        .limit(5)
-        .all(),
-      db
-        .select({
-          id: auditLog.id,
-          actorId: auditLog.actorId,
-          actorName: user.name,
-          action: auditLog.action,
-          resourceType: auditLog.resourceType,
-          resourceId: auditLog.resourceId,
-          createdAt: auditLog.createdAt,
-        })
-        .from(auditLog)
-        .leftJoin(user, eq(user.id, auditLog.actorId))
-        .where(eq(auditLog.workspaceId, workspaceId))
-        .orderBy(desc(auditLog.createdAt))
-        .limit(10)
-        .all(),
-      db
-        .select({
-          sizeBytes: fileObject.sizeBytes,
-          createdAt: fileObject.createdAt,
-          deletedAt: fileObject.deletedAt,
-        })
-        .from(fileObject)
-        .where(eq(fileObject.workspaceId, workspaceId))
-        .all(),
-    ])
+  const [
+    workspaceRow,
+    fileCountRow,
+    folderCountRow,
+    shareCountRow,
+    memberCountRow,
+    usageRow,
+    largestFiles,
+    auditRows,
+    storageRows,
+  ] = await Promise.all([
+    db.select().from(workspace).where(eq(workspace.id, workspaceId)).get(),
+    db
+      .select({ value: count() })
+      .from(fileObject)
+      .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
+      .get(),
+    db
+      .select({ value: count() })
+      .from(folder)
+      .where(and(eq(folder.workspaceId, workspaceId), eq(folder.isDeleted, false)))
+      .get(),
+    db
+      .select({ value: count() })
+      .from(shareLink)
+      .where(and(eq(shareLink.workspaceId, workspaceId), eq(shareLink.isActive, true)))
+      .get(),
+    db.select({ value: count() }).from(member).where(eq(member.organizationId, workspaceId)).get(),
+    db
+      .select({
+        value: sql<number>`coalesce(sum(${fileObject.sizeBytes}), 0)`,
+      })
+      .from(fileObject)
+      .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
+      .get(),
+    db
+      .select({
+        id: fileObject.id,
+        name: fileObject.originalName,
+        sizeBytes: fileObject.sizeBytes,
+        mimeType: fileObject.mimeType,
+        createdAt: fileObject.createdAt,
+      })
+      .from(fileObject)
+      .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
+      .orderBy(desc(fileObject.sizeBytes), desc(fileObject.createdAt))
+      .limit(5)
+      .all(),
+    db
+      .select({
+        id: auditLog.id,
+        actorId: auditLog.actorId,
+        actorName: user.name,
+        action: auditLog.action,
+        resourceType: auditLog.resourceType,
+        resourceId: auditLog.resourceId,
+        createdAt: auditLog.createdAt,
+      })
+      .from(auditLog)
+      .leftJoin(user, eq(user.id, auditLog.actorId))
+      .where(eq(auditLog.workspaceId, workspaceId))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(10)
+      .all(),
+    db
+      .select({
+        sizeBytes: fileObject.sizeBytes,
+        createdAt: fileObject.createdAt,
+        deletedAt: fileObject.deletedAt,
+      })
+      .from(fileObject)
+      .where(eq(fileObject.workspaceId, workspaceId))
+      .all(),
+  ])
 
   if (!workspaceRow) {
     return c.json({ code: "WORKSPACE_NOT_FOUND", message: "Workspace not found" }, 404)
@@ -284,7 +292,11 @@ dashboard.patch("/settings", requirePermission("workspace.settings.update"), asy
 })
 
 async function ensureWorkspaceSettingsRow(db: ReturnType<typeof getDB>, workspaceId: string) {
-  const currentWorkspace = await db.select().from(workspace).where(eq(workspace.id, workspaceId)).get()
+  const currentWorkspace = await db
+    .select()
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId))
+    .get()
   if (!currentWorkspace) {
     return null
   }

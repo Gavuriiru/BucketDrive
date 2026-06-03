@@ -25,7 +25,7 @@ function FileSearchFallback({
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 px-4 py-3 text-text-secondary">
+      <div className="text-text-secondary flex items-center gap-2 px-4 py-3">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-sm">Searching files...</span>
       </div>
@@ -36,7 +36,7 @@ function FileSearchFallback({
 
   if (files.length === 0) {
     return (
-      <div className="px-4 py-3 text-sm text-text-secondary">
+      <div className="text-text-secondary px-4 py-3 text-sm">
         No files found for &ldquo;{query}&rdquo;
       </div>
     )
@@ -51,9 +51,9 @@ function FileSearchFallback({
           onSelect={() => {
             onSelect(file.id, file.folderId)
           }}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm text-text-primary aria-selected:bg-accent/10 aria-selected:text-accent cursor-pointer"
+          className="text-text-primary aria-selected:bg-accent/10 aria-selected:text-accent flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm"
         >
-          <File className="h-4 w-4 shrink-0 text-text-tertiary" />
+          <File className="text-text-tertiary h-4 w-4 shrink-0" />
           <span className="truncate">{file.originalName}</span>
         </Command.Item>
       ))}
@@ -89,19 +89,14 @@ export function CommandPalette() {
     () => commands.filter((c) => c.category === "navigation"),
     [commands],
   )
-  const fileCommands = useMemo(
-    () => commands.filter((c) => c.category === "file"),
-    [commands],
-  )
+  const fileCommands = useMemo(() => commands.filter((c) => c.category === "file"), [commands])
   const appearanceCommands = useMemo(
     () => commands.filter((c) => c.category === "appearance"),
     [commands],
   )
 
   const hasAnyCommands =
-    navigationCommands.length > 0 ||
-    fileCommands.length > 0 ||
-    appearanceCommands.length > 0
+    navigationCommands.length > 0 || fileCommands.length > 0 || appearanceCommands.length > 0
 
   const handleFileSelect = (fileId: string, folderId: string | null) => {
     close()
@@ -127,52 +122,52 @@ export function CommandPalette() {
       className="fixed inset-0 z-50"
     >
       <div
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+        className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
         onClick={close}
         aria-hidden="true"
       />
-      <div className="fixed left-1/2 top-[30%] z-50 w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+      <div className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[30%] left-1/2 z-50 w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2">
         <Command
-          className="overflow-hidden rounded-xl border border-border-default bg-surface-default shadow-xl"
+          className="border-border-default bg-surface-default overflow-hidden rounded-xl border shadow-xl"
           loop
         >
-          <div className="flex items-center gap-2 border-b border-border-muted px-4 py-3">
-            <Search className="h-4 w-4 shrink-0 text-text-tertiary" />
+          <div className="border-border-muted flex items-center gap-2 border-b px-4 py-3">
+            <Search className="text-text-tertiary h-4 w-4 shrink-0" />
             <Command.Input
               value={query}
               onValueChange={setQuery}
               placeholder="Type a command or search files..."
-              className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-tertiary"
+              className="text-text-primary placeholder:text-text-tertiary flex-1 bg-transparent text-sm outline-none"
             />
-            <kbd className="rounded-md border border-border-default bg-bg-tertiary px-1.5 py-0.5 text-xs text-text-tertiary">
+            <kbd className="border-border-default bg-bg-tertiary text-text-tertiary rounded-md border px-1.5 py-0.5 text-xs">
               ESC
             </kbd>
           </div>
 
           <Command.List className="max-h-[400px] overflow-y-auto py-2">
             {!hasAnyCommands && query.length === 0 && (
-              <div className="px-4 py-3 text-sm text-text-secondary">
-                No commands available
-              </div>
+              <div className="text-text-secondary px-4 py-3 text-sm">No commands available</div>
             )}
 
             {navigationCommands.length > 0 && (
               <Command.Group
                 heading="Navigation"
-                className="px-2 text-xs font-medium text-text-tertiary"
+                className="text-text-tertiary px-2 text-xs font-medium"
               >
                 {navigationCommands.map((command) => (
                   <Command.Item
                     key={command.id}
                     value={`${command.id} ${command.title} ${command.keywords?.join(" ") ?? ""}`}
                     onSelect={() => handleCommandSelect(command)}
-                    className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-text-primary aria-selected:bg-accent/10 aria-selected:text-accent cursor-pointer"
+                    className="text-text-primary aria-selected:bg-accent/10 aria-selected:text-accent flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm"
                   >
-                    {command.icon && <command.icon className="h-4 w-4 shrink-0 text-text-tertiary" />}
+                    {command.icon && (
+                      <command.icon className="text-text-tertiary h-4 w-4 shrink-0" />
+                    )}
                     <div className="flex flex-col">
                       <span>{command.title}</span>
                       {command.subtitle && (
-                        <span className="text-xs text-text-tertiary">{command.subtitle}</span>
+                        <span className="text-text-tertiary text-xs">{command.subtitle}</span>
                       )}
                     </div>
                   </Command.Item>
@@ -183,20 +178,22 @@ export function CommandPalette() {
             {fileCommands.length > 0 && (
               <Command.Group
                 heading="File Operations"
-                className="px-2 text-xs font-medium text-text-tertiary"
+                className="text-text-tertiary px-2 text-xs font-medium"
               >
                 {fileCommands.map((command) => (
                   <Command.Item
                     key={command.id}
                     value={`${command.id} ${command.title} ${command.keywords?.join(" ") ?? ""}`}
                     onSelect={() => handleCommandSelect(command)}
-                    className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-text-primary aria-selected:bg-accent/10 aria-selected:text-accent cursor-pointer"
+                    className="text-text-primary aria-selected:bg-accent/10 aria-selected:text-accent flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm"
                   >
-                    {command.icon && <command.icon className="h-4 w-4 shrink-0 text-text-tertiary" />}
+                    {command.icon && (
+                      <command.icon className="text-text-tertiary h-4 w-4 shrink-0" />
+                    )}
                     <div className="flex flex-col">
                       <span>{command.title}</span>
                       {command.subtitle && (
-                        <span className="text-xs text-text-tertiary">{command.subtitle}</span>
+                        <span className="text-text-tertiary text-xs">{command.subtitle}</span>
                       )}
                     </div>
                   </Command.Item>
@@ -207,20 +204,22 @@ export function CommandPalette() {
             {appearanceCommands.length > 0 && (
               <Command.Group
                 heading="Appearance"
-                className="px-2 text-xs font-medium text-text-tertiary"
+                className="text-text-tertiary px-2 text-xs font-medium"
               >
                 {appearanceCommands.map((command) => (
                   <Command.Item
                     key={command.id}
                     value={`${command.id} ${command.title} ${command.keywords?.join(" ") ?? ""}`}
                     onSelect={() => handleCommandSelect(command)}
-                    className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-text-primary aria-selected:bg-accent/10 aria-selected:text-accent cursor-pointer"
+                    className="text-text-primary aria-selected:bg-accent/10 aria-selected:text-accent flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm"
                   >
-                    {command.icon && <command.icon className="h-4 w-4 shrink-0 text-text-tertiary" />}
+                    {command.icon && (
+                      <command.icon className="text-text-tertiary h-4 w-4 shrink-0" />
+                    )}
                     <div className="flex flex-col">
                       <span>{command.title}</span>
                       {command.subtitle && (
-                        <span className="text-xs text-text-tertiary">{command.subtitle}</span>
+                        <span className="text-text-tertiary text-xs">{command.subtitle}</span>
                       )}
                     </div>
                   </Command.Item>
@@ -238,27 +237,27 @@ export function CommandPalette() {
                 />
               )}
               {query.length > 0 && !workspaceId && (
-                <div className="px-4 py-3 text-sm text-text-secondary">
+                <div className="text-text-secondary px-4 py-3 text-sm">
                   No commands matched &ldquo;{query}&rdquo;
                 </div>
               )}
             </Command.Empty>
           </Command.List>
 
-          <div className="flex items-center justify-between border-t border-border-muted px-4 py-2 text-xs text-text-tertiary">
+          <div className="border-border-muted text-text-tertiary flex items-center justify-between border-t px-4 py-2 text-xs">
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
-                <kbd className="rounded border border-border-default bg-bg-tertiary px-1">↑</kbd>
-                <kbd className="rounded border border-border-default bg-bg-tertiary px-1">↓</kbd>
+                <kbd className="border-border-default bg-bg-tertiary rounded border px-1">↑</kbd>
+                <kbd className="border-border-default bg-bg-tertiary rounded border px-1">↓</kbd>
                 <span>to navigate</span>
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="rounded border border-border-default bg-bg-tertiary px-1">↵</kbd>
+                <kbd className="border-border-default bg-bg-tertiary rounded border px-1">↵</kbd>
                 <span>to select</span>
               </span>
             </div>
             <span className="flex items-center gap-1">
-              <kbd className="rounded border border-border-default bg-bg-tertiary px-1">ESC</kbd>
+              <kbd className="border-border-default bg-bg-tertiary rounded border px-1">ESC</kbd>
               <span>to close</span>
             </span>
           </div>

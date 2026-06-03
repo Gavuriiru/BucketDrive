@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { CreateWorkspaceResponse, OwnershipTransferResponse, WorkspaceSchema } from "@bucketdrive/shared"
+import {
+  CreateWorkspaceResponse,
+  OwnershipTransferResponse,
+  WorkspaceSchema,
+} from "@bucketdrive/shared"
 import { z } from "zod"
 import { createContractTestContext, expectApiError } from "./test-harness"
 

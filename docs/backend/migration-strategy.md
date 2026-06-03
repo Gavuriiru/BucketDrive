@@ -5,6 +5,7 @@
 This document defines the database migration workflow for the platform.
 
 The system uses **Drizzle Kit** for schema management with:
+
 - SQLite via `better-sqlite3` for local development
 - Cloudflare D1 for staging and production
 
@@ -98,19 +99,24 @@ export const fileObject = sqliteTable("file_object", {
 ```
 
 # Indexes are defined alongside the table:
+
 ```ts
 import { index } from "drizzle-orm/sqlite-core"
 
-export const fileObject = sqliteTable("file_object", {
-  // ... columns
-}, (table) => ({
-  workspaceIdx: index("idx_file_workspace").on(table.workspaceId),
-  folderIdx: index("idx_file_folder").on(table.folderId),
-  ownerIdx: index("idx_file_owner").on(table.ownerId),
-  storageKeyIdx: index("idx_file_storage_key").on(table.storageKey),
-  deletedIdx: index("idx_file_deleted").on(table.isDeleted),
-  createdIdx: index("idx_file_created").on(table.createdAt),
-}))
+export const fileObject = sqliteTable(
+  "file_object",
+  {
+    // ... columns
+  },
+  (table) => ({
+    workspaceIdx: index("idx_file_workspace").on(table.workspaceId),
+    folderIdx: index("idx_file_folder").on(table.folderId),
+    ownerIdx: index("idx_file_owner").on(table.ownerId),
+    storageKeyIdx: index("idx_file_storage_key").on(table.storageKey),
+    deletedIdx: index("idx_file_deleted").on(table.isDeleted),
+    createdIdx: index("idx_file_created").on(table.createdAt),
+  }),
+)
 ```
 
 ---
@@ -130,11 +136,13 @@ pnpm db:generate
 ```
 
 This runs `drizzle-kit generate` which:
+
 1. Compares current schema against the last snapshot in `meta/`
 2. Generates a new SQL migration file in `migrations/`
 3. Updates the snapshot in `meta/`
 
 Example output: `migrations/0003_add_file_description.sql`
+
 ```sql
 ALTER TABLE file_object ADD COLUMN description text;
 ```
@@ -254,14 +262,14 @@ export async function seedProd() {
 
 D1 is SQLite-based but has specific limitations to be aware of:
 
-| Feature | SQLite (dev) | D1 (prod) | Mitigation |
-|---|---|---|---|
-| Foreign key enforcement | Yes (`PRAGMA foreign_keys=ON`) | **No** | Validate referential integrity in application code |
-| Triggers | Full support | Limited (not recommended for D1) | Use application-level logic or Workers |
-| ALTER TABLE | Full support | Limited subset | Drizzle Kit generates D1-compatible ALTER |
-| Transaction size | Unlimited | Max 5MB / 100 statements | Batch large operations |
-| Concurrent writes | WAL mode | Single writer, queue reads | Use `wrangler d1 execute` for batch ops |
-| Query timeout | None | 10 seconds | Paginate large datasets |
+| Feature                 | SQLite (dev)                   | D1 (prod)                        | Mitigation                                         |
+| ----------------------- | ------------------------------ | -------------------------------- | -------------------------------------------------- |
+| Foreign key enforcement | Yes (`PRAGMA foreign_keys=ON`) | **No**                           | Validate referential integrity in application code |
+| Triggers                | Full support                   | Limited (not recommended for D1) | Use application-level logic or Workers             |
+| ALTER TABLE             | Full support                   | Limited subset                   | Drizzle Kit generates D1-compatible ALTER          |
+| Transaction size        | Unlimited                      | Max 5MB / 100 statements         | Batch large operations                             |
+| Concurrent writes       | WAL mode                       | Single writer, queue reads       | Use `wrangler d1 execute` for batch ops            |
+| Query timeout           | None                           | 10 seconds                       | Paginate large datasets                            |
 
 ## D1-Safe Practices
 
@@ -281,6 +289,7 @@ If a migration breaks production:
 3. Deploy the fix migration normally
 
 Example:
+
 ```bash
 # Problem: 0003_add_file_description.sql added a NOT NULL column without a default
 # Fix: create 0004_fix_file_description_default.sql

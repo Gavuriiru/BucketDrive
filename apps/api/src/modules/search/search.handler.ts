@@ -115,23 +115,23 @@ search.get("/", requirePermission("files.read"), async (c) => {
   const rankSelect = hasTextSearch ? ", bm25(file_search_idx) AS rank" : ""
   const orderClause = buildOrderClause(sort, order, hasTextSearch)
 
-  const countStmt = c.env.DB
-    .prepare(`
+  const countStmt = c.env.DB.prepare(
+    `
       SELECT COUNT(*) AS count
       ${fromClause}
       WHERE ${whereClause}
-    `)
-    .bind(...params)
+    `,
+  ).bind(...params)
 
-  const rowsStmt = c.env.DB
-    .prepare(`
+  const rowsStmt = c.env.DB.prepare(
+    `
       SELECT ${FILE_SELECT}${rankSelect}
       ${fromClause}
       WHERE ${whereClause}
       ORDER BY ${orderClause}
       LIMIT ? OFFSET ?
-    `)
-    .bind(...params, request.limit, offset)
+    `,
+  ).bind(...params, request.limit, offset)
 
   const [countRow, rowResult] = await Promise.all([
     countStmt.first<{ count: number }>(),

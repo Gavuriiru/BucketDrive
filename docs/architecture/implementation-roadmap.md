@@ -10,6 +10,7 @@ verifiable result.
 ## Status Overview
 
 > **Correction pass — 2026-05-27:**
+>
 > - Mounted missing platform API/routes and added workspace creation support used by onboarding.
 > - Hardened CORS/auth trusted origins, public share browsing, share password hashing, and markdown preview rendering.
 > - Fixed upload session route ordering, multipart completion ordering, upload session ownership checks, and root batch-upload response shape.
@@ -22,47 +23,48 @@ verifiable result.
 > - Added real first-run setup path, `PLATFORM_OWNER_EMAIL` admin promotion, `db:reset:empty`, `R2_BUCKET_NAME` support, and protected R2 object import that preserves key paths as folders.
 > - Corrected dev DB scripts to reset/migrate Wrangler D1 local state, relaxed Better Auth user-id contracts, and added `r2:verify`/structured R2 import errors.
 
-| Day | Topic | Core Deliverable | Status |
-|---|---|---|---|
-| 1 | Database | Schema migrated, seed data | ✅ `59d3ea2` |
-| 2 | Auth backend | GitHub OAuth working via Better Auth | ✅ `f4f650e` |
-| 3 | Auth frontend | Login page, session guard, user context | ✅ `4b78970` |
-| 4 | Storage | R2 provider with signed URLs | ✅ `101668b` |
-| 5 | Upload | End-to-end drag-drop upload with progress | ✅ `8f0d0c2` |
-| 6 | Explorer | Grid/list views with breadcrumbs | ✅ `c31881c` |
-| 7 | Interactions | Context menus, keyboard shortcuts, multi-select | ✅ `680aa87` |
-| 8 | Folders | CRUD, folder tree, drag-drop move | ✅ `70f64d0` |
-| 9 | RBAC | Permission engine with can() checks | ✅ `e780c23` |
-| 10 | Internal shares | File sharing between workspace members | ✅ `27163c2` |
-| 11 | External shares | Public links with password + rate-limit | ✅ `47a6000` |
-| 12 | Share management | User dashboard + admin oversight | ✅ `56d0816` |
-| 13 | Trash | Soft delete, restore, auto-cleanup | ✅ `11a6385` |
-| 14 | Search | FTS5 full-text with filters | ✅ `50e2e7b` |
-| 15 | Tags & favorites | Color-coded tags, star favorites | ✅ `50e2e7b` |
-| 16 | Command palette | Ctrl+K with search + commands | ✅ `fa94bd8` |
-| 17 | Preview | Space to preview files inline | ✅ `9de8a5a` |
-| 18 | Dark mode | Theme toggle, system detection, persistence | ✅ `e9e10a6` |
-| 19 | Admin dashboard | Analytics, members, audit, settings | ✅ `5f8ed5e` |
-| 20 | Testing foundation | Unit tests, type system, build health | ✅ — infra ready, real tests Days 30-31 |
-| 21 | Multipart upload | Real chunking, resumability, retry | ✅ `bb9aec4` |
-| 22 | Undo / redo | Ctrl+Z for move, rename, soft delete | ✅ `61477e0` |
-| 23 | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure | ✅ |
-| 24 | Virtualization | react-window for 10k+ items, bundle audit | ✅ |
-| 25 | RBAC v2 | Manager/Guest roles, resource policies, billing/audit perms | ✅ |
-| 26 | Workspace invitations | Email invite tokens, join flow, ownership transfer | ✅ |
-| 27 | Share polish | Analytics counters, branded public pages | ✅ `4639d9a` |
-| 28 | Notifications | In-app notification system + toast integration | ✅ |
-| 29 | Thumbnails & processing | Async preview generation via workers | ✅ `14f6fb6` |
-| 29 | Thumbnails & processing | Backfill pending thumbnails via scheduled worker | ✅ |
-| 30 | Contract tests | API contract validation against test D1 | ✅ |
-| 31 | E2E & a11y | Playwright journeys, axe-core compliance | ⬜ |
-| 32 | Staging & final polish | Deploy pipeline, Lighthouse CI, docs sync | ⬜ |
+| Day | Topic                     | Core Deliverable                                            | Status                                  |
+| --- | ------------------------- | ----------------------------------------------------------- | --------------------------------------- |
+| 1   | Database                  | Schema migrated, seed data                                  | ✅ `59d3ea2`                            |
+| 2   | Auth backend              | GitHub OAuth working via Better Auth                        | ✅ `f4f650e`                            |
+| 3   | Auth frontend             | Login page, session guard, user context                     | ✅ `4b78970`                            |
+| 4   | Storage                   | R2 provider with signed URLs                                | ✅ `101668b`                            |
+| 5   | Upload                    | End-to-end drag-drop upload with progress                   | ✅ `8f0d0c2`                            |
+| 6   | Explorer                  | Grid/list views with breadcrumbs                            | ✅ `c31881c`                            |
+| 7   | Interactions              | Context menus, keyboard shortcuts, multi-select             | ✅ `680aa87`                            |
+| 8   | Folders                   | CRUD, folder tree, drag-drop move                           | ✅ `70f64d0`                            |
+| 9   | RBAC                      | Permission engine with can() checks                         | ✅ `e780c23`                            |
+| 10  | Internal shares           | File sharing between workspace members                      | ✅ `27163c2`                            |
+| 11  | External shares           | Public links with password + rate-limit                     | ✅ `47a6000`                            |
+| 12  | Share management          | User dashboard + admin oversight                            | ✅ `56d0816`                            |
+| 13  | Trash                     | Soft delete, restore, auto-cleanup                          | ✅ `11a6385`                            |
+| 14  | Search                    | FTS5 full-text with filters                                 | ✅ `50e2e7b`                            |
+| 15  | Tags & favorites          | Color-coded tags, star favorites                            | ✅ `50e2e7b`                            |
+| 16  | Command palette           | Ctrl+K with search + commands                               | ✅ `fa94bd8`                            |
+| 17  | Preview                   | Space to preview files inline                               | ✅ `9de8a5a`                            |
+| 18  | Dark mode                 | Theme toggle, system detection, persistence                 | ✅ `e9e10a6`                            |
+| 19  | Admin dashboard           | Analytics, members, audit, settings                         | ✅ `5f8ed5e`                            |
+| 20  | Testing foundation        | Unit tests, type system, build health                       | ✅ — infra ready, real tests Days 30-31 |
+| 21  | Multipart upload          | Real chunking, resumability, retry                          | ✅ `bb9aec4`                            |
+| 22  | Undo / redo               | Ctrl+Z for move, rename, soft delete                        | ✅ `61477e0`                            |
+| 23  | Clipboard & folder upload | Ctrl+V paste, OS folder drag with structure                 | ✅                                      |
+| 24  | Virtualization            | react-window for 10k+ items, bundle audit                   | ✅                                      |
+| 25  | RBAC v2                   | Manager/Guest roles, resource policies, billing/audit perms | ✅                                      |
+| 26  | Workspace invitations     | Email invite tokens, join flow, ownership transfer          | ✅                                      |
+| 27  | Share polish              | Analytics counters, branded public pages                    | ✅ `4639d9a`                            |
+| 28  | Notifications             | In-app notification system + toast integration              | ✅                                      |
+| 29  | Thumbnails & processing   | Async preview generation via workers                        | ✅ `14f6fb6`                            |
+| 29  | Thumbnails & processing   | Backfill pending thumbnails via scheduled worker            | ✅                                      |
+| 30  | Contract tests            | API contract validation against test D1                     | ✅                                      |
+| 31  | E2E & a11y                | Playwright journeys, axe-core compliance                    | ✅                                      |
+| 32  | Staging & final polish    | Deploy pipeline, Lighthouse CI, docs sync                   | ✅                                      |
 
 ---
 
 ## Day 1 - Database Foundation & Migration DONE (`59d3ea2`)
 
 > **Notes from implementation:**
+>
 > - Fixed FK bug in `tags.ts`: `fileObjectId` referenced `workspace.id` instead of `fileObject.id`
 > - Replaced `better-sqlite3` with `sql.js` in scripts (WSL2 platform compatibility)
 > - Added `tsx`, `sql.js`, `uuid` as root devDependencies
@@ -105,6 +107,7 @@ git add -A && git commit -m "chore(db): initial migration and seed"
 ## Day 2 - Authentication (Better Auth) DONE (`f4f650e`)
 
 > **Notes from implementation:**
+>
 > - Installed `@better-auth/drizzle-adapter` as explicit dependency (imported from `better-auth/adapters/drizzle` re-exports it)
 > - Created `packages/shared/src/db/schema/auth.ts` with `user`, `session`, `account`, `verification`, `organization`, `member` tables
 > - Added `workspaceMember` junction table for future RBAC
@@ -161,6 +164,7 @@ git commit -m "feat(auth): verify Better Auth OAuth flow with GitHub"
 ## Day 3 - Login UI (Frontend) DONE (`4b78970`)
 
 > **Notes from implementation:**
+>
 > - Created `apps/web/src/lib/auth.ts` with `useSession()` hook (TanStack Query) and `useSignOut()` hook
 > - Created `apps/web/src/routes/login.tsx` with GitHub OAuth sign-in link (`GET /api/auth/sign-in/social?provider=github&callbackURL=/dashboard`)
 > - Restructured `__root.tsx` routes: root `<Outlet />`, standalone `/login` route (redirects to `/dashboard` if already authenticated), `app` layout route with `beforeLoad` auth guard, `/` and `/dashboard` as children
@@ -174,12 +178,14 @@ git commit -m "feat(auth): verify Better Auth OAuth flow with GitHub"
 ### Step 3.1 - Create login page
 
 Create `apps/web/src/routes/login.tsx`:
+
 - "Sign in with GitHub" button that links to `/api/auth/signin/github`
 - Clean centered layout with BucketDrive branding
 
 ### Step 3.2 - Add auth context
 
 Create `apps/web/src/lib/auth.ts`:
+
 - `useSession()` hook that fetches `/api/auth/session` and caches via TanStack Query
 - Redirect to `/login` if unauthenticated
 - Show user avatar + name in Topbar
@@ -187,6 +193,7 @@ Create `apps/web/src/lib/auth.ts`:
 ### Step 3.3 - Protect dashboard route
 
 Update `__root.tsx`:
+
 - If no session, redirect to `/login`
 - Show loading spinner while checking session
 
@@ -212,6 +219,7 @@ git commit -m "feat(web): login page and session-based auth guard"
 ## Day 4 - R2 Storage Provider DONE (`101668b`)
 
 > **Notes from implementation:**
+>
 > - Created `StorageProvider` interface with `generateSignedUploadUrl`, `generateSignedDownloadUrl`, `delete`, `copy`
 > - Implemented `R2StorageProvider` using `aws4fetch` for S3-compatible presigned URLs (PUT/GET)
 > - Added `R2BindingProvider` fallback when R2 S3 credentials are missing (presigned URLs disabled but delete/copy still work via R2 binding)
@@ -244,6 +252,7 @@ interface StorageProvider {
 ```
 
 Implement `R2StorageProvider`:
+
 - Uses `c.env.STORAGE` (R2 bucket binding)
 - `signedUploadUrl`: PUT, 15 min expiry
 - `signedDownloadUrl`: GET, 15 min expiry
@@ -252,6 +261,7 @@ Implement `R2StorageProvider`:
 ### Step 4.3 - Write unit tests
 
 Create `apps/api/src/services/__tests__/storage.test.ts`:
+
 - Mock R2 binding
 - Test signed URL generation
 - Test error handling (missing bucket, missing key)
@@ -273,6 +283,7 @@ git commit -m "feat(storage): R2 storage provider with signed URLs"
 ## Day 5 - File Upload (End-to-End) DONE (`8f0d0c2`)
 
 > **Notes from implementation:**
+>
 > - Combined Day 4 (storage backend) + Day 5 (upload UI) into a single implementation session
 > - Created `UploadService` with `initiateUpload()` (RBAC/quota/mime validation, signed URL, UploadSession) and `completeUpload()` (FileObject creation, audit log)
 > - Files handler wired: `POST /upload`, `POST /upload/complete`, `GET /:fileId/download`, `GET /` (list with sorting/pagination)
@@ -290,6 +301,7 @@ git commit -m "feat(storage): R2 storage provider with signed URLs"
 ### Step 5.1 - Implement upload service
 
 Create `apps/api/src/services/upload.service.ts`:
+
 - `initiateUpload()`: validate RBAC + quota + mime, generate signed URL, create UploadSession
 - `completeUpload()`: verify parts, save FileObject metadata, audit log
 - `cancelUpload()`: abort R2 multipart, mark session cancelled
@@ -297,6 +309,7 @@ Create `apps/api/src/services/upload.service.ts`:
 ### Step 5.2 - Implement upload handlers
 
 Update `apps/api/src/modules/files/files.handler.ts`:
+
 - `POST /upload` -> calls `initiateUpload`
 - `POST /upload/complete` -> calls `completeUpload`
 - Add proper Zod validation using `InitiateUploadRequest` / `CompleteUploadRequest`
@@ -304,6 +317,7 @@ Update `apps/api/src/modules/files/files.handler.ts`:
 ### Step 5.3 - Implement upload queue UI
 
 Create `apps/web/src/components/features/upload-queue.tsx`:
+
 - Zustand store for upload state: files, progress, status
 - Drag-and-drop zone on file explorer area
 - Upload queue drawer: filename, progress bar, speed, ETA
@@ -326,6 +340,7 @@ git commit -m "feat: end-to-end file upload with progress"
 ## Day 6 - File Explorer (Grid & List Views) DONE (`c31881c`)
 
 > **Notes from implementation:**
+>
 > - Created `packages/shared/src/contracts/folders.ts` with `ListFoldersRequest`, `ListFoldersResponse`, `BreadcrumbItemSchema`, `BreadcrumbResponse`
 > - Created `apps/api/src/modules/folders/folders.handler.ts` with `GET /` (list folders by parentFolderId) and `GET /:folderId/breadcrumbs` (walk parent chain to root)
 > - Registered folders route at `apps/api/src/index.ts` -> `/api/workspaces/:workspaceId/folders`
@@ -343,18 +358,21 @@ git commit -m "feat: end-to-end file upload with progress"
 ### Step 6.1 - Implement list files handler
 
 Update `GET /api/workspaces/:id/files`:
+
 - Query `FileObject` with workspace scope, folder filter, sort, pagination
 - Return `ListFilesResponse` shape
 
 ### Step 6.2 - Create useFiles hook
 
 Create `apps/web/src/hooks/api/use-files.ts`:
+
 - TanStack Query hook with `queryKey: ["files", workspaceId, params]`
 - Zod parse on response to validate contract
 
 ### Step 6.3 - Implement file explorer grid
 
 Create `apps/web/src/components/features/file-explorer.tsx`:
+
 - Fetches files from API
 - Grid view: cards with icon thumbnail, filename, size, date
 - List view: table with columns (name, type, size, modified)
@@ -364,6 +382,7 @@ Create `apps/web/src/components/features/file-explorer.tsx`:
 ### Step 6.4 - Add folder navigation breadcrumbs
 
 Breadcrumb component showing current path:
+
 - Clickable segments that navigate
 - Root: workspace name
 
@@ -385,6 +404,7 @@ git commit -m "feat(explorer): grid and list views with breadcrumbs"
 ## Day 7 - Keyboard & Context Menus DONE (`680aa87`)
 
 > **Notes from implementation:**
+>
 > - Added `RenameFileRequest` and `DeleteFileResponse` contracts to `packages/shared/src/contracts/files.ts`
 > - Implemented `PATCH /:fileId` rename handler: updates `originalName` + `extension`, audit log `file.rename`
 > - Implemented `DELETE /:fileId` soft-delete handler: sets `isDeleted=true, deletedAt=now()`, audit log `file.delete`
@@ -403,6 +423,7 @@ git commit -m "feat(explorer): grid and list views with breadcrumbs"
 ### Step 7.1 - Implement context menu
 
 Create `apps/web/src/components/features/file-context-menu.tsx`:
+
 - Right-click on file -> menu: Open, Rename, Move, Copy, Download, Share, Favorite, Delete
 - Position-aware (doesn't overflow viewport)
 - Keyboard: Shift+F10 or context menu key opens menu for selected file
@@ -411,6 +432,7 @@ Create `apps/web/src/components/features/file-context-menu.tsx`:
 ### Step 7.2 - Implement keyboard shortcuts
 
 Create `apps/web/src/hooks/use-explorer-shortcuts.ts`:
+
 - Enter = open file/enter folder
 - Delete = trash selected
 - Ctrl+A = select all
@@ -447,6 +469,7 @@ git commit -m "feat(explorer): keyboard navigation, context menus, multi-selecti
 ## Day 8 - Folder CRUD & Drag-Drop Move DONE (`70f64d0`)
 
 > **Notes from implementation:**
+>
 > - Added `CreateFolderRequest`, `UpdateFolderRequest`, `DeleteFolderResponse` contracts to `packages/shared/src/contracts/folders.ts`
 > - Folder handler (`folders.handler.ts`): `POST /` creates folder with materialized path (`parent.path/name`), `PATCH /:folderId` handles rename + move (combined `UpdateFolderRequest` with `name` + `parentFolderId`, recalculates path), `DELETE /:folderId` does recursive soft-delete (collects all descendant folders iteratively, marks files + folders as `isDeleted=true` in batch)
 > - File handler (`files.handler.ts`): switched `PATCH /:fileId` from `RenameFileRequest` to `UpdateFileRequest` which already had `folderId` - supports rename AND move in one call; audit log differentiates `file.move` vs `file.rename`
@@ -463,6 +486,7 @@ git commit -m "feat(explorer): keyboard navigation, context menus, multi-selecti
 ### Step 8.1 - Implement folder handlers
 
 Update `apps/api/src/modules/folders/folders.handler.ts`:
+
 - `POST /` - create folder
 - `PATCH /:id` - rename/move folder
 - `DELETE /:id` - soft-delete folder (recursive)
@@ -470,6 +494,7 @@ Update `apps/api/src/modules/folders/folders.handler.ts`:
 ### Step 8.2 - Implement folder tree sidebar
 
 Update sidebar to show folder tree:
+
 - Expandable/collapsible
 - Current folder highlighted
 - Click to navigate
@@ -478,6 +503,7 @@ Update sidebar to show folder tree:
 ### Step 8.3 - Implement drag-to-move
 
 Using `@dnd-kit`:
+
 - Drag file to folder -> drop target highlights
 - On drop -> API call to move file
 - Optimistic update: file disappears from source, appears in target
@@ -501,6 +527,7 @@ git commit -m "feat: folder CRUD, folder tree, drag-drop to move"
 ## Day 9 - RBAC Engine DONE (`e780c23`)
 
 > **Notes from implementation:**
+>
 > - Created `packages/shared/src/rbac/permissions.ts` with `Permission` Zod enum (30 permissions) and `ROLE_PERMISSIONS` mapping per role
 > - Created `packages/shared/src/rbac/can.ts` with `can(role, permission, resourceOwnerId?, userId?)` - pure function, no DB dependency
 > - Owner: all permissions; Admin: all except workspace.delete/transfer; Editor: read, upload, rename, move, copy, share, tag, favorite + shares management (NOT delete); Viewer: read only
@@ -527,6 +554,7 @@ export function can(
 ```
 
 Define permission sets per role:
+
 - `owner`: all permissions
 - `admin`: all except transfer-ownership, delete-workspace
 - `editor`: read, write, rename, move, share, tag, favorite
@@ -535,12 +563,14 @@ Define permission sets per role:
 ### Step 9.2 - Implement middleware
 
 Update `apps/api/src/middleware/rbac.ts`:
+
 - `requirePermission(permission)`: middleware that fetches user's role from D1 and calls `can()`
 - Workspace-scoped: ensures user is member of target workspace
 
 ### Step 9.3 - Add RBAC to all protected routes
 
 Wire `requirePermission()` into every handler:
+
 - Files: `files.read`, `files.upload`, `files.delete`, `files.restore`
 - Folders: `folders.read`, `folders.create`, `folders.delete`
 - Shares: `shares.create`, `shares.read`, `shares.revoke`
@@ -548,6 +578,7 @@ Wire `requirePermission()` into every handler:
 ### Step 9.4 - Write RBAC tests
 
 Create `packages/shared/src/rbac/__tests__/can.test.ts`:
+
 - Each role x each permission -> assert correct result
 - Ownership: file owner can always read their own files
 - Cross-workspace: viewer in A cannot access files in B
@@ -570,6 +601,7 @@ git commit -m "feat(rbac): permission engine with role-based middleware"
 ## Day 10 - Internal Sharing DONE (`27163c2`)
 
 > **Notes from implementation:**
+>
 > - Created `SharesService` (`apps/api/src/modules/shares/shares.service.ts`) with CRUD + access methods: `createShare`, `listShares`, `getShare`, `updateShare`, `revokeShare`, `accessShare`
 > - Password hashing uses Web Crypto API (SHA-256 with per-password salt) for Worker compatibility
 > - Internal shares visible to all workspace members; `sharedWithMe=true` query param filters shares NOT created by current user
@@ -604,6 +636,7 @@ git commit -m "feat(shares): internal file sharing between workspace members"
 ## Day 11 - External Sharing DONE (`47a6000`)
 
 > **Notes from implementation:**
+>
 > - Rate limiting uses existing `shareAccessAttempt` table - 5 failed attempts per IP in 15 min -> `SHARE_PASSWORD_RATE_LIMITED` (429), 10+ total failures in 30 min -> `SHARE_LOCKED` (423). No migration needed.
 > - Added `GET /api/shares/:shareId` for public share metadata (no password needed, used by frontend to render) and `GET /api/shares/:shareId/browse?folderId=x&password=y` for navigating shared folders.
 > - Created `ShareInfoResponse`, `ShareBrowseRequest`, `ShareBrowseResponse` Zod contracts in shared package.
@@ -623,6 +656,7 @@ git commit -m "feat(shares): internal file sharing between workspace members"
 ### Step 11.2 - Implement public share gateway
 
 Create `apps/api/src/modules/shares/public.handler.ts`:
+
 - `POST /api/shares/:shareId/access` - validate password, check expiration, check locked status
 - Log access attempt in `ShareAccessAttempt`
 - Return signed download URL (direct) or folder contents (explorer)
@@ -636,6 +670,7 @@ Create `apps/api/src/modules/shares/public.handler.ts`:
 ### Step 11.4 - Create public share page
 
 Create `apps/web/src/routes/share.$shareId.tsx`:
+
 - No auth required (public route)
 - If password-protected: show password input
 - If direct share: show file info + download button
@@ -660,6 +695,7 @@ git commit -m "feat(shares): external sharing with password and rate limiting"
 ## Day 12 - Share Management Dashboard DONE (`56d0816`)
 
 > **Notes from implementation:**
+>
 > - Added `/dashboard/shares` with a dedicated Share Links dashboard for creators, including copy link, edit expiration/password, and revoke actions
 > - Added owner/admin "All Workspace Shares" tab with workspace-wide visibility and locked-link badges
 > - Enriched `GET /api/workspaces/:workspaceId/shares` to return resource name, creator name, permissions, `hasPassword`, `isLocked`, and scope metadata
@@ -674,6 +710,7 @@ git commit -m "feat(shares): external sharing with password and rate limiting"
 ### Step 12.1 - User share page
 
 Create `/dashboard/shares`:
+
 - Table: file/folder name, share type, created date, expiration, access count
 - Actions: copy link, change password, edit expiration, revoke
 - Revoke confirmation: "This will immediately disable access. Continue?"
@@ -681,6 +718,7 @@ Create `/dashboard/shares`:
 ### Step 12.2 - Admin share overview
 
 Admins see "All Workspace Shares" tab:
+
 - All shares across all users
 - Can revoke any share
 - Can see locked shares (brute-force detection)
@@ -688,6 +726,7 @@ Admins see "All Workspace Shares" tab:
 ### Step 12.3 - Audit events
 
 Ensure share actions generate audit logs:
+
 - `share.created`, `share.accessed`, `share.revoked`, `share.password_failed`, `share.locked`
 
 ### Step 12.4 - Verify
@@ -708,6 +747,7 @@ git commit -m "feat(shares): management dashboard with admin oversight"
 ## Day 13 - Trash System DONE (`11a6385`)
 
 > **Notes from implementation:**
+>
 > - Added shared trash contracts with combined file/folder trash items, restore responses, and permanent delete responses
 > - Added dedicated `GET /api/workspaces/:workspaceId/trash` route plus file/folder restore and permanent purge endpoints
 > - Centralized trash logic in `TrashService`: soft-delete side effects, name conflict handling on restore, share deactivation, favorite reactivation, and permanent purge
@@ -722,6 +762,7 @@ git commit -m "feat(shares): management dashboard with admin oversight"
 ### Step 13.1 - Implement soft-delete
 
 Update delete handlers:
+
 - `DELETE /files/:id` -> sets `is_deleted = true, deleted_at = NOW()`
 - File remains in R2
 - Active shares invalidated
@@ -730,6 +771,7 @@ Update delete handlers:
 ### Step 13.2 - Implement trash view
 
 Create "Trash" route in sidebar:
+
 - Lists deleted files with: name, original location, deleted date, days remaining
 - Actions: Restore, Delete Permanently
 
@@ -761,6 +803,7 @@ git commit -m "feat(trash): soft delete, restore, and permanent purge"
 ## Day 14 - Search & Filters DONE (`50e2e7b`)
 
 > **Notes from implementation:**
+>
 > - Added `0002_gentle_raven.sql` with a standalone FTS5 index, sync triggers, backfill, and supporting indexes for file search, tags, and favorites
 > - Added `GET /api/workspaces/:workspaceId/search` with workspace-wide file search, MIME category filters, tag AND filtering, favorites filtering, pagination, and relevance-aware sorting
 > - Upgraded file list responses to always include `tags` and `isFavorited`, so explorer and search results render the same metadata shape
@@ -774,6 +817,7 @@ git commit -m "feat(trash): soft delete, restore, and permanent purge"
 ### Step 14.1 - Create FTS5 index
 
 Create migration `0001_fts_search.sql`:
+
 ```sql
 CREATE VIRTUAL TABLE IF NOT EXISTS file_search_idx USING fts5(
   original_name, extension, mime_type,
@@ -814,6 +858,7 @@ git commit -m "feat(search): FTS5 full-text search with filters"
 ## Day 15 - Tags, Favorites & Colors DONE (`50e2e7b`)
 
 > **Notes from implementation:**
+>
 > - Added tag contracts and workspace tag CRUD endpoints under `/api/workspaces/:workspaceId/tags`
 > - Implemented `POST /api/workspaces/:workspaceId/files/:fileId/tags` and `POST /api/workspaces/:workspaceId/files/:fileId/favorite`
 > - Added dashboard tag filters, favorite-only search filtering, favorite stars, and tag chips in both grid and list explorer modes
@@ -866,6 +911,7 @@ git commit -m "feat: tags, favorites, and color-coded organization"
 ## Day 16 - Command Palette DONE
 
 > **Notes from implementation:**
+>
 > - Installed `cmdk` v1.1.1 for the command palette primitive
 > - Created `command-palette-store.ts` (Zustand) for global `isOpen`/`query` state
 > - Created `use-command-palette-shortcut.ts` hook for global `Cmd/Ctrl+K` listener with input-element guard
@@ -885,6 +931,7 @@ git commit -m "feat: tags, favorites, and color-coded organization"
 ### Step 16.1 - Implement command palette component
 
 Create `apps/web/src/components/shared/command-palette.tsx`:
+
 - `Ctrl/Cmd + K` toggle (global listener)
 - Centered modal with backdrop blur, fade + scale-up animation (150ms)
 - Search input with debounce
@@ -896,6 +943,7 @@ Create `apps/web/src/components/shared/command-palette.tsx`:
 ### Step 16.2 - Define all commands
 
 Create `apps/web/src/components/shared/commands/`:
+
 - `navigation.ts`: Go to Files, Go to Shares, Go to Trash, Go to Settings
 - `file-operations.ts`: Rename, Move, Copy, Delete, Share, Favorite, Tag
 - `appearance.ts`: Toggle dark mode, Switch grid/list view
@@ -904,6 +952,7 @@ Create `apps/web/src/components/shared/commands/`:
 ### Step 16.3 - Add file-search fallback
 
 When query doesn't match any command:
+
 - Fall back to workspace file search
 - Show top 3 file matches
 - "Search files for 'query'" entry opens explorer pre-filled
@@ -933,6 +982,7 @@ git commit -m "feat: command palette with search and keyboard navigation"
 ## Day 17 - Inline Preview (Space) DONE
 
 > **Notes from implementation:**
+>
 > - Added `PreviewUrlResponse` contract to `packages/shared/src/contracts/files.ts`
 > - Created `GET /api/workspaces/:workspaceId/files/:fileId/preview` endpoint returning signed URL with 5-minute expiry and `mimeType`
 > - Added `previewFileId` state and `setPreviewFileId` action to `explorer-store.ts`
@@ -955,6 +1005,7 @@ git commit -m "feat: command palette with search and keyboard navigation"
 ### Step 17.2 - Implement preview panel
 
 Create `apps/web/src/components/features/file-preview.tsx`:
+
 - Slide-in panel on right (400px), modal on narrow screens
 - Does NOT change URL
 - Supported types:
@@ -997,6 +1048,7 @@ git commit -m "feat(preview): inline file preview with arrow navigation"
 ## Day 18 - Dark Mode Toggle DONE (`e9e10a6`)
 
 > **Notes from implementation:**
+>
 > - Updated `app-store.ts` to use `zustand/persist` with `bucketdrive-theme` localStorage key
 > - Added `"system"` theme option alongside `"light"` / `"dark"`; `getResolvedTheme()` maps system to `matchMedia("prefers-color-scheme: dark")`
 > - Added inline `<script>` in `index.html` that reads persisted theme and applies `.dark` class before React hydrates, eliminating FART
@@ -1012,6 +1064,7 @@ git commit -m "feat(preview): inline file preview with arrow navigation"
 ### Step 18.1 - Add persistence and system detection
 
 Update `apps/web/src/stores/app-store.ts`:
+
 - On init: read `localStorage.theme`, fallback to `prefers-color-scheme`
 - Default to system preference if no stored value
 - `toggleTheme()` persists to `localStorage`
@@ -1020,6 +1073,7 @@ Update `apps/web/src/stores/app-store.ts`:
 ### Step 18.2 - Audit all components
 
 Verify every component has dark mode classes:
+
 - Text contrast (no `text-gray-900` without dark variant)
 - Border visibility in dark
 - Shadows adjusted (docs specify dark shadow tokens)
@@ -1049,6 +1103,7 @@ git commit -m "feat(theme): dark mode persistence, system detection, and a11y au
 ## Day 19 - Admin Dashboard DONE (`5f8ed5e`)
 
 > **Notes from implementation (2026-05-10):**
+>
 > - Reframed `/dashboard` as the admin home and moved the explorer to `/dashboard/files`
 > - Added admin routes: `/dashboard/members`, `/dashboard/audit`, and `/dashboard/settings`
 > - Added shared contracts for dashboard and members plus `allowedMimeTypes` + `storageQuotaBytes` support in workspace settings payloads
@@ -1092,6 +1147,7 @@ git commit -m "feat(dashboard): admin analytics and workspace settings"
 ## Day 20 - Testing Foundation DONE
 
 > **Notes from implementation (2026-05-10):**
+>
 > - `pnpm build`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` all pass
 > - Added `test:contracts` script to `apps/api` and `packages/shared` package.json, pointing to `src/__tests__/contracts` with placeholder tests
 > - Added `test:e2e` placeholder script to `apps/web` package.json
@@ -1115,6 +1171,7 @@ All must pass before proceeding.
 ### Step 20.2 - Add missing test scripts to package.json
 
 Ensure root `package.json` has:
+
 - `test:unit`
 - `test:contracts` (placeholder)
 - `test:e2e` (placeholder)
@@ -1137,6 +1194,7 @@ git commit -m "test: confirm testing foundation and build health"
 ## Day 21 - Multipart Upload & Resumability DONE (`bb9aec4`)
 
 > **Notes from implementation:**
+>
 > - **Multipart threshold:** 250 MB (arquivos ≤ 250 MB usam single-shot PUT; > 250 MB usam multipart R2 real)
 > - **Chunk size configurável:** `uploadChunkSizeBytes` adicionado a `workspace_settings` (default 5 MB, mínimo 5 MB forçado no backend via `Math.max(configured, 5 * 1024 * 1024)`)
 > - **R2 multipart via binding:** Worker cria multipart com `binding.createMultipartUpload()`, gera presigned URLs S3 por parte via `aws4fetch` (`?uploadId=xxx&partNumber=n`), browser faz PUT direto no R2
@@ -1155,6 +1213,7 @@ git commit -m "test: confirm testing foundation and build health"
 ### Step 21.1 - Implement real multipart backend
 
 Update `apps/api/src/services/upload.service.ts`:
+
 - `initiateUpload()`: for files > 5 MB, create multipart R2 session, return `sessionId` + `partSize` + `totalParts`
 - `getUploadSession(sessionId)`: return completed parts + remaining parts
 - `completeUpload()`: accept parts array, verify ETags, complete multipart in R2
@@ -1167,6 +1226,7 @@ Update `apps/api/src/services/upload.service.ts`:
 ### Step 21.3 - Implement chunked frontend upload
 
 Update upload queue logic:
+
 - Slice file into 5 MB chunks
 - Upload parts in parallel (max concurrency: 3)
 - Track ETags from R2 responses
@@ -1199,6 +1259,7 @@ git commit -m "feat(upload): multipart chunking, resumability, and retry"
 ## Day 22 - Undo / Redo System DONE (`61477e0`)
 
 > **Notes from implementation:**
+>
 > - Built a global toast system on top of `@radix-ui/react-toast` with `ToastProvider`, `ToastContainer`, and an imperative `toast()` / `dismissToast()` API
 > - Created `undo-store.ts` (Zustand) holding a typed stack of `UndoAction` objects capped at 50 entries; supports `push`, `pop`, `peek`, `clear`
 > - Created `useUndoableMutations` hook that wraps `moveFile`, `renameFile`, `deleteFile`, `moveFolder`, `renameFolder`, and `deleteFolder`
@@ -1215,6 +1276,7 @@ git commit -m "feat(upload): multipart chunking, resumability, and retry"
 ### Step 22.1 - Design undo stack
 
 Zustand store `undo-stack.ts`:
+
 - Stack of `UndoAction` objects (max 50)
 - Each action: `type`, `payload`, `inverse()` function
 - Actions: `move`, `rename`, `delete` (soft), `folder.move`, `folder.rename`
@@ -1222,6 +1284,7 @@ Zustand store `undo-stack.ts`:
 ### Step 22.2 - Implement undoable mutations
 
 Wrap existing mutations:
+
 - `moveFile` -> push `inverse: move back to original folder`
 - `renameFile` -> push `inverse: restore original name`
 - `softDelete` -> push `inverse: restore from trash`
@@ -1255,6 +1318,7 @@ git commit -m "feat: undo/redo system for move, rename, and soft delete"
 ## Day 23 - Clipboard Paste & Folder Upload DONE
 
 > **Notes from implementation:**
+>
 > - Added `BatchUploadRequest`, `BatchUploadResponse`, `BatchUploadItemRequest`, `BatchUploadFolderCreated`, `BatchUploadItemResponse` contracts to `packages/shared/src/contracts/files.ts`
 > - Implemented `POST /api/workspaces/:workspaceId/files/batch-upload` in `files.handler.ts` with full folder hierarchy creation, empty-folder support, and per-file upload initiation
 > - Backend folder creation is idempotent: reuses existing folders by `(workspaceId, parentFolderId, name)` match, creates missing ones with correct materialized `path`
@@ -1270,6 +1334,7 @@ git commit -m "feat: undo/redo system for move, rename, and soft delete"
 ### Step 23.1 - Implement clipboard paste
 
 Listen to `paste` event on explorer:
+
 - `e.clipboardData.files` -> add to upload queue
 - Support images copied from browser/screenshot tools
 - Same validation pipeline as drag-drop
@@ -1277,6 +1342,7 @@ Listen to `paste` event on explorer:
 ### Step 23.2 - Implement folder upload from OS
 
 Handle `drag-drop` with `webkitGetAsEntry()`:
+
 - Detect `isDirectory` on dropped items
 - Recursively read directory entries
 - Replicate folder structure in workspace (virtual folders)
@@ -1312,6 +1378,7 @@ git commit -m "feat(upload): clipboard paste and OS folder drag with structure p
 ## Day 24 - Virtualization & Performance DONE
 
 > **Notes from implementation:**
+>
 > - Installed `@tanstack/react-virtual` v3 in `apps/web`
 > - Refactored `file-list.tsx` from `<table>` to div-based virtualized list using `useVirtualizer` with fixed `ROW_HEIGHT = 56`, `overscan = 5`, and `maxHeight: calc(100vh - 320px)` scroll container
 > - Refactored `file-grid.tsx` to virtualized grid with `lanes` mapped to responsive column count (`getGridCols` via `ResizeObserver`), `ROW_HEIGHT = 172`, `overscan = 2`
@@ -1334,17 +1401,20 @@ pnpm add @tanstack/react-virtual
 ### Step 24.2 - Virtualize file list and grid
 
 Update `file-list.tsx`:
+
 - Use `useVirtualizer` for row virtualization
 - Estimated row height: 48px (list), 160px (grid)
 - Overscan: 5 rows
 
 Update `file-grid.tsx`:
+
 - Virtualize grid with column-aware virtualizer
 - Dynamic column count based on container width
 
 ### Step 24.3 - Virtualize search results and audit log
 
 Apply same pattern to:
+
 - Search results page
 - Trash list
 - Audit log table
@@ -1377,6 +1447,7 @@ git commit -m "perf: list virtualization and bundle size audit"
 ## Day 25 - RBAC v2 DONE
 
 > **Notes from implementation:**
+>
 > - Fixed critical bug in `apps/api/src/lib/workspace-membership.ts`: `WORKSPACE_ROLES` only recognized 4 roles (`owner`, `admin`, `editor`, `viewer`), causing `manager` and `guest` to be downgraded to `viewer` at runtime. Added both missing roles.
 > - `manager` permissions: full file/folder/share CRUD + delete/restore, analytics/audit read, users read, workspace settings read. Denied: billing, users invite/remove/update_roles, workspace delete/transfer, workspace settings update.
 > - `guest` permissions: `files.read` and `folders.read` only — no shares, no write, no admin.
@@ -1392,6 +1463,7 @@ git commit -m "perf: list virtualization and bundle size audit"
 ### Step 25.1 - Add missing roles
 
 Update `packages/shared/src/rbac/permissions.ts`:
+
 - Add `manager` and `guest` to `WorkspaceRole`
 - Define `ROLE_PERMISSIONS` for both:
   - `manager`: manage files, folders, shares, view analytics (NOT billing, NOT admin management)
@@ -1400,16 +1472,19 @@ Update `packages/shared/src/rbac/permissions.ts`:
 ### Step 25.2 - Add billing and audit permissions
 
 Add to `Permission` enum:
+
 - `billing.read`, `billing.manage`
 - `audit.read`, `audit.export`
 
 Wire into dashboard handlers:
+
 - `GET /dashboard/overview` -> requires `billing.read` for billing data
 - `GET /dashboard/audit` -> requires `audit.read`
 
 ### Step 25.3 - Implement resource policies
 
 Create `packages/shared/src/rbac/policies.ts`:
+
 - `FilePolicy.canDelete(user, file)` -> ownership + role + permission
 - `FilePolicy.canShare(user, file)` -> similar
 - Replace scattered inline checks with policy calls
@@ -1417,12 +1492,14 @@ Create `packages/shared/src/rbac/policies.ts`:
 ### Step 25.4 - Add permission inheritance
 
 For folder operations:
+
 - `folders.read` on parent implies `folders.read` on children
 - Apply to breadcrumbs, tree navigation, and search
 
 ### Step 25.5 - Update tests
 
 Expand `can.test.ts`:
+
 - `manager` x all permissions
 - `guest` x all permissions
 - Resource policy tests
@@ -1446,6 +1523,7 @@ git commit -m "feat(rbac): manager and guest roles, resource policies, billing/a
 ## Day 26 - Workspace Invitations & Ownership Transfer DONE
 
 > **Notes from implementation:**
+>
 > - Added `workspaceInvitation` schema with `token`, `email`, `role`, `expiresAt`, `status` (pending/accepted/revoked/expired), `invitedBy`
 > - Generated migration `0004_oval_krista_starr.sql`; applied manually via sql.js script (FTS5 migration 0002 blocks `pnpm db:migrate:dev` on sql.js)
 > - Refactored `POST /api/workspaces/:id/members` from direct-add to invitation-based flow: creates `workspaceInvitation`, checks for duplicate emails/members, returns `inviteLink`
@@ -1462,6 +1540,7 @@ git commit -m "feat(rbac): manager and guest roles, resource policies, billing/a
 ### Step 26.1 - Add invitation schema
 
 Migration or schema update:
+
 - `WorkspaceInvitation` table: `id`, `workspaceId`, `email`, `role`, `token`, `expiresAt`, `usedAt`, `createdAt`
 
 ### Step 26.2 - Implement invitation backend
@@ -1475,6 +1554,7 @@ Migration or schema update:
 ### Step 26.3 - Integrate email delivery
 
 Use Cloudflare Email Routing or Resend:
+
 - Send invitation email with tokenized link
 - Template: workspace name, inviter name, role, expiry, CTA button
 
@@ -1510,6 +1590,7 @@ git commit -m "feat(workspace): email invitations, join flow, and ownership tran
 ## Day 27 - Share Analytics & Branded Pages DONE
 
 > **Notes from implementation:**
+>
 > - Added `downloadCount` column to `shareLink` schema with default `0`; generated migration `0005_mature_blue_blade.sql`
 > - Updated `ShareLinkSchema` and `ShareDashboardItemSchema` in shared package to include `downloadCount`
 > - Updated shared contracts: `ShareAccessResponse`, `ShareInfoResponse`, and `ShareBrowseResponse` now include `brandingLogoUrl` and `brandingName`
@@ -1533,6 +1614,7 @@ git commit -m "feat(workspace): email invitations, join flow, and ownership tran
 ### Step 27.1 - Add share analytics counters
 
 Update `ShareLink` schema or use aggregation:
+
 - `accessCount`: increment on each `accessShare`
 - `downloadCount`: increment on each signed download URL generation
 - `lastAccessedAt`: timestamp
@@ -1550,6 +1632,7 @@ Update `ShareLink` schema or use aggregation:
 ### Step 27.4 - Implement branded public pages
 
 Update `apps/web/src/routes/share.$shareId.tsx`:
+
 - Read `brandingLogoUrl` and `brandingName` from share metadata
 - Render custom logo and name at top of public share page
 - Fallback to default BucketDrive branding if not set
@@ -1576,6 +1659,7 @@ git commit -m "feat(shares): access/download analytics and branded public pages"
 ## Day 28 - Notifications System DONE
 
 > **Notes from implementation:**
+>
 > - Updated `notification` schema to add `workspaceId` (nullable FK), `data` (JSON string for context), and generated migration `0006_talented_clea.sql`
 > - Created `NotificationsService` with `createNotification`, `listNotifications`, `getUnreadCount`, `markAsRead`, `markAllAsRead`
 > - Created `notifications.handler.ts` mounted at `/api/notifications` with endpoints: `GET /`, `GET /unread-count`, `PATCH /:id/read`, `POST /read-all`
@@ -1592,6 +1676,7 @@ git commit -m "feat(shares): access/download analytics and branded public pages"
 ### Step 28.1 - Add notification schema
 
 Migration:
+
 - `Notification` table: `id`, `userId`, `workspaceId`, `type`, `title`, `message`, `data`, `readAt`, `createdAt`
 - Types: `share.locked`, `member.invited`, `ownership.transfer`, `trash.purged`, `quota.warning`
 
@@ -1605,6 +1690,7 @@ Migration:
 ### Step 28.3 - Emit notifications from events
 
 Update services to create notifications:
+
 - Share locked -> notify share creator
 - Member invited -> notify invited user (if exists)
 - Ownership transfer requested -> notify target user
@@ -1634,6 +1720,7 @@ git commit -m "feat(notifications): in-app notification system for workspace eve
 ## Day 29 - Thumbnails & Async Processing DONE
 
 > **Notes from implementation:**
+>
 > - Added `thumbnailKey` and `metadata` columns to `fileObject`; generated migration `0008_parched_eternity.sql`
 > - Installed `@cf-wasm/photon` v0.3.5 in `apps/api` for WASM-based image resizing inside the Worker
 > - Created `ThumbnailService` (`apps/api/src/services/thumbnail.service.ts`) with `generate()` for images and `uploadVideoFrame()` for videos
@@ -1659,6 +1746,7 @@ git commit -m "feat(notifications): in-app notification system for workspace eve
 ### Step 29.2 - Implement thumbnail generation worker
 
 Update `apps/workers/src/index.ts`:
+
 - Queue-based or event-driven processing
 - Trigger: after `completeUpload` for image/video MIME types
 - Use Web APIs or WASM (e.g., `sharp` not available in Workers; use Canvas API or Cloudflare Images)
@@ -1693,6 +1781,7 @@ git commit -m "feat(processing): async thumbnail generation for images and video
 ## Day 30 - Contract Tests DONE
 
 > **Notes from implementation:**
+>
 > - Added a real API contract harness under `apps/api/src/__tests__/contracts/` using migrated in-memory SQLite through a D1-compatible binding shim.
 > - Mocked Better Auth sessions, R2 bucket behavior, and Photon WASM so contract tests run deterministically without OAuth, Cloudflare, or image-processing services.
 > - Added endpoint contract coverage for auth, files, folders, shares, search, tags, trash, dashboard, members, invitations, notifications, workspaces, platform routes, and public share schemas.
@@ -1709,6 +1798,7 @@ git commit -m "feat(processing): async thumbnail generation for images and video
 ### Step 30.1 - Set up contract test infrastructure
 
 Create `apps/api/src/__tests__/contracts/`:
+
 - Test D1 database setup (in-memory or seeded SQLite)
 - Hono worker instance per test file
 - Seed helpers for workspaces, users, files, shares
@@ -1716,6 +1806,7 @@ Create `apps/api/src/__tests__/contracts/`:
 ### Step 30.2 - Write contract tests for all modules
 
 Files to create:
+
 - `files.contract.test.ts`: list, upload initiate, upload complete, download, update, delete, restore
 - `folders.contract.test.ts`: list, create, update, delete, breadcrumbs
 - `shares.contract.test.ts`: create, access, revoke, public access
@@ -1727,6 +1818,7 @@ Files to create:
 - `members.contract.test.ts`: list, add, update role, remove
 
 Each test:
+
 - Success shape validated with Zod `.parse()`
 - Auth required (401 without cookie)
 - RBAC denied (403 with wrong role)
@@ -1735,6 +1827,7 @@ Each test:
 ### Step 30.3 - Wire test:contracts script
 
 Update root `package.json`:
+
 ```json
 "test:contracts": "vitest run --config apps/api/vitest.config.ts apps/api/src/__tests__/contracts"
 ```
@@ -1757,7 +1850,18 @@ git commit -m "test(contracts): API contract tests for all endpoints"
 
 ## Day 31 - E2E & Accessibility
 
-> **Gap vs docs:** `docs/architecture/testing-strategy.md` requires Playwright E2E for critical user journeys and `@axe-core/playwright` for a11y. Directories don't exist. **Not implemented.**
+> **Notes from implementation:**
+>
+> - Added Playwright with Chromium plus `@axe-core/playwright`, root config, and `pnpm test:a11y`.
+> - Added deterministic `E2E_TEST_AUTH=true` login/session routes and fixture file creation guarded from production use.
+> - Added critical journeys for auth/session/logout, upload fixture visibility, public password share access, RBAC viewer restrictions, search, and trash restore.
+> - Added axe checks for login, explorer, settings, trash, and public password share pages.
+> - Added skip-to-content/main landmarks, fixed public page landmarks, improved text contrast, fixed folder-tree nested interactive controls, and named the trash sort select.
+> - Hardened file grid/list context menus so actions hidden by RBAC are not rendered as no-op menu items.
+> - Disabled automatic R2 sync while E2E auth is enabled so local DB fixtures are not trashed by an empty test bucket.
+> - Fixed FTS query sanitization for punctuation-heavy file names used by E2E fixtures.
+
+> **Implemented:** Playwright E2E and axe accessibility coverage now live under `apps/web/e2e/` and run against local Vite + Wrangler with reset seeded D1.
 
 **Goal:** Critical journeys tested end-to-end; a11y violations caught automatically.
 
@@ -1782,6 +1886,7 @@ Create `apps/web/e2e/` and `playwright.config.ts`.
 ### Step 31.3 - Write accessibility tests
 
 For each page:
+
 ```ts
 import { checkA11y } from "@axe-core/playwright"
 const results = await checkA11y(page)
@@ -1810,7 +1915,17 @@ git commit -m "test(e2e): Playwright critical journeys and axe-core a11y complia
 
 ---
 
-## Day 32 - Staging Deploy & Final Polish
+## Day 32 - Staging Deploy & Final Polish DONE
+
+> **Notes from implementation:**
+>
+> - Added versioned GitHub Actions for CI and staging deploy under `.github/workflows/`.
+> - Added `pnpm staging:check` to fail early when Cloudflare deploy credentials or the staging D1 `database_id` are missing.
+> - Added Lighthouse CI config with minimum scores: Performance 90, Accessibility 95, Best Practices 95.
+> - Added web bundle budget analysis that fails if any gzipped JS asset exceeds 500 kB.
+> - Added a guarded E2E bulk fixture endpoint and `pnpm perf:benchmark` for a 10,000-file Explorer API/render benchmark.
+> - Updated CI/CD, setup, testing, and agent docs to match actual scripts and `PLAYWRIGHT_BASE_URL`.
+> - Real Cloudflare staging deployment remains environment-dependent: create `bucketdrive-db-staging`, store the returned non-secret `database_id` as `STAGING_D1_DATABASE_ID`, configure GitHub secrets/vars, then run the staging workflow.
 
 > **Goal:** Production-ready deploy pipeline, performance checks, and docs sync.
 
@@ -1827,6 +1942,7 @@ cd apps/web && pnpm build
 ### Step 32.2 - Virtualization benchmark
 
 Seed script: create 10,000 files.
+
 - Explorer render time < 500ms
 - Scroll remains at 60fps
 

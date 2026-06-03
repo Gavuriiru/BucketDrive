@@ -5,6 +5,7 @@
 This document defines the continuous integration and deployment pipeline.
 
 The pipeline must:
+
 - Guarantee that only passing code reaches production
 - Deploy frontend and backend independently
 - Run database migrations safely
@@ -52,116 +53,47 @@ Production Deploy (tag push: v*)
 
 ## `ci.yml` — Pull Request Checks
 
-Triggered on: `pull_request` to `main`
+Triggered on `pull_request` to `main` and `push` to `main`.
 
-```yaml
-name: CI
-on:
-  pull_request:
-    branches: [main]
+The versioned workflow in `.github/workflows/ci.yml` runs:
 
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - run: pnpm lint
-
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - run: pnpm typecheck
-
-  test-unit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - run: pnpm test:unit
-
-  test-contracts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - run: pnpm test:contracts
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - run: pnpm build
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:contracts
+pnpm perf:bundle
 ```
+
+`pnpm build` intentionally runs before lint/typecheck because Turbo config makes those tasks depend
+on upstream package builds.
 
 ## `deploy-staging.yml` — Auto Deploy to Staging
 
-Triggered on: `push` to `main`
+Triggered on `push` to `main` and `workflow_dispatch`.
 
-```yaml
-name: Deploy Staging
-on:
-  push:
-    branches: [main]
+The versioned workflow in `.github/workflows/deploy-staging.yml` runs:
 
-jobs:
-  migrate-d1:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - name: Apply D1 Migrations
-        run: npx wrangler d1 migrations apply bucketdrive-db-staging
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-
-  deploy-worker:
-    needs: migrate-d1
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - name: Deploy Worker
-        run: npx wrangler deploy --env staging
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-
-  deploy-pages:
-    needs: deploy-worker
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - name: Build Frontend
-        run: pnpm build:web
-      - name: Deploy Pages
-        run: npx wrangler pages deploy apps/web/dist --project-name bucketdrive --branch staging
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-
-  e2e:
-    needs: deploy-pages
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - run: pnpm test:e2e
-        env:
-          STAGING_URL: ${{ vars.STAGING_URL }}
-
+```bash
+pnpm install --frozen-lockfile
+pnpm staging:prepare
+pnpm staging:check
+pnpm db:migrate:staging
+pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml deploy --env staging
+pnpm build
+pnpm perf:bundle
+pnpm perf:lighthouse
+pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name bucketdrive --branch staging
+pnpm test:e2e
+pnpm test:a11y
 ```
+
+The staging E2E base URL is read from `PLAYWRIGHT_BASE_URL`, matching `playwright.config.ts`.
+`pnpm staging:prepare` fills `wrangler.toml` from `STAGING_D1_DATABASE_ID` in the GitHub
+environment, and `pnpm staging:check` fails early if Cloudflare credentials or the staging D1 ID
+are missing.
 
 ## `deploy-prod.yml` — Production Deploy
 
@@ -175,11 +107,11 @@ Requires manual approval step (GitHub Environments protection rule).
 
 # Environments
 
-| Environment | Frontend URL | Worker URL | D1 Database | Purpose |
-|---|---|---|---|---|
-| **Development** | `http://localhost:5173` | `http://localhost:8787` | Local SQLite file | Active development |
-| **Staging** | `https://staging.bucketdrive.dev` | `staging-api.bucketdrive.dev` | `bucketdrive-db-staging` | Pre-release testing |
-| **Production** | `https://bucketdrive.app` | `api.bucketdrive.app` | `bucketdrive-db` | Live users |
+| Environment     | Frontend URL                      | Worker URL                            | D1 Database              | Purpose             |
+| --------------- | --------------------------------- | ------------------------------------- | ------------------------ | ------------------- |
+| **Development** | `http://localhost:5173`           | `http://localhost:8787`               | Local Wrangler D1        | Active development  |
+| **Staging**     | `https://staging.bucketdrive.dev` | `https://staging-api.bucketdrive.dev` | `bucketdrive-db-staging` | Pre-release testing |
+| **Production**  | `https://drive.nekomata.moe`      | `https://drive.nekomata.moe/api`      | `bucketdrive-db`         | Live users          |
 
 ---
 
@@ -225,6 +157,15 @@ PLATFORM_OWNER_EMAIL=admin@example.com
 `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are local/CI deploy credentials, not Worker
 runtime vars, so `pnpm env:push:*` does not upload them as secrets.
 
+For staging, create the D1 database once and store the returned non-secret database ID as the
+GitHub environment variable `STAGING_D1_DATABASE_ID`:
+
+```bash
+npx wrangler d1 create bucketdrive-db-staging
+STAGING_D1_DATABASE_ID=<database-id> pnpm staging:prepare
+STAGING_D1_DATABASE_ID=<database-id> CLOUDFLARE_ACCOUNT_ID=<account-id> CLOUDFLARE_API_TOKEN=<token> pnpm staging:check
+```
+
 ---
 
 # pre-commit Hooks
@@ -255,6 +196,7 @@ runtime vars, so `pnpm env:push:*` does not upload them as secrets.
 ```bash
 vite build          # → apps/web/dist/
 ```
+
 Static files deployed to Cloudflare Pages. No server runtime needed.
 
 ## Backend (`apps/api`)
@@ -262,6 +204,7 @@ Static files deployed to Cloudflare Pages. No server runtime needed.
 ```bash
 wrangler deploy     # → Cloudflare Workers
 ```
+
 Worker bundles Hono + Better Auth + Drizzle ORM. Deployed as a single Worker.
 
 ## Background Jobs (`apps/workers`)
@@ -269,19 +212,20 @@ Worker bundles Hono + Better Auth + Drizzle ORM. Deployed as a single Worker.
 ```bash
 wrangler deploy     # → Separate Worker (if needed for thumbnail gen, cleanup)
 ```
+
 Separate Worker to avoid blocking API requests with heavy processing.
 
 ---
 
 # Rollback Strategy
 
-| Component | Rollback |
-|---|---|
-| **Pages (Frontend)** | `wrangler pages deployment rollback` or revert commit + re-deploy |
-| **Worker (API)** | `wrangler rollback` to previous deployment |
-| **D1 Migration** | Deploy a new migration that reverses the change (no auto-rollback) |
+| Component            | Rollback                                                           |
+| -------------------- | ------------------------------------------------------------------ |
+| **Pages (Frontend)** | `wrangler pages deployment rollback` or revert commit + re-deploy  |
+| **Worker (API)**     | `wrangler rollback` to previous deployment                         |
+| **D1 Migration**     | Deploy a new migration that reverses the change (no auto-rollback) |
 
-Migrations are append-only. If a migration breaks production, deploy a *fix migration*.
+Migrations are append-only. If a migration breaks production, deploy a _fix migration_.
 Never delete or modify committed migration files.
 
 ---

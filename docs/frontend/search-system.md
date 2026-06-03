@@ -5,6 +5,7 @@
 This document defines the search architecture for the platform.
 
 Search must support:
+
 - Full-text search on file names and metadata
 - Filtering by mime type, tags, dates, favorites
 - Fast results on large datasets (thousands of files)
@@ -34,6 +35,7 @@ Results update after the user stops typing, not on every keystroke.
 ## 3. Integrated with Explorer
 
 Search results reuse the same components as the file explorer:
+
 - Same selection behavior (click, shift, ctrl/cmd)
 - Same context menus (right-click → rename, share, delete, etc.)
 - Same drag and drop
@@ -117,7 +119,8 @@ export async function searchFiles(
 ) {
   const offset = (page - 1) * limit
 
-  const results = await db.all(`
+  const results = await db.all(
+    `
     SELECT f.*
     FROM file_object f
     INNER JOIN file_search_idx fs ON f.id = fs.rowid
@@ -129,13 +132,15 @@ export async function searchFiles(
       ${filters.favorite ? "AND f.id IN (SELECT file_object_id FROM favorite WHERE user_id = ?)" : ""}
     ORDER BY rank
     LIMIT ? OFFSET ?
-  `, [
-    buildFtsQuery(query),
-    workspaceId,
-    /* other params */
-    limit,
-    offset,
-  ])
+  `,
+    [
+      buildFtsQuery(query),
+      workspaceId,
+      /* other params */
+      limit,
+      offset,
+    ],
+  )
 
   return results
 }
@@ -150,8 +155,8 @@ function buildFtsQuery(raw: string): string {
     .trim()
     .replace(/[^a-zA-Z0-9\u00C0-\u024F\s.\-_]/g, "")
     .split(/\s+/)
-    .filter(t => t.length > 0)
-    .map(t => `"${t}"`)
+    .filter((t) => t.length > 0)
+    .map((t) => `"${t}"`)
     .join(" OR ")
 
   return tokens || "*"
@@ -168,24 +173,35 @@ Search supports layered filtering on top of text search:
 
 ```ts
 const mimeCategories = {
-  documents: ["application/pdf", "text/", "application/msword",
-              "application/vnd.openxmlformats", "application/vnd.ms-"],
+  documents: [
+    "application/pdf",
+    "text/",
+    "application/msword",
+    "application/vnd.openxmlformats",
+    "application/vnd.ms-",
+  ],
   images: ["image/"],
   videos: ["video/"],
   audio: ["audio/"],
-  archives: ["application/zip", "application/x-rar", "application/gzip",
-             "application/x-tar", "application/x-7z-compressed"],
+  archives: [
+    "application/zip",
+    "application/x-rar",
+    "application/gzip",
+    "application/x-tar",
+    "application/x-7z-compressed",
+  ],
 }
 
 export function buildMimeFilter(category: string): string {
   if (category === "all" || !mimeCategories[category]) return ""
-  return mimeCategories[category].map(prefix => `f.mime_type LIKE '${prefix}%'`).join(" OR ")
+  return mimeCategories[category].map((prefix) => `f.mime_type LIKE '${prefix}%'`).join(" OR ")
 }
 ```
 
 ## Tag Filter
 
 Filter by one or more tags (AND logic):
+
 ```sql
 AND f.id IN (
   SELECT fot.file_object_id
@@ -199,6 +215,7 @@ AND f.id IN (
 ## Favorite Filter
 
 If `favorite: true`, only return files the current user has favorited:
+
 ```sql
 AND f.id IN (SELECT file_object_id FROM favorite WHERE user_id = ?)
 ```
@@ -206,6 +223,7 @@ AND f.id IN (SELECT file_object_id FROM favorite WHERE user_id = ?)
 ## Date Range
 
 Filter by creation/modification date:
+
 ```sql
 AND f.created_at >= ?
 AND f.created_at <= ?
@@ -218,6 +236,7 @@ AND f.created_at <= ?
 Search results are sorted by FTS5 relevance rank by default.
 
 Users can override with:
+
 - `name` — alphabetical
 - `created_at` — newest/oldest first
 - `size` — largest/smallest first
@@ -250,6 +269,7 @@ If 10,000 results match, only the visible rows (~50) render DOM nodes.
 ## Caching
 
 TanStack Query caches search results:
+
 - Cache key: `["search", workspaceId, query, JSON.stringify(filters)]`
 - Stale time: 30 seconds (search results change as files are modified)
 - Background refetch on window focus for freshness
@@ -273,6 +293,7 @@ All search results are paginated. Default: 25 items per page, max 100.
 ## Search Context Display
 
 When search is active, the explorer shows:
+
 - An info bar: `Results for "quarterly report" — 42 files`
 - Active filter chips: `[PDF] [Design] [Favorites]` with X to remove
 - Sort dropdown next to the info bar
@@ -280,6 +301,7 @@ When search is active, the explorer shows:
 ## Empty State
 
 When search returns no results:
+
 - Icon + "No files match your search"
 - Suggestion: "Try different keywords or remove filters"
 - Action: "Clear search" button

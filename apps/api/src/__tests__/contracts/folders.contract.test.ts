@@ -23,7 +23,9 @@ describe("folders contracts", () => {
     expect(create.status).toBe(201)
     const child = FolderSchema.parse(await ctx.json(create))
 
-    const breadcrumbs = await ctx.request(`/api/workspaces/${ctx.workspaceId}/folders/${child.id}/breadcrumbs`)
+    const breadcrumbs = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/folders/${child.id}/breadcrumbs`,
+    )
     expect(breadcrumbs.status).toBe(200)
     BreadcrumbResponse.parse(await ctx.json(breadcrumbs))
 

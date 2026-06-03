@@ -5,11 +5,13 @@ rbac.md# RBAC Architecture
 This document defines the authorization architecture of the platform.
 
 The system uses:
+
 - RBAC (Role-Based Access Control)
 - permission-based authorization
 - backend-enforced security
 
 Authorization must be:
+
 - granular
 - composable
 - auditable
@@ -27,6 +29,7 @@ The frontend is NEVER trusted for authorization.
 Roles are collections of permissions.
 
 The system must NEVER:
+
 - directly check roles
 - hardcode admin logic
 - bypass permission evaluation
@@ -58,14 +61,17 @@ The backend is always the source of truth.
 ## 3. Granular Permissions
 
 Permissions must be:
+
 - explicit
 - narrow
 - composable
 
 Avoid broad permissions like:
+
 - "manage_everything"
 
 Prefer:
+
 - files.read
 - files.write
 - files.delete
@@ -116,6 +122,7 @@ NOT replace permission checks.
 Full workspace control.
 
 Capabilities:
+
 - manage workspace
 - manage users
 - manage billing
@@ -129,12 +136,14 @@ Capabilities:
 Administrative management.
 
 Capabilities:
+
 - manage users
 - manage files
 - manage shares
 - manage permissions
 
 Restrictions:
+
 - cannot transfer ownership
 
 ---
@@ -144,12 +153,14 @@ Restrictions:
 Operational management.
 
 Capabilities:
+
 - manage files
 - manage folders
 - manage shares
 - view analytics
 
 Restrictions:
+
 - cannot manage admins
 - cannot manage billing
 
@@ -160,6 +171,7 @@ Restrictions:
 Content modification role.
 
 Capabilities:
+
 - upload
 - edit
 - move
@@ -167,6 +179,7 @@ Capabilities:
 - share
 
 Restrictions:
+
 - no administrative access
 
 ---
@@ -176,11 +189,13 @@ Restrictions:
 Readonly access.
 
 Capabilities:
+
 - read files
 - download files
 - access shared content
 
 Restrictions:
+
 - no modifications
 
 ---
@@ -190,9 +205,11 @@ Restrictions:
 Restricted readonly access.
 
 Capabilities:
+
 - limited resource viewing
 
 Restrictions:
+
 - isolated scope
 - limited workspace visibility
 
@@ -234,6 +251,7 @@ Operation Allowed / Denied
 All permissions are workspace-scoped.
 
 Users from one workspace must NEVER:
+
 - access another workspace
 - query foreign resources
 - infer foreign metadata
@@ -247,6 +265,7 @@ Workspace isolation is mandatory.
 Ownership affects authorization.
 
 Example:
+
 - file owners may revoke their own shares
 - workspace owners may override permissions
 
@@ -319,6 +338,7 @@ users.read
 ```
 
 Users must NEVER:
+
 - elevate themselves
 - assign higher permissions than their own
 
@@ -336,6 +356,7 @@ billing.manage
 ```
 
 Only authorized roles may:
+
 - view invoices
 - change plans
 - modify quotas
@@ -376,6 +397,7 @@ File
 Inheritance rules must remain predictable.
 
 Avoid:
+
 - circular inheritance
 - conflicting overrides
 
@@ -386,6 +408,7 @@ Avoid:
 External sharing must remain isolated from internal RBAC.
 
 External share links:
+
 - do not grant workspace access
 - do not expose internal metadata
 - operate in readonly isolation unless explicitly allowed
@@ -395,11 +418,13 @@ External share links:
 # Temporary Access
 
 Temporary permissions may exist for:
+
 - expiring shares
 - temporary collaborators
 - support sessions
 
 Temporary access must:
+
 - expire automatically
 - remain auditable
 
@@ -408,6 +433,7 @@ Temporary access must:
 # Revocation Rules
 
 Revoking access must:
+
 - invalidate active sessions when necessary
 - revoke share links
 - update cache state
@@ -418,6 +444,7 @@ Revoking access must:
 # Signed URL Security
 
 Signed URLs:
+
 - must expire
 - must be scoped
 - must never expose unrestricted storage access
@@ -437,6 +464,7 @@ Every protected endpoint must:
 4. validate ownership if needed
 
 Authorization must NEVER rely on:
+
 - frontend state
 - hidden UI
 - client flags
@@ -448,6 +476,7 @@ Authorization must NEVER rely on:
 Authorization-sensitive actions must generate logs.
 
 Required events:
+
 - permission changes
 - role updates
 - access revocations
@@ -460,6 +489,7 @@ Required events:
 # Forbidden Practices
 
 Never:
+
 - hardcode roles
 - bypass permission checks
 - trust frontend authorization
@@ -501,6 +531,7 @@ hasWorkspaceAccess(user, workspaceId)
 ```
 
 Avoid:
+
 - scattered inline permission logic
 - duplicated checks
 
@@ -517,6 +548,7 @@ FilePolicy.canDelete(user, file)
 ```
 
 Policies centralize:
+
 - ownership rules
 - inheritance
 - permission logic
@@ -554,6 +586,7 @@ Can the user access THIS resource?
 ## State Validation
 
 Is the resource still valid?
+
 - not deleted
 - not archived
 - not expired
@@ -563,6 +596,7 @@ Is the resource still valid?
 # Future Scalability
 
 The RBAC system must support future:
+
 - enterprise policies
 - custom roles
 - permission groups

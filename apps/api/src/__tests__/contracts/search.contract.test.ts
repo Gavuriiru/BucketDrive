@@ -7,7 +7,9 @@ describe("search contracts", () => {
     const ctx = createContractTestContext()
     ctx.seedFile({ originalName: "Photo.png", mimeType: "image/png", extension: "png" })
 
-    const response = await ctx.request(`/api/workspaces/${ctx.workspaceId}/search?type=images&limit=10`)
+    const response = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/search?type=images&limit=10`,
+    )
     expect(response.status).toBe(200)
     SearchResponse.parse(await ctx.json(response))
   })

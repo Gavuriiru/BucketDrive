@@ -22,7 +22,9 @@ describe("invitations contracts", () => {
       body: JSON.stringify({ email: invitee.email, role: "viewer" }),
     })
     expect(create.status).toBe(201)
-    const created = InvitationDetailResponse.extend({ inviteLink: z.string() }).parse(await ctx.json(create))
+    const created = InvitationDetailResponse.extend({ inviteLink: z.string() }).parse(
+      await ctx.json(create),
+    )
 
     const list = await ctx.request(`/api/workspaces/${ctx.workspaceId}/invitations`)
     expect(list.status).toBe(200)

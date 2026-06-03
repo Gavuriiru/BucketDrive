@@ -3,13 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog"
 import { Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { FileObject } from "@bucketdrive/shared"
-import {
-  useCreateTag,
-  useDeleteTag,
-  useTags,
-  useUpdateFileTags,
-  useUpdateTag,
-} from "@/lib/api"
+import { useCreateTag, useDeleteTag, useTags, useUpdateFileTags, useUpdateTag } from "@/lib/api"
 import { TAG_COLOR_OPTIONS, getTagColorClasses } from "@/lib/tag-colors"
 
 interface TagPickerDialogProps {
@@ -63,10 +57,7 @@ export function TagPickerDialog({
   }, [search, tags])
 
   const busy =
-    createTag.isPending ||
-    updateTag.isPending ||
-    deleteTag.isPending ||
-    updateFileTags.isPending
+    createTag.isPending || updateTag.isPending || deleteTag.isPending || updateFileTags.isPending
 
   const syncFileTags = async (tagIds: string[]) => {
     if (!file) return
@@ -131,18 +122,16 @@ export function TagPickerDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border-default bg-surface-default shadow-2xl">
-          <div className="flex items-start justify-between border-b border-border-muted px-6 py-4">
+        <Dialog.Content className="border-border-default bg-surface-default fixed top-1/2 left-1/2 z-50 w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border shadow-2xl">
+          <div className="border-border-muted flex items-start justify-between border-b px-6 py-4">
             <div>
-              <Dialog.Title className="text-lg font-semibold text-text-primary">
-                Tags
-              </Dialog.Title>
-              <Dialog.Description className="text-sm text-text-tertiary">
+              <Dialog.Title className="text-text-primary text-lg font-semibold">Tags</Dialog.Title>
+              <Dialog.Description className="text-text-tertiary text-sm">
                 {file ? `Manage tags for ${file.originalName}` : "Manage workspace tags"}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
-              <button className="rounded-lg p-2 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary">
+              <button className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-lg p-2 transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </Dialog.Close>
@@ -151,7 +140,7 @@ export function TagPickerDialog({
           <div className="grid gap-6 p-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-4">
               <label className="block">
-                <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                <span className="text-text-tertiary mb-2 block text-xs font-medium tracking-wide uppercase">
                   Find tags
                 </span>
                 <input
@@ -160,7 +149,7 @@ export function TagPickerDialog({
                     setSearch(event.target.value)
                   }}
                   placeholder="Search tags"
-                  className="w-full rounded-xl border border-border-default bg-surface-secondary px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-accent"
+                  className="border-border-default bg-surface-secondary text-text-primary focus:border-accent w-full rounded-xl border px-3 py-2 text-sm transition-colors outline-none"
                 />
               </label>
 
@@ -172,7 +161,7 @@ export function TagPickerDialog({
                   return (
                     <div
                       key={tag.id}
-                      className="rounded-xl border border-border-muted bg-surface-secondary p-3"
+                      className="border-border-muted bg-surface-secondary rounded-xl border p-3"
                     >
                       {editing ? (
                         <div className="space-y-3">
@@ -181,7 +170,7 @@ export function TagPickerDialog({
                             onChange={(event) => {
                               setEditingName(event.target.value)
                             }}
-                            className="w-full rounded-lg border border-border-default bg-surface-default px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+                            className="border-border-default bg-surface-default text-text-primary focus:border-accent w-full rounded-lg border px-3 py-2 text-sm outline-none"
                           />
                           <ColorPicker value={editingColor} onChange={setEditingColor} />
                           <div className="flex gap-2">
@@ -190,7 +179,7 @@ export function TagPickerDialog({
                                 void handleSaveEditing()
                               }}
                               disabled={busy}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+                              className="bg-accent hover:bg-accent/90 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
                             >
                               <Check className="h-4 w-4" />
                               Save
@@ -199,7 +188,7 @@ export function TagPickerDialog({
                               onClick={() => {
                                 setEditingTagId(null)
                               }}
-                              className="rounded-lg border border-border-default px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                              className="border-border-default text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg border px-3 py-2 text-sm transition-colors"
                             >
                               Cancel
                             </button>
@@ -215,7 +204,7 @@ export function TagPickerDialog({
                                 handleToggleTag(tag.id)
                               }}
                               disabled={busy}
-                              className="h-4 w-4 rounded border-border-default bg-surface-default text-accent"
+                              className="border-border-default bg-surface-default text-accent h-4 w-4 rounded"
                             />
                           ) : (
                             <span
@@ -243,7 +232,7 @@ export function TagPickerDialog({
                                 onClick={() => {
                                   handleStartEditing(tag.id, tag.name, tag.color)
                                 }}
-                                className="rounded-lg p-2 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                                className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-lg p-2 transition-colors"
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
@@ -252,7 +241,7 @@ export function TagPickerDialog({
                                   void handleDeleteTag(tag.id)
                                 }}
                                 disabled={busy}
-                                className="rounded-lg p-2 text-text-tertiary transition-colors hover:bg-error/10 hover:text-error disabled:opacity-50"
+                                className="text-text-tertiary hover:bg-error/10 hover:text-error rounded-lg p-2 transition-colors disabled:opacity-50"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -265,24 +254,24 @@ export function TagPickerDialog({
                 })}
 
                 {filteredTags.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-border-default px-4 py-10 text-center">
-                    <Tag className="mx-auto h-8 w-8 text-text-tertiary" />
-                    <p className="mt-2 text-sm text-text-tertiary">No matching tags</p>
+                  <div className="border-border-default rounded-xl border border-dashed px-4 py-10 text-center">
+                    <Tag className="text-text-tertiary mx-auto h-8 w-8" />
+                    <p className="text-text-tertiary mt-2 text-sm">No matching tags</p>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="space-y-4 rounded-2xl border border-border-muted bg-surface-secondary p-4">
+            <div className="border-border-muted bg-surface-secondary space-y-4 rounded-2xl border p-4">
               <div>
-                <h3 className="text-sm font-semibold text-text-primary">Create a new tag</h3>
-                <p className="mt-1 text-xs text-text-tertiary">
+                <h3 className="text-text-primary text-sm font-semibold">Create a new tag</h3>
+                <p className="text-text-tertiary mt-1 text-xs">
                   Pick a name and palette color to organize files.
                 </p>
               </div>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                <span className="text-text-tertiary mb-2 block text-xs font-medium tracking-wide uppercase">
                   Tag name
                 </span>
                 <input
@@ -291,12 +280,12 @@ export function TagPickerDialog({
                     setNewTagName(event.target.value)
                   }}
                   placeholder="Important"
-                  className="w-full rounded-xl border border-border-default bg-surface-default px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-accent"
+                  className="border-border-default bg-surface-default text-text-primary focus:border-accent w-full rounded-xl border px-3 py-2 text-sm transition-colors outline-none"
                 />
               </label>
 
               <div>
-                <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                <span className="text-text-tertiary mb-2 block text-xs font-medium tracking-wide uppercase">
                   Tag color
                 </span>
                 <ColorPicker value={newTagColor} onChange={setNewTagColor} />
@@ -307,15 +296,16 @@ export function TagPickerDialog({
                   void handleCreateTag()
                 }}
                 disabled={busy || !canManageTags}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="bg-accent hover:bg-accent/90 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
                 Create tag
               </button>
 
               {!canManageTags && (
-                <p className="text-xs text-text-tertiary">
-                  You can apply existing tags here, but creating or editing tags requires file-tag permissions.
+                <p className="text-text-tertiary text-xs">
+                  You can apply existing tags here, but creating or editing tags requires file-tag
+                  permissions.
                 </p>
               )}
             </div>
@@ -326,13 +316,7 @@ export function TagPickerDialog({
   )
 }
 
-function ColorPicker({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
+function ColorPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <div className="grid grid-cols-4 gap-2">
       {TAG_COLOR_OPTIONS.map((option) => (
@@ -347,13 +331,8 @@ function ColorPicker({
               : "border-border-default bg-surface-default hover:bg-surface-hover"
           }`}
         >
-          <span
-            className={[
-              "mb-2 block h-4 w-4 rounded-full",
-              option.swatchClassName,
-            ].join(" ")}
-          />
-          <span className="text-xs font-medium text-text-primary">{option.label}</span>
+          <span className={["mb-2 block h-4 w-4 rounded-full", option.swatchClassName].join(" ")} />
+          <span className="text-text-primary text-xs font-medium">{option.label}</span>
         </button>
       ))}
     </div>

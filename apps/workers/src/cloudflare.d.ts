@@ -21,7 +21,10 @@ interface R2ObjectBody {
 interface R2MultipartUpload {
   readonly key: string
   readonly uploadId: string
-  uploadPart(partNumber: number, value: ReadableStream<Uint8Array> | ArrayBuffer | ArrayBufferView | string | Blob): Promise<{ partNumber: number; etag: string }>
+  uploadPart(
+    partNumber: number,
+    value: ReadableStream<Uint8Array> | ArrayBuffer | ArrayBufferView | string | Blob,
+  ): Promise<{ partNumber: number; etag: string }>
   abort(): Promise<void>
   complete(uploadedParts: Array<{ partNumber: number; etag: string }>): Promise<unknown>
 }
@@ -51,7 +54,10 @@ type R2Objects =
 interface R2Bucket {
   delete(key: string): Promise<void>
   get(key: string): Promise<R2ObjectBody | null>
-  put(key: string, value: ReadableStream<Uint8Array> | ArrayBuffer | ArrayBufferView | string | null): Promise<unknown>
+  put(
+    key: string,
+    value: ReadableStream<Uint8Array> | ArrayBuffer | ArrayBufferView | string | null,
+  ): Promise<unknown>
   list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<R2Objects>
   createMultipartUpload(key: string): Promise<R2MultipartUpload>
   resumeMultipartUpload(key: string, uploadId: string): R2MultipartUpload

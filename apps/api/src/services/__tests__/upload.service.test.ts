@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  buildUploadStorageKey,
-  getSafeUploadFileName,
-  UploadError,
-} from "../upload.service"
+import { buildUploadStorageKey, getSafeUploadFileName, UploadError } from "../upload.service"
 
 describe("buildUploadStorageKey", () => {
   it("preserves the uploaded file name and extension in the R2 key", () => {

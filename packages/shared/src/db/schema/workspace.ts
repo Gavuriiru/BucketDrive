@@ -6,7 +6,9 @@ export const workspace = sqliteTable("workspace", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   ownerId: text("owner_id").notNull(),
-  storageQuotaBytes: integer("storage_quota_bytes").notNull().default(10 * 1024 * 1024 * 1024),
+  storageQuotaBytes: integer("storage_quota_bytes")
+    .notNull()
+    .default(10 * 1024 * 1024 * 1024),
   isDeleted: integer("is_deleted", { mode: "boolean" }).notNull().default(false),
   isPlatformDefault: integer("is_platform_default", { mode: "boolean" }).notNull().default(false),
   deletedAt: text("deleted_at"),
@@ -27,8 +29,12 @@ export const workspaceSettings = sqliteTable("workspace_settings", {
   defaultShareExpirationDays: integer("default_share_expiration_days").notNull().default(30),
   enablePublicSignup: integer("enable_public_signup", { mode: "boolean" }).notNull().default(false),
   trashRetentionDays: integer("trash_retention_days").notNull().default(30),
-  maxFileSizeBytes: integer("max_file_size_bytes").notNull().default(5 * 1024 * 1024 * 1024),
-  uploadChunkSizeBytes: integer("upload_chunk_size_bytes").notNull().default(5 * 1024 * 1024),
+  maxFileSizeBytes: integer("max_file_size_bytes")
+    .notNull()
+    .default(5 * 1024 * 1024 * 1024),
+  uploadChunkSizeBytes: integer("upload_chunk_size_bytes")
+    .notNull()
+    .default(5 * 1024 * 1024),
   allowedMimeTypes: text("allowed_mime_types"),
   brandingLogoUrl: text("branding_logo_url"),
   brandingName: text("branding_name"),
@@ -125,7 +131,9 @@ export const workspaceInvitation = sqliteTable("workspace_invitation", {
   email: text("email").notNull(),
   token: text("token").notNull().unique(),
   role: text("role").notNull().default("viewer"),
-  canCreateWorkspaces: integer("can_create_workspaces", { mode: "boolean" }).notNull().default(false),
+  canCreateWorkspaces: integer("can_create_workspaces", { mode: "boolean" })
+    .notNull()
+    .default(false),
   invitedBy: text("invited_by").notNull(),
   status: text("status").notNull().default("pending"),
   expiresAt: text("expires_at").notNull(),
@@ -140,9 +148,12 @@ export const workspaceInvitation = sqliteTable("workspace_invitation", {
 
 export const platformSettings = sqliteTable("platform_settings", {
   id: text("id").primaryKey(),
-  defaultWorkspaceId: text("default_workspace_id")
-    .references(() => workspace.id, { onDelete: "set null" }),
-  allowUserWorkspaceCreation: integer("allow_user_workspace_creation", { mode: "boolean" }).notNull().default(false),
+  defaultWorkspaceId: text("default_workspace_id").references(() => workspace.id, {
+    onDelete: "set null",
+  }),
+  allowUserWorkspaceCreation: integer("allow_user_workspace_creation", { mode: "boolean" })
+    .notNull()
+    .default(false),
   enablePublicSignup: integer("enable_public_signup", { mode: "boolean" }).notNull().default(true),
   platformName: text("platform_name").notNull().default("BucketDrive"),
   createdAt: text("created_at")

@@ -39,14 +39,16 @@ const DEPLOY_RUNTIME_KEYS = [
 ]
 
 function usage() {
-  console.log([
-    "Usage:",
-    "  pnpm env:check",
-    "  pnpm env:link",
-    "  pnpm env:push:staging",
-    "  pnpm env:push:prod",
-    "  pnpm env:push -- <staging|production> [path/to/env-file]",
-  ].join("\n"))
+  console.log(
+    [
+      "Usage:",
+      "  pnpm env:check",
+      "  pnpm env:link",
+      "  pnpm env:push:staging",
+      "  pnpm env:push:prod",
+      "  pnpm env:push -- <staging|production> [path/to/env-file]",
+    ].join("\n"),
+  )
 }
 
 function ensureCanonicalEnv() {
@@ -70,7 +72,9 @@ function linkLocalEnv() {
 
       const backup = `${target}.bak.${String(Date.now())}`
       renameSync(target, backup)
-      console.log(`Backed up ${relative(process.cwd(), target)} to ${relative(process.cwd(), backup)}`)
+      console.log(
+        `Backed up ${relative(process.cwd(), target)} to ${relative(process.cwd(), backup)}`,
+      )
     }
 
     symlinkSync(linkTarget, target)
@@ -87,11 +91,14 @@ function checkEnv() {
     process.exit(1)
   }
 
-  const oauthConfigured = Boolean(vars.GITHUB_CLIENT_ID && vars.GITHUB_CLIENT_SECRET) ||
+  const oauthConfigured =
+    Boolean(vars.GITHUB_CLIENT_ID && vars.GITHUB_CLIENT_SECRET) ||
     Boolean(vars.GOOGLE_CLIENT_ID && vars.GOOGLE_CLIENT_SECRET)
 
   if (!oauthConfigured) {
-    console.error("Missing OAuth credentials. Configure GitHub or Google client id/secret in .dev.vars.")
+    console.error(
+      "Missing OAuth credentials. Configure GitHub or Google client id/secret in .dev.vars.",
+    )
     process.exit(1)
   }
 
@@ -124,12 +131,24 @@ function pushDeployEnv(environment: string, explicitFile?: string) {
     throw new Error(`No deploy runtime keys found in ${relative(process.cwd(), envFile)}`)
   }
 
-  console.log(`Pushing ${String(keys.length)} runtime vars from ${relative(process.cwd(), envFile)} to ${environment}.`)
+  console.log(
+    `Pushing ${String(keys.length)} runtime vars from ${relative(process.cwd(), envFile)} to ${environment}.`,
+  )
 
   for (const key of keys) {
     const result = spawnSync(
       "pnpm",
-      ["--filter", "@bucketdrive/api", "exec", "wrangler", "secret", "put", key, "--env", environment],
+      [
+        "--filter",
+        "@bucketdrive/api",
+        "exec",
+        "wrangler",
+        "secret",
+        "put",
+        key,
+        "--env",
+        environment,
+      ],
       {
         cwd: resolve(__dirname, ".."),
         input: vars[key],

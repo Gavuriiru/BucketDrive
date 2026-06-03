@@ -15,9 +15,12 @@ describe("trash contracts", () => {
     expect(list.status).toBe(200)
     ListTrashResponse.parse(await ctx.json(list))
 
-    const restore = await ctx.request(`/api/workspaces/${ctx.workspaceId}/files/${trashed.id}/restore`, {
-      method: "POST",
-    })
+    const restore = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/files/${trashed.id}/restore`,
+      {
+        method: "POST",
+      },
+    )
     expect(restore.status).toBe(200)
     RestoreFileResponse.parse(await ctx.json(restore))
   })

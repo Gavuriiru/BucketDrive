@@ -12,14 +12,14 @@ pnpm dev                         # Vite :5173 + Wrangler :8787
 
 ## Monorepo layout (pnpm workspaces + Turborepo)
 
-| Path | Role |
-|---|---|
-| `apps/web/` | React 19 SPA (Vite, Tailwind v4, TanStack Router, TanStack Query, Zustand) |
-| `apps/api/` | Hono API on Cloudflare Workers (Wrangler) |
-| `packages/shared/` | Drizzle schema, Zod contracts, shared types. Entrypoint: `src/index.ts` |
-| `scripts/` | `migrate.ts`, `seed.ts` |
-| `agents/` | Agent prompt files (frontend/backend/security) — not runtime code |
-| `docs/` | Architecture docs and ADRs |
+| Path               | Role                                                                       |
+| ------------------ | -------------------------------------------------------------------------- |
+| `apps/web/`        | React 19 SPA (Vite, Tailwind v4, TanStack Router, TanStack Query, Zustand) |
+| `apps/api/`        | Hono API on Cloudflare Workers (Wrangler)                                  |
+| `packages/shared/` | Drizzle schema, Zod contracts, shared types. Entrypoint: `src/index.ts`    |
+| `scripts/`         | `migrate.ts`, `seed.ts`                                                    |
+| `agents/`          | Agent prompt files (frontend/backend/security) — not runtime code          |
+| `docs/`            | Architecture docs and ADRs                                                 |
 
 `tooling/` is reserved but currently empty.
 
@@ -33,6 +33,8 @@ pnpm typecheck        # tsc --noEmit (dependsOn ^build — must build first)
 pnpm test:unit        # Vitest unit — no build prerequisite
 pnpm test:contracts   # Vitest contract tests — no build prerequisite
 pnpm test:e2e         # Playwright E2E
+pnpm test:a11y        # Playwright axe-core accessibility checks
+pnpm perf:check       # Build, bundle budget, and Lighthouse CI
 pnpm format           # Prettier (--write .)
 pnpm format:check
 ```
@@ -97,6 +99,7 @@ storageProvider.upload({ key, body })
 ```
 <type>(<scope>): <description>
 ```
+
 Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `style`, `ci`
 
 Branch pattern: `feat/description`, `fix/description`, `docs/description`, etc.
@@ -108,7 +111,8 @@ Branch pattern: `feat/description`, `fix/description`, `docs/description`, etc.
 - Unit tests: co-located `*.test.ts` files, Vitest
 - Contract tests: `apps/api/src/__tests__/contracts/`, Vitest, test D1 seeded per file
 - E2E: `apps/web/e2e/`, Playwright
-- No vitest/playwright config files found yet (expected at some point)
+- A11y: `apps/web/e2e/a11y.spec.ts`, Playwright + axe-core
+- Performance: Lighthouse CI via `lighthouserc.cjs`, bundle budget via `scripts/check-bundle-size.ts`
 
 ## Entrypoints
 

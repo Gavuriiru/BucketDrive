@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { Share2, Download } from "lucide-react"
-import { useWorkspaces, useShares, useDownloadUrl  } from "@/lib/api"
+import { useWorkspaces, useShares, useDownloadUrl } from "@/lib/api"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
 import type { ShareDashboardItem } from "@bucketdrive/shared"
@@ -22,7 +22,7 @@ export function SharedPage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -30,7 +30,7 @@ export function SharedPage() {
   if (!workspaceId) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-text-tertiary">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No workspace found</p>
       </div>
     )
   }
@@ -38,30 +38,32 @@ export function SharedPage() {
   return (
     <div className="flex h-full flex-col p-6">
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-text-primary">Shared with me</h1>
-        <p className="text-xs text-text-tertiary">
+        <h1 className="text-text-primary text-lg font-semibold">Shared with me</h1>
+        <p className="text-text-tertiary text-xs">
           Files and folders shared by other workspace members
         </p>
       </div>
 
       {shares.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <Share2 className="h-12 w-12 text-text-tertiary" />
-          <p className="text-sm text-text-tertiary">Nothing shared with you yet</p>
-          <p className="text-xs text-text-tertiary">
+          <Share2 className="text-text-tertiary h-12 w-12" />
+          <p className="text-text-tertiary text-sm">Nothing shared with you yet</p>
+          <p className="text-text-tertiary text-xs">
             When someone shares a file or folder, it will appear here.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border-default">
+        <div className="border-border-default overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border-muted bg-surface-default">
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">Name</th>
-                <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary sm:table-cell">
+              <tr className="border-border-muted bg-surface-default border-b">
+                <th className="text-text-tertiary px-4 py-2.5 text-left text-xs font-medium">
+                  Name
+                </th>
+                <th className="text-text-tertiary hidden px-4 py-2.5 text-left text-xs font-medium sm:table-cell">
                   Type
                 </th>
-                <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-text-tertiary md:table-cell">
+                <th className="text-text-tertiary hidden px-4 py-2.5 text-left text-xs font-medium md:table-cell">
                   Shared
                 </th>
                 <th className="w-10 px-4 py-2.5" />
@@ -88,26 +90,24 @@ function SharedRow({ share, workspaceId }: { share: ShareDashboardItem; workspac
   const isExpired = share.expiresAt ? new Date(share.expiresAt) < new Date() : false
 
   return (
-    <tr className="border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover">
+    <tr className="border-border-muted hover:bg-surface-hover border-b transition-colors last:border-b-0">
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-3">
           <span className="text-lg">
             {share.resourceType === "folder" ? "\uD83D\uDCC2" : "\uD83D\uDCC4"}
           </span>
           <div>
-            <p className="truncate text-sm font-medium text-text-primary">
-              {share.resourceName}
-            </p>
-            <p className="text-xs text-text-tertiary">Shared by {share.createdByName}</p>
+            <p className="text-text-primary truncate text-sm font-medium">{share.resourceName}</p>
+            <p className="text-text-tertiary text-xs">Shared by {share.createdByName}</p>
           </div>
         </div>
       </td>
       <td className="hidden px-4 py-2.5 sm:table-cell">
-        <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs text-text-secondary capitalize">
+        <span className="bg-surface-hover text-text-secondary rounded-full px-2 py-0.5 text-xs capitalize">
           {share.resourceType}
         </span>
       </td>
-      <td className="hidden px-4 py-2.5 text-sm text-text-tertiary md:table-cell">
+      <td className="text-text-tertiary hidden px-4 py-2.5 text-sm md:table-cell">
         {new Date(share.createdAt).toLocaleDateString()}
       </td>
       <td className="px-4 py-2.5">
@@ -117,16 +117,14 @@ function SharedRow({ share, workspaceId }: { share: ShareDashboardItem; workspac
               href={downloadData.signedUrl}
               target="_blank"
               rel="noreferrer"
-              className="rounded p-1.5 text-text-tertiary transition-colors hover:bg-surface-default hover:text-text-primary"
+              className="text-text-tertiary hover:bg-surface-default hover:text-text-primary rounded p-1.5 transition-colors"
               aria-label="Download"
             >
               <Download className="h-4 w-4" />
             </a>
           )}
           {isExpired && (
-            <span className="rounded-full bg-error/10 px-2 py-0.5 text-xs text-error">
-              Expired
-            </span>
+            <span className="bg-error/10 text-error rounded-full px-2 py-0.5 text-xs">Expired</span>
           )}
         </div>
       </td>

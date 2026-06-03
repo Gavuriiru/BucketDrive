@@ -1,7 +1,13 @@
 import { createMiddleware } from "hono/factory"
 
 interface PlatformAdminVariables {
-  user: { id: string; email: string; name: string; isPlatformAdmin: boolean; canCreateWorkspaces: boolean }
+  user: {
+    id: string
+    email: string
+    name: string
+    isPlatformAdmin: boolean
+    canCreateWorkspaces: boolean
+  }
 }
 
 export const requirePlatformAdmin = createMiddleware<{

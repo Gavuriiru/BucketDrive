@@ -5,6 +5,7 @@
 This document defines the soft-delete, trash, and recovery system for files and folders.
 
 The trash system enables:
+
 - Accidental deletion recovery
 - Audit trail preservation
 - Time-based auto-cleanup
@@ -89,11 +90,11 @@ Dedicated section in the file explorer showing deleted items.
 
 ## Trash Item Actions
 
-| Action | Permission | Description |
-|---|---|---|
-| **Restore** | `files.restore` | Returns file to original folder (or root if folder deleted) |
-| **Delete Permanently** | `files.delete` (owner/admin) | Hard-deletes file from DB and R2 immediately |
-| **Empty Trash** | `files.delete` (owner/admin) | Permanently deletes ALL items in trash |
+| Action                 | Permission                   | Description                                                 |
+| ---------------------- | ---------------------------- | ----------------------------------------------------------- |
+| **Restore**            | `files.restore`              | Returns file to original folder (or root if folder deleted) |
+| **Delete Permanently** | `files.delete` (owner/admin) | Hard-deletes file from DB and R2 immediately                |
+| **Empty Trash**        | `files.delete` (owner/admin) | Permanently deletes ALL items in trash                      |
 
 ---
 
@@ -181,22 +182,26 @@ The retention period (30 days) is configurable via `WorkspaceSettings.trashReten
 ## Restoring to a Deleted Folder
 
 If the original parent folder was soft-deleted:
+
 - Restore file to workspace root
 - Toast: "Original folder was deleted — file restored to root"
 
 If the original parent folder was permanently purged:
+
 - Same behavior: restore to workspace root
 - Log: "file.restored_to_root" (different event for analytics)
 
 ## Restoring with Name Conflict
 
 If a file with the same name already exists in the target folder:
+
 - Rename restored file: `report.pdf` → `report (restored).pdf` or `report (1).pdf`
 - Toast: "File restored with updated name — original name was taken"
 
 ## Deleting Shared Files
 
 If a file with active shares is deleted:
+
 - Shares are immediately invalidated
 - External users see "This share is no longer available"
 - If file is restored, shares remain inactive (creator must reactivate)
@@ -235,12 +240,10 @@ querying the trash view.
 
 ```ts
 // Correct: file explorer query
-db.select().from(fileObject)
-  .where(eq(fileObject.isDeleted, false))
+db.select().from(fileObject).where(eq(fileObject.isDeleted, false))
 
 // Correct: trash query
-db.select().from(fileObject)
-  .where(eq(fileObject.isDeleted, true))
+db.select().from(fileObject).where(eq(fileObject.isDeleted, true))
 ```
 
 ---

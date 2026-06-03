@@ -8,6 +8,7 @@ describe("buildFtsQuery", () => {
 
   it("removes unsafe characters before building the match expression", () => {
     expect(buildFtsQuery('report (draft) "q1"')).toBe("report* AND draft* AND q1*")
+    expect(buildFtsQuery("e2e-search_file.txt")).toBe("e2e* AND search* AND file* AND txt*")
   })
 })
 
@@ -34,9 +35,7 @@ describe("filterFilesByFolder", () => {
 
   it("returns only files in the requested folder", () => {
     expect(
-      filterFilesByFolder(files, "00000000-0000-4000-8000-000000000001").map(
-        (file) => file.id,
-      ),
+      filterFilesByFolder(files, "00000000-0000-4000-8000-000000000001").map((file) => file.id),
     ).toEqual(["nested-file"])
   })
 })

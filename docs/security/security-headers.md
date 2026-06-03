@@ -36,6 +36,7 @@ Content-Security-Policy:
 ```
 
 **Rationale**:
+
 - `default-src 'self'` — block all external resources by default
 - `script-src 'self'` — no inline scripts, no external scripts
 - `style-src 'unsafe-inline'` — required by TailwindCSS (generates inline styles)
@@ -55,6 +56,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 ```
 
 **Rationale**:
+
 - `max-age=31536000` — 1 year, browser remembers to always use HTTPS
 - `includeSubDomains` — applies to all subdomains
 - `preload` — eligible for browser HSTS preload list
@@ -205,10 +207,7 @@ export const securityHeaders = createMiddleware(async (c, next) => {
   c.res.headers.set("Cross-Origin-Resource-Policy", "same-origin")
 
   // CSP for API (API responses are JSON, not HTML — CSP still valuable)
-  c.res.headers.set(
-    "Content-Security-Policy",
-    "default-src 'none'; frame-ancestors 'none'"
-  )
+  c.res.headers.set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 })
 ```
 
@@ -216,12 +215,12 @@ export const securityHeaders = createMiddleware(async (c, next) => {
 
 # Environment-Specific Configuration
 
-| Header | Development | Production |
-|---|---|---|
-| HSTS `max-age` | Omit HSTS entirely | 31536000 (1 year) |
-| CSP `upgrade-insecure-requests` | Omit (dev uses `http://localhost`) | Include |
-| CORS `Allow-Origin` | `http://localhost:5173` (Vite dev server) | `https://{domain}` |
-| Cookie `Secure` | `false` (localhost HTTP) | `true` |
+| Header                          | Development                               | Production         |
+| ------------------------------- | ----------------------------------------- | ------------------ |
+| HSTS `max-age`                  | Omit HSTS entirely                        | 31536000 (1 year)  |
+| CSP `upgrade-insecure-requests` | Omit (dev uses `http://localhost`)        | Include            |
+| CORS `Allow-Origin`             | `http://localhost:5173` (Vite dev server) | `https://{domain}` |
+| Cookie `Secure`                 | `false` (localhost HTTP)                  | `true`             |
 
 ---
 

@@ -104,12 +104,12 @@ export function NotificationBell() {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen(!open)}
-        className="relative rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+        className="text-text-secondary hover:bg-surface-hover hover:text-text-primary relative rounded-lg p-2 transition-colors"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white">
+          <span className="bg-error absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -118,15 +118,17 @@ export function NotificationBell() {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-border-default bg-surface-default shadow-lg"
+          className="border-border-default bg-surface-default absolute top-full right-0 z-50 mt-2 w-80 rounded-xl border shadow-lg"
         >
-          <div className="flex items-center justify-between border-b border-border-muted px-4 py-3">
-            <span className="text-sm font-semibold text-text-primary">Notifications</span>
+          <div className="border-border-muted flex items-center justify-between border-b px-4 py-3">
+            <span className="text-text-primary text-sm font-semibold">Notifications</span>
             {unreadCount > 0 && (
               <button
                 type="button"
-                onClick={() => { void markAllRead.mutate() }}
-                className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
+                onClick={() => {
+                  void markAllRead.mutate()
+                }}
+                className="text-accent hover:text-accent-hover flex items-center gap-1 text-xs"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
                 Mark all read
@@ -136,7 +138,7 @@ export function NotificationBell() {
 
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-text-tertiary">
+              <div className="text-text-tertiary px-4 py-8 text-center text-sm">
                 No notifications yet
               </div>
             ) : (
@@ -152,15 +154,18 @@ export function NotificationBell() {
                       handleNotificationClick(n)
                     }
                   }}
-                  className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
+                  className={`hover:bg-surface-hover flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
                     !n.isRead ? "bg-accent/5" : ""
-                  } cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent`}
+                  } focus-visible:ring-accent cursor-pointer focus-visible:ring-1 focus-visible:outline-none`}
                 >
-                  <div className="mt-0.5 flex h-2 w-2 shrink-0 rounded-full bg-accent opacity-0" style={{ opacity: n.isRead ? 0 : 1 }} />
+                  <div
+                    className="bg-accent mt-0.5 flex h-2 w-2 shrink-0 rounded-full opacity-0"
+                    style={{ opacity: n.isRead ? 0 : 1 }}
+                  />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-text-primary">{n.title}</p>
-                    <p className="text-xs text-text-secondary line-clamp-2">{n.message}</p>
-                    <p className="mt-1 text-[11px] text-text-tertiary">{timeAgo(n.createdAt)}</p>
+                    <p className="text-text-primary text-sm font-medium">{n.title}</p>
+                    <p className="text-text-secondary line-clamp-2 text-xs">{n.message}</p>
+                    <p className="text-text-tertiary mt-1 text-[11px]">{timeAgo(n.createdAt)}</p>
                   </div>
                   {!n.isRead && (
                     <button
@@ -169,7 +174,7 @@ export function NotificationBell() {
                         e.stopPropagation()
                         void markRead.mutate({ id: n.id })
                       }}
-                      className="mt-0.5 shrink-0 rounded p-1 text-text-tertiary hover:bg-surface-hover hover:text-text-secondary"
+                      className="text-text-tertiary hover:bg-surface-hover hover:text-text-secondary mt-0.5 shrink-0 rounded p-1"
                       aria-label="Mark as read"
                     >
                       <Check className="h-3.5 w-3.5" />

@@ -3,7 +3,7 @@ import { useEffect } from "react"
 import { Link } from "@tanstack/react-router"
 import { BarChart3, Files, FolderTree, HardDrive, Link2, Users } from "lucide-react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
-import { useDashboardOverview  } from "@/lib/api"
+import { useDashboardOverview } from "@/lib/api"
 import { can } from "@bucketdrive/shared"
 
 const numberFormatter = new Intl.NumberFormat("en-US")
@@ -23,7 +23,7 @@ export function DashboardPage() {
   if (workspacesLoading || (workspaceId !== null && overviewQuery.isLoading)) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
       </div>
     )
   }
@@ -31,7 +31,7 @@ export function DashboardPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-text-tertiary">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No workspace found</p>
       </div>
     )
   }
@@ -43,7 +43,7 @@ export function DashboardPage() {
   if (overviewQuery.isError) {
     return (
       <div className="p-6">
-        <div className="rounded-xl border border-error/40 bg-error/10 px-4 py-3 text-sm text-error">
+        <div className="border-error/40 bg-error/10 text-error rounded-xl border px-4 py-3 text-sm">
           {overviewQuery.error.message}
         </div>
       </div>
@@ -59,13 +59,13 @@ export function DashboardPage() {
     <div className="flex h-full flex-col gap-6 p-6">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.24em] text-text-tertiary">
+          <p className="text-text-tertiary text-xs font-medium tracking-[0.24em] uppercase">
             Admin Overview
           </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-text-primary">
+          <h1 className="text-text-primary mt-2 text-3xl font-semibold tracking-tight">
             {workspace.name}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-text-secondary">
+          <p className="text-text-secondary mt-2 max-w-2xl text-sm">
             Monitor storage, shares, member growth, and recent activity from one place.
           </p>
         </div>
@@ -116,18 +116,15 @@ export function DashboardPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-2xl border border-border-default bg-surface-default p-5">
+        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-text-primary">Storage Trend</h2>
-              <p className="text-xs text-text-tertiary">Cumulative usage over the last 7 days</p>
+              <h2 className="text-text-primary text-base font-semibold">Storage Trend</h2>
+              <p className="text-text-tertiary text-xs">Cumulative usage over the last 7 days</p>
             </div>
-            <span className="text-xs text-text-secondary">
-              {formatPercent(
-                overview.summary.usedStorageBytes,
-                overview.summary.quotaBytes,
-              )}{" "}
-              of quota
+            <span className="text-text-secondary text-xs">
+              {formatPercent(overview.summary.usedStorageBytes, overview.summary.quotaBytes)} of
+              quota
             </span>
           </div>
 
@@ -140,16 +137,16 @@ export function DashboardPage() {
 
               return (
                 <div key={point.date} className="flex h-full flex-col justify-end gap-2">
-                  <div className="relative flex-1 overflow-hidden rounded-xl bg-bg-tertiary">
+                  <div className="bg-bg-tertiary relative flex-1 overflow-hidden rounded-xl">
                     <div
-                      className={`absolute inset-x-0 bottom-0 rounded-xl bg-accent ${getBarHeightClass(ratio)}`}
+                      className={`bg-accent absolute inset-x-0 bottom-0 rounded-xl ${getBarHeightClass(ratio)}`}
                     />
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-text-primary">
+                    <p className="text-text-primary text-[11px] font-medium">
                       {formatShortDate(point.date)}
                     </p>
-                    <p className="text-[11px] text-text-tertiary">{formatBytes(point.usedBytes)}</p>
+                    <p className="text-text-tertiary text-[11px]">{formatBytes(point.usedBytes)}</p>
                   </div>
                 </div>
               )
@@ -157,28 +154,26 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border-default bg-surface-default p-5">
-          <h2 className="text-base font-semibold text-text-primary">Largest Files</h2>
-          <p className="mt-1 text-xs text-text-tertiary">Top 5 non-deleted files by size</p>
+        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
+          <h2 className="text-text-primary text-base font-semibold">Largest Files</h2>
+          <p className="text-text-tertiary mt-1 text-xs">Top 5 non-deleted files by size</p>
           <div className="mt-5 space-y-3">
             {overview.largestFiles.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border-default bg-bg-tertiary px-4 py-6 text-sm text-text-tertiary">
+              <p className="border-border-default bg-bg-tertiary text-text-tertiary rounded-xl border border-dashed px-4 py-6 text-sm">
                 No file data yet.
               </p>
             ) : (
               overview.largestFiles.map((file) => (
                 <div
                   key={file.id}
-                  className="rounded-xl border border-border-muted bg-bg-tertiary px-4 py-3"
+                  className="border-border-muted bg-bg-tertiary rounded-xl border px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-text-primary">
-                        {file.name}
-                      </p>
-                      <p className="mt-1 text-xs text-text-tertiary">{file.mimeType}</p>
+                      <p className="text-text-primary truncate text-sm font-medium">{file.name}</p>
+                      <p className="text-text-tertiary mt-1 text-xs">{file.mimeType}</p>
                     </div>
-                    <span className="shrink-0 text-xs font-medium text-text-secondary">
+                    <span className="text-text-secondary shrink-0 text-xs font-medium">
                       {formatBytes(file.sizeBytes)}
                     </span>
                   </div>
@@ -190,15 +185,15 @@ export function DashboardPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-        <div className="rounded-2xl border border-border-default bg-surface-default p-5">
+        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-text-primary">Recent Activity</h2>
-              <p className="text-xs text-text-tertiary">Latest 10 audit events</p>
+              <h2 className="text-text-primary text-base font-semibold">Recent Activity</h2>
+              <p className="text-text-tertiary text-xs">Latest 10 audit events</p>
             </div>
             <Link
               to="/dashboard/audit"
-              className="text-xs font-medium text-accent transition-opacity hover:opacity-80"
+              className="text-accent text-xs font-medium transition-opacity hover:opacity-80"
             >
               View all
             </Link>
@@ -206,22 +201,22 @@ export function DashboardPage() {
 
           <div className="mt-5 space-y-3">
             {overview.recentActivity.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border-default bg-bg-tertiary px-4 py-6 text-sm text-text-tertiary">
+              <p className="border-border-default bg-bg-tertiary text-text-tertiary rounded-xl border border-dashed px-4 py-6 text-sm">
                 No audit activity yet.
               </p>
             ) : (
               overview.recentActivity.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-border-muted bg-bg-tertiary px-4 py-3"
+                  className="border-border-muted bg-bg-tertiary flex items-start justify-between gap-3 rounded-xl border px-4 py-3"
                 >
                   <div>
-                    <p className="text-sm font-medium text-text-primary">{item.action}</p>
-                    <p className="mt-1 text-xs text-text-tertiary">
+                    <p className="text-text-primary text-sm font-medium">{item.action}</p>
+                    <p className="text-text-tertiary mt-1 text-xs">
                       {(item.actorName ?? item.actorId) || "Unknown actor"} • {item.resourceType}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-text-secondary">
+                  <span className="text-text-secondary shrink-0 text-xs">
                     {new Date(item.createdAt).toLocaleString()}
                   </span>
                 </div>
@@ -230,9 +225,9 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border-default bg-surface-default p-5">
-          <h2 className="text-base font-semibold text-text-primary">Admin Shortcuts</h2>
-          <p className="mt-1 text-xs text-text-tertiary">
+        <div className="border-border-default bg-surface-default rounded-2xl border p-5">
+          <h2 className="text-text-primary text-base font-semibold">Admin Shortcuts</h2>
+          <p className="text-text-tertiary mt-1 text-xs">
             Jump into the most common operations for workspace administration.
           </p>
           <div className="mt-5 grid gap-3">
@@ -270,32 +265,24 @@ function StatCard({
   accent: string
 }) {
   return (
-    <div className="rounded-2xl border border-border-default bg-surface-default p-5">
+    <div className="border-border-default bg-surface-default rounded-2xl border p-5">
       <div className={`inline-flex rounded-xl p-2 ${accent}`}>
         <Icon className="h-5 w-5" />
       </div>
-      <p className="mt-4 text-sm text-text-tertiary">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight text-text-primary">{value}</p>
+      <p className="text-text-tertiary mt-4 text-sm">{label}</p>
+      <p className="text-text-primary mt-2 text-3xl font-semibold tracking-tight">{value}</p>
     </div>
   )
 }
 
-function QuickLink({
-  to,
-  icon: Icon,
-  label,
-}: {
-  to: string
-  icon: typeof Files
-  label: string
-}) {
+function QuickLink({ to, icon: Icon, label }: { to: string; icon: typeof Files; label: string }) {
   return (
     <Link
       to={to}
       {...(to === "/dashboard/files"
         ? { search: { folderId: undefined, previewFileId: undefined } }
         : {})}
-      className="inline-flex items-center gap-2 rounded-xl border border-border-default bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+      className="border-border-default bg-surface-default text-text-primary hover:bg-surface-hover inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors"
     >
       <Icon className="h-4 w-4" />
       {label}
@@ -315,10 +302,10 @@ function ShortcutCard({
   return (
     <Link
       to={to}
-      className="rounded-xl border border-border-muted bg-bg-tertiary px-4 py-4 transition-colors hover:bg-surface-hover"
+      className="border-border-muted bg-bg-tertiary hover:bg-surface-hover rounded-xl border px-4 py-4 transition-colors"
     >
-      <p className="text-sm font-medium text-text-primary">{title}</p>
-      <p className="mt-1 text-xs text-text-tertiary">{description}</p>
+      <p className="text-text-primary text-sm font-medium">{title}</p>
+      <p className="text-text-tertiary mt-1 text-xs">{description}</p>
     </Link>
   )
 }

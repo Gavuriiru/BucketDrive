@@ -5,6 +5,7 @@
 This document defines the core database architecture of the platform.
 
 The database must support:
+
 - multi-workspace isolation
 - RBAC
 - file management
@@ -13,6 +14,7 @@ The database must support:
 - scalable storage metadata
 
 The schema must prioritize:
+
 - consistency
 - normalization
 - scalability
@@ -28,6 +30,7 @@ The schema must prioritize:
 All tenant data must remain workspace-scoped.
 
 Users must NEVER:
+
 - access foreign workspace data
 - infer foreign metadata
 - bypass workspace isolation
@@ -39,12 +42,14 @@ Workspace isolation is mandatory.
 ## 2. Metadata-Only Storage
 
 The database stores:
+
 - metadata
 - ownership
 - permissions
 - relationships
 
 The database does NOT store:
+
 - file binary contents
 
 Binary data belongs to storage providers.
@@ -56,11 +61,13 @@ Binary data belongs to storage providers.
 Naming must remain predictable.
 
 Use:
+
 - singular table names
 - explicit relationships
 - UUID primary keys
 
 Avoid:
+
 - abbreviations
 - ambiguous names
 - inconsistent terminology
@@ -363,6 +370,7 @@ attempted_at
 Used for rate limiting and brute-force protection on public share links.
 
 Rules:
+
 - Max 5 failed attempts per IP per 15-minute window
 - After 10 consecutive failures, the share link is temporarily locked for 30 minutes
 - Successful password entry resets the failure counter
@@ -527,14 +535,17 @@ ShareLink
 # UUID Rules
 
 All primary IDs must use:
+
 - UUID
-or
+  or
 - ULID
 
 Avoid:
+
 - sequential numeric IDs
 
 Reasons:
+
 - enumeration protection
 - distributed safety
 - scalability
@@ -563,6 +574,7 @@ deleted_at
 Files and folders should support soft deletion.
 
 Soft delete enables:
+
 - trash recovery
 - audit preservation
 - rollback capability
@@ -576,6 +588,7 @@ Avoid hard deletion by default.
 Ownership must remain explicit.
 
 Resources should track:
+
 - creator
 - owner
 - workspace scope
@@ -598,6 +611,7 @@ storage_key
 ```
 
 Additional indexes required for:
+
 - search
 - sorting
 - filtering
@@ -608,12 +622,14 @@ Additional indexes required for:
 # Search Architecture
 
 Search should support:
+
 - filenames
 - tags
 - mime types
 - metadata
 
 Future support:
+
 - full-text indexing
 - OCR indexing
 - semantic search
@@ -623,6 +639,7 @@ Future support:
 # Quota Tracking
 
 Storage analytics should support:
+
 - workspace usage
 - user usage
 - trash usage
@@ -635,6 +652,7 @@ Avoid expensive real-time recalculations when possible.
 # Audit Architecture
 
 Audit logs must remain:
+
 - append-oriented
 - immutable when possible
 - queryable
@@ -646,6 +664,7 @@ Audit records should never be silently deleted.
 # File Versioning Future Support
 
 The schema must support future:
+
 - file versions
 - rollback
 - change history
@@ -661,6 +680,7 @@ FileVersion
 # Activity Feed Future Support
 
 The architecture should support:
+
 - activity feeds
 - realtime updates
 - collaboration events
@@ -670,6 +690,7 @@ The architecture should support:
 # Notification Future Support
 
 Notifications should support:
+
 - uploads
 - shares
 - mentions
@@ -680,6 +701,7 @@ Notifications should support:
 # Multi-Region Future Support
 
 The architecture should support future:
+
 - regional storage
 - replication
 - failover
@@ -691,6 +713,7 @@ Avoid hardcoded regional assumptions.
 # Forbidden Database Practices
 
 Never:
+
 - use ambiguous naming
 - store binary file contents
 - duplicate authorization data unnecessarily
@@ -699,6 +722,7 @@ Never:
 - bypass workspace scoping
 
 Avoid:
+
 - giant denormalized tables
 - inconsistent foreign key naming
 - implicit relationships
@@ -723,6 +747,7 @@ bucket_id
 ```
 
 Avoid:
+
 - mixed naming conventions
 - inconsistent suffixes
 
@@ -731,11 +756,13 @@ Avoid:
 # Recommended Constraints
 
 Use:
+
 - foreign keys
 - unique constraints
 - check constraints
 
 Examples:
+
 - unique workspace slugs
 - unique storage keys
 - valid expiration ranges
@@ -745,11 +772,13 @@ Examples:
 # Recommended Query Rules
 
 Queries must:
+
 - remain workspace-scoped
 - avoid N+1 patterns
 - support pagination
 
 Avoid:
+
 - loading entire datasets
 - unrestricted scans
 
@@ -758,6 +787,7 @@ Avoid:
 # Scalability Philosophy
 
 The schema must support future:
+
 - billions of files
 - large workspaces
 - enterprise RBAC
@@ -772,8 +802,9 @@ The architecture must remain extensible.
 
 Whenever uncertain:
 prioritize:
+
 - consistency
 - explicit relationships
 - auditability
 - scalability
-over convenience.
+  over convenience.

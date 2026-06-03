@@ -1,4 +1,10 @@
-import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@tanstack/react-router"
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router"
 import { lazy, Suspense, type ComponentType } from "react"
 import { Layout } from "@/components/layout/layout"
 import { HomePage } from "./home"
@@ -6,21 +12,41 @@ import { LoginPage } from "./login"
 import { JoinPage } from "./join"
 import { OnboardingPage } from "./onboarding"
 
-const DashboardPage = lazy(() => import("./app/dashboard").then((module) => ({ default: module.DashboardPage })))
-const FilesPage = lazy(() => import("./app/files").then((module) => ({ default: module.FilesPage })))
-const MembersPage = lazy(() => import("./app/members").then((module) => ({ default: module.MembersPage })))
-const AuditPage = lazy(() => import("./app/audit").then((module) => ({ default: module.AuditPage })))
-const SettingsPage = lazy(() => import("./app/settings").then((module) => ({ default: module.SettingsPage })))
-const ShareManagementPage = lazy(() => import("./app/shares").then((module) => ({ default: module.ShareManagementPage })))
-const SharedPage = lazy(() => import("./app/shared").then((module) => ({ default: module.SharedPage })))
-const TrashPage = lazy(() => import("./app/trash").then((module) => ({ default: module.TrashPage })))
-const ShareAccessPage = lazy(() => import("./share.$shareId").then((module) => ({ default: module.ShareAccessPage })))
-const PlatformAdminPage = lazy(() => import("./dashboard.platform").then((module) => ({ default: module.PlatformAdminPage })))
+const DashboardPage = lazy(() =>
+  import("./app/dashboard").then((module) => ({ default: module.DashboardPage })),
+)
+const FilesPage = lazy(() =>
+  import("./app/files").then((module) => ({ default: module.FilesPage })),
+)
+const MembersPage = lazy(() =>
+  import("./app/members").then((module) => ({ default: module.MembersPage })),
+)
+const AuditPage = lazy(() =>
+  import("./app/audit").then((module) => ({ default: module.AuditPage })),
+)
+const SettingsPage = lazy(() =>
+  import("./app/settings").then((module) => ({ default: module.SettingsPage })),
+)
+const ShareManagementPage = lazy(() =>
+  import("./app/shares").then((module) => ({ default: module.ShareManagementPage })),
+)
+const SharedPage = lazy(() =>
+  import("./app/shared").then((module) => ({ default: module.SharedPage })),
+)
+const TrashPage = lazy(() =>
+  import("./app/trash").then((module) => ({ default: module.TrashPage })),
+)
+const ShareAccessPage = lazy(() =>
+  import("./share.$shareId").then((module) => ({ default: module.ShareAccessPage })),
+)
+const PlatformAdminPage = lazy(() =>
+  import("./dashboard.platform").then((module) => ({ default: module.PlatformAdminPage })),
+)
 
 function PendingSpinner() {
   return (
-    <div className="flex h-screen items-center justify-center bg-bg-primary">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+    <div className="bg-bg-primary flex h-screen items-center justify-center">
+      <div className="border-accent h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
     </div>
   )
 }
@@ -116,7 +142,10 @@ const filesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/files",
   validateSearch: (search: Record<string, unknown>) => ({
-    folderId: typeof search.folderId === "string" && search.folderId.length > 0 ? search.folderId : undefined,
+    folderId:
+      typeof search.folderId === "string" && search.folderId.length > 0
+        ? search.folderId
+        : undefined,
     previewFileId:
       typeof search.previewFileId === "string" && search.previewFileId.length > 0
         ? search.previewFileId

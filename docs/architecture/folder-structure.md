@@ -5,6 +5,7 @@
 This document defines the official project structure.
 
 The structure must prioritize:
+
 - scalability
 - discoverability
 - modularity
@@ -36,6 +37,7 @@ Avoid arbitrary organization.
 Frontend application.
 
 Contains:
+
 - routes
 - layouts
 - frontend features
@@ -62,6 +64,7 @@ Example:
 Backend API.
 
 Contains:
+
 - routes
 - controllers
 - services
@@ -88,6 +91,7 @@ Example:
 Background processing system.
 
 Contains:
+
 - queues
 - jobs
 - processors
@@ -111,6 +115,7 @@ Example:
 Shared design system.
 
 Contains:
+
 - primitives
 - reusable components
 - themes
@@ -134,6 +139,7 @@ Example:
 Authentication abstraction.
 
 Contains:
+
 - auth providers
 - session logic
 - OAuth integration
@@ -146,6 +152,7 @@ Contains:
 Storage abstraction layer.
 
 Contains:
+
 - provider interfaces
 - R2 adapters
 - upload helpers
@@ -168,6 +175,7 @@ Example:
 Authorization system.
 
 Contains:
+
 - permission engine
 - policy helpers
 - role definitions
@@ -180,6 +188,7 @@ Contains:
 Database layer.
 
 Contains:
+
 - schema
 - migrations
 - repositories
@@ -202,6 +211,7 @@ Example:
 Shared utilities and contracts.
 
 Contains:
+
 - shared types
 - constants
 - schemas
@@ -227,6 +237,7 @@ Example:
 ```
 
 Avoid:
+
 - giant flat route structures
 - unclear nesting
 
@@ -273,6 +284,7 @@ Preferred:
 ```
 
 Contains:
+
 - buttons
 - modals
 - inputs
@@ -289,6 +301,7 @@ Reusable primitives only.
 ```
 
 Contains:
+
 - sidebar
 - topbar
 - panels
@@ -303,9 +316,11 @@ Contains:
 ```
 
 Contains:
+
 - reusable feature-independent components
 
 Avoid:
+
 - business-specific logic here
 
 ---
@@ -342,6 +357,7 @@ Example:
 ```
 
 Avoid:
+
 - monolithic global stores
 
 ---
@@ -383,11 +399,13 @@ Example:
 # Controller Rules
 
 Controllers:
+
 - validate requests
 - call services
 - return responses
 
 Avoid:
+
 - business logic
 - provider logic
 - authorization duplication
@@ -397,11 +415,13 @@ Avoid:
 # Service Rules
 
 Services contain:
+
 - business logic
 - orchestration
 - domain rules
 
 Avoid:
+
 - direct HTTP concerns
 - duplicated validation
 
@@ -410,10 +430,12 @@ Avoid:
 # Repository Rules
 
 Repositories contain:
+
 - database access
 - query logic
 
 Avoid:
+
 - business rules
 - authorization logic
 
@@ -436,6 +458,7 @@ or feature-local:
 ```
 
 Use:
+
 - Zod
 
 ---
@@ -452,6 +475,7 @@ shares.types.ts
 ```
 
 Avoid:
+
 - giant global type files
 
 ---
@@ -465,6 +489,7 @@ Shared API contracts belong in:
 ```
 
 Contains:
+
 - DTOs
 - response schemas
 - shared validators
@@ -542,11 +567,13 @@ ADR-002-rbac-architecture.md
 ```
 
 Contains:
+
 - frontend-agent.md
 - backend-agent.md
 - security-agent.md
 
 Agents define:
+
 - behavior
 - constraints
 - architecture philosophy
@@ -594,10 +621,12 @@ UploadQueue
 # Variable Naming
 
 Use:
+
 - descriptive names
 - domain terminology
 
 Avoid:
+
 - vague abbreviations
 - single-letter names
 
@@ -606,10 +635,12 @@ Avoid:
 # Import Rules
 
 Prefer:
+
 - absolute imports
 - domain-local imports
 
 Avoid:
+
 - deep relative import chains
 
 Bad:
@@ -629,6 +660,7 @@ Preferred:
 # Separation Rules
 
 Never mix:
+
 - UI and business logic
 - providers and services
 - authorization and presentation
@@ -641,6 +673,7 @@ Boundaries must remain explicit.
 # Scalability Rules
 
 The structure must support future:
+
 - enterprise features
 - realtime collaboration
 - previews
@@ -655,6 +688,7 @@ Avoid structures that collapse at scale.
 # Forbidden Structure Practices
 
 Never:
+
 - create giant folders
 - create generic dump folders
 - duplicate modules
@@ -664,6 +698,7 @@ Never:
 - create god components
 
 Avoid:
+
 - random utilities folders
 - oversized shared folders
 
@@ -673,8 +708,9 @@ Avoid:
 
 Whenever uncertain:
 prioritize:
+
 - modularity
 - discoverability
 - explicit ownership
 - consistency
-over short-term convenience.
+  over short-term convenience.

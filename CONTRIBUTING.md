@@ -72,6 +72,7 @@ storageProvider.upload({ key, body })
 ## Documentation
 
 When adding or changing features:
+
 - Update relevant docs in `docs/`
 - Add ADR in `docs/decisions/` for architectural decisions
 - Keep the [README](README.md) table of contents accurate
@@ -92,6 +93,7 @@ For architecture questions, start with the [ADRs](docs/decisions/).
 ## Definition of Done
 
 A feature is complete only when:
+
 - Typed, validated, tested
 - Accessible (keyboard + screen reader)
 - Dark mode compatible

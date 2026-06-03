@@ -1,11 +1,24 @@
 import { and, eq, inArray } from "drizzle-orm"
 import type { getDB } from "./db"
-import { member, organization, user, workspace, workspaceMember } from "@bucketdrive/shared/db/schema"
+import {
+  member,
+  organization,
+  user,
+  workspace,
+  workspaceMember,
+} from "@bucketdrive/shared/db/schema"
 import type { WorkspaceRole } from "@bucketdrive/shared"
 
 type DB = ReturnType<typeof getDB>
 
-const WORKSPACE_ROLES: readonly WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer", "guest"]
+const WORKSPACE_ROLES: readonly WorkspaceRole[] = [
+  "owner",
+  "admin",
+  "manager",
+  "editor",
+  "viewer",
+  "guest",
+]
 
 export function normalizeWorkspaceRole(role: string | null | undefined): WorkspaceRole {
   const firstRole = role?.split(",")[0]?.trim()
@@ -93,7 +106,10 @@ export async function syncWorkspaceMemberships(db: DB, workspaceId: string) {
     }
   }
 
-  if (existingUserIds.has(currentWorkspace.ownerId) && !membersByUserId.has(currentWorkspace.ownerId)) {
+  if (
+    existingUserIds.has(currentWorkspace.ownerId) &&
+    !membersByUserId.has(currentWorkspace.ownerId)
+  ) {
     const createdAt = new Date().toISOString()
     const ownerMember = {
       id: crypto.randomUUID(),
@@ -247,9 +263,5 @@ export async function getUsersByEmails(db: DB, emails: string[]) {
     return []
   }
 
-  return db
-    .select()
-    .from(user)
-    .where(inArray(user.email, emails))
-    .all()
+  return db.select().from(user).where(inArray(user.email, emails)).all()
 }

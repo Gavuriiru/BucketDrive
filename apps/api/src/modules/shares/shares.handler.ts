@@ -46,8 +46,7 @@ shares.get("/", requirePermission("shares.read"), async (c) => {
   const role: WorkspaceRole = (await getWorkspaceRoleForUser(db, workspaceId, user.id)) ?? "viewer"
   const request = ListSharesRequest.parse({
     scope:
-      c.req.query("scope") ??
-      (c.req.query("sharedWithMe") === "true" ? "shared_with_me" : "mine"),
+      c.req.query("scope") ?? (c.req.query("sharedWithMe") === "true" ? "shared_with_me" : "mine"),
     q: c.req.query("q") ?? undefined,
     page: c.req.query("page"),
     limit: c.req.query("limit"),
@@ -106,7 +105,10 @@ shares.patch("/:shareId", requirePermission("shares.update"), async (c) => {
   const workspaceId = c.req.param("workspaceId")
   const shareId = c.req.param("shareId")
   if (!workspaceId || !shareId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and shareId are required" }, 400 as never)
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and shareId are required" },
+      400 as never,
+    )
   }
 
   const user = c.get("user")
@@ -143,7 +145,10 @@ shares.delete("/:shareId", requirePermission("shares.revoke"), async (c) => {
   const workspaceId = c.req.param("workspaceId")
   const shareId = c.req.param("shareId")
   if (!workspaceId || !shareId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and shareId are required" }, 400 as never)
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and shareId are required" },
+      400 as never,
+    )
   }
 
   const user = c.get("user")
@@ -248,7 +253,10 @@ publicShares.get("/:shareId/download", async (c) => {
     })
 
     if (result.resourceType !== "file" || !result.signedUrl) {
-      return c.json({ code: "INVALID_RESOURCE", message: "Direct download is only available for file shares" }, 400 as never)
+      return c.json(
+        { code: "INVALID_RESOURCE", message: "Direct download is only available for file shares" },
+        400 as never,
+      )
     }
 
     return c.redirect(result.signedUrl, 302)

@@ -16,11 +16,19 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <ToastProvider>
-      <div className="flex h-screen flex-col bg-bg-primary">
+      <div className="bg-bg-primary flex h-screen flex-col">
+        <a
+          href="#main-content"
+          className="focus:bg-accent sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+        >
+          Skip to content
+        </a>
         <Topbar />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto">
+            {children}
+          </main>
         </div>
         <CommandPalette />
         <ToastContainer />

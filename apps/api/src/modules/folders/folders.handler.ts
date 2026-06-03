@@ -52,11 +52,7 @@ folders.get("/", requirePermission("folders.read"), async (c) => {
         eq(folder.isDeleted, false),
       )
 
-  const rows = await db
-    .select()
-    .from(folder)
-    .where(where)
-    .all()
+  const rows = await db.select().from(folder).where(where).all()
 
   const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name))
 
@@ -76,16 +72,15 @@ folders.get("/:folderId/breadcrumbs", requirePermission("folders.read"), async (
   const folderId = c.req.param("folderId")
 
   if (!workspaceId || !folderId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and folderId are required" }, 400)
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "workspaceId and folderId are required" },
+      400,
+    )
   }
 
   const db = getDB()
 
-  const ws = await db
-    .select()
-    .from(workspace)
-    .where(eq(workspace.id, workspaceId))
-    .get()
+  const ws = await db.select().from(workspace).where(eq(workspace.id, workspaceId)).get()
 
   if (!ws) {
     return c.json({ code: "WORKSPACE_NOT_FOUND", message: "Workspace not found" }, 404)
@@ -160,11 +155,7 @@ folders.post("/", requirePermission("folders.create"), async (c) => {
     })
     .run()
 
-  const created = await db
-    .select()
-    .from(folder)
-    .where(eq(folder.id, newFolderId))
-    .get()
+  const created = await db.select().from(folder).where(eq(folder.id, newFolderId)).get()
 
   await db
     .insert(auditLog)
@@ -224,9 +215,7 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
       const parent = await db
         .select()
         .from(folder)
-        .where(
-          and(eq(folder.id, body.parentFolderId), eq(folder.workspaceId, workspaceId)),
-        )
+        .where(and(eq(folder.id, body.parentFolderId), eq(folder.workspaceId, workspaceId)))
         .get()
 
       if (!parent || parent.isDeleted) {
@@ -234,7 +223,10 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
       }
 
       if (parent.path === target.path || parent.path.startsWith(`${target.path}/`)) {
-        return c.json({ code: "INVALID_MOVE", message: "Cannot move a folder into its descendant" }, 400)
+        return c.json(
+          { code: "INVALID_MOVE", message: "Cannot move a folder into its descendant" },
+          400,
+        )
       }
     }
 
@@ -242,14 +234,16 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
 
     const newName = body.name ?? target.name
     const newParentPath = body.parentFolderId
-      ? (await db.select().from(folder).where(eq(folder.id, body.parentFolderId)).get())?.path ?? ""
+      ? ((await db.select().from(folder).where(eq(folder.id, body.parentFolderId)).get())?.path ??
+        "")
       : ""
 
     const newPath = body.parentFolderId ? `${newParentPath}/${newName}` : `/${newName}`
     updateSet.path = newPath
   } else if (body.name !== undefined && body.name !== target.name) {
     const parentPath = target.parentFolderId
-      ? (await db.select().from(folder).where(eq(folder.id, target.parentFolderId)).get())?.path ?? ""
+      ? ((await db.select().from(folder).where(eq(folder.id, target.parentFolderId)).get())?.path ??
+        "")
       : ""
 
     const newPath = target.parentFolderId ? `${parentPath}/${body.name}` : `/${body.name}`
@@ -259,11 +253,7 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
   const previousPath = target.path
   const nextPath = typeof updateSet.path === "string" ? updateSet.path : previousPath
 
-  await db
-    .update(folder)
-    .set(updateSet)
-    .where(eq(folder.id, folderId))
-    .run()
+  await db.update(folder).set(updateSet).where(eq(folder.id, folderId)).run()
 
   if (nextPath !== previousPath) {
     const descendants = await db
@@ -286,11 +276,7 @@ folders.patch("/:folderId", requirePermission("folders.rename"), async (c) => {
     }
   }
 
-  const updated = await db
-    .select()
-    .from(folder)
-    .where(eq(folder.id, folderId))
-    .get()
+  const updated = await db.select().from(folder).where(eq(folder.id, folderId)).get()
 
   const isRename = body.name !== undefined && body.name !== target.name
   const isMove = body.parentFolderId !== undefined && body.parentFolderId !== target.parentFolderId

@@ -5,6 +5,7 @@
 You are the backend architecture agent for this project.
 
 Your responsibility is to build:
+
 - scalable backend systems
 - secure APIs
 - modular business logic
@@ -14,6 +15,7 @@ Your responsibility is to build:
 This project is NOT a simple CRUD backend.
 
 The backend must support:
+
 - RBAC
 - storage orchestration
 - sharing systems
@@ -22,6 +24,7 @@ The backend must support:
 - scalable file operations
 
 The architecture must remain:
+
 - modular
 - secure
 - composable
@@ -49,12 +52,14 @@ Never sacrifice security for convenience.
 # Architecture Philosophy
 
 The backend must follow:
+
 - clear domain boundaries
 - service-oriented architecture
 - typed contracts
 - isolated infrastructure layers
 
 Avoid:
+
 - giant services
 - business logic in controllers
 - duplicated validation
@@ -65,6 +70,7 @@ Avoid:
 # Backend Responsibilities
 
 The backend is responsible for:
+
 - authentication
 - authorization
 - RBAC enforcement
@@ -81,6 +87,7 @@ The backend is the source of truth.
 # Forbidden Practices
 
 Never:
+
 - trust frontend authorization
 - hardcode permissions
 - bypass validation
@@ -91,6 +98,7 @@ Never:
 - duplicate authorization logic
 
 Avoid:
+
 - giant controller files
 - giant service files
 - implicit behavior
@@ -101,6 +109,7 @@ Avoid:
 # Required Stack
 
 Preferred stack:
+
 - TypeScript
 - Hono (Cloudflare Workers)
 - D1 / SQLite
@@ -108,6 +117,7 @@ Preferred stack:
 - Zod
 
 Use:
+
 - typed schemas
 - typed responses
 - runtime validation
@@ -117,6 +127,7 @@ Use:
 # API Design Rules
 
 All APIs must:
+
 - validate input
 - validate output
 - return typed responses
@@ -124,6 +135,7 @@ All APIs must:
 - remain REST-consistent
 
 Avoid:
+
 - inconsistent naming
 - hidden side effects
 - unpredictable responses
@@ -145,6 +157,7 @@ Preferred:
 ```
 
 Avoid:
+
 - action-heavy route names
 - RPC-style chaos
 
@@ -155,11 +168,13 @@ Avoid:
 Controllers must remain thin.
 
 Controllers should:
+
 - validate requests
 - call services
 - return responses
 
 Controllers must NOT:
+
 - implement business logic
 - access providers directly
 - perform authorization inline repeatedly
@@ -171,6 +186,7 @@ Controllers must NOT:
 Business logic belongs in services.
 
 Services should:
+
 - remain modular
 - remain testable
 - encapsulate domain logic
@@ -185,6 +201,7 @@ WorkspaceService
 ```
 
 Avoid:
+
 - god services
 - mixed responsibilities
 
@@ -195,11 +212,13 @@ Avoid:
 Database access should remain isolated.
 
 Preferred:
+
 - repositories
 - query utilities
 - typed DB helpers
 
 Avoid:
+
 - raw scattered queries
 - duplicated query logic
 
@@ -208,16 +227,19 @@ Avoid:
 # Validation Rules
 
 All external input must use:
+
 - Zod validation
 - strict schemas
 
 Validate:
+
 - request bodies
 - query params
 - route params
 - upload metadata
 
 Never trust:
+
 - frontend state
 - URL input
 - uploaded metadata
@@ -229,11 +251,13 @@ Never trust:
 Strict TypeScript is mandatory.
 
 Forbidden:
+
 - any
 - unchecked casts
 - untyped API responses
 
 Required:
+
 - shared types
 - typed contracts
 - runtime validation
@@ -243,11 +267,13 @@ Required:
 # Error Handling Rules
 
 Errors must:
+
 - remain typed
 - remain structured
 - remain sanitized
 
 Avoid:
+
 - leaking stack traces
 - exposing database internals
 - generic unknown failures
@@ -256,9 +282,7 @@ Preferred structure:
 
 ```ts
 {
-  code,
-  message,
-  details
+  ;(code, message, details)
 }
 ```
 
@@ -269,6 +293,7 @@ Preferred structure:
 Authorization is backend-enforced.
 
 Never:
+
 - trust frontend permissions
 - hardcode roles
 
@@ -291,6 +316,7 @@ if (user.role === "admin")
 All queries must remain workspace-scoped.
 
 Users must NEVER:
+
 - access foreign resources
 - infer foreign metadata
 
@@ -301,10 +327,12 @@ Workspace isolation is mandatory.
 # Storage Rules
 
 Storage access must go through:
+
 - StorageService
 - StorageProvider abstraction
 
 Never:
+
 - expose raw provider SDKs
 - hardcode R2 behavior
 - expose bucket credentials
@@ -314,6 +342,7 @@ Never:
 # Signed URL Rules
 
 Signed URLs must:
+
 - expire
 - remain operation-scoped
 - remain temporary
@@ -325,11 +354,13 @@ Never expose unrestricted storage access.
 # Upload Rules
 
 Uploads must support:
+
 - signed uploads
 - multipart uploads
 - resumability
 
 Validate:
+
 - mime type
 - file size
 - quota limits
@@ -341,6 +372,7 @@ Validate:
 Critical actions must generate logs.
 
 Required:
+
 - uploads
 - deletions
 - sharing
@@ -348,6 +380,7 @@ Required:
 - failed authorization attempts
 
 Logs must remain:
+
 - structured
 - queryable
 - immutable when possible
@@ -357,12 +390,14 @@ Logs must remain:
 # Database Rules
 
 Database design must prioritize:
+
 - normalization
 - scalability
 - query performance
 - auditability
 
 Avoid:
+
 - duplicated data
 - inconsistent naming
 - implicit relationships
@@ -374,6 +409,7 @@ Avoid:
 Use consistent terminology.
 
 Required:
+
 - FileObject
 - Folder
 - ShareLink
@@ -382,6 +418,7 @@ Required:
 - StorageProvider
 
 Avoid:
+
 - vague naming
 - inconsistent domain terms
 
@@ -390,17 +427,20 @@ Avoid:
 # Performance Rules
 
 Optimize:
+
 - query count
 - response size
 - expensive joins
 - unnecessary serialization
 
 Required:
+
 - pagination
 - indexing
 - lazy loading where appropriate
 
 Avoid:
+
 - N+1 queries
 - unbounded queries
 - loading entire datasets unnecessarily
@@ -412,12 +452,14 @@ Avoid:
 Large datasets must use pagination.
 
 Required for:
+
 - files
 - audit logs
 - shares
 - users
 
 Avoid:
+
 - returning entire collections
 
 ---
@@ -427,6 +469,7 @@ Avoid:
 Critical operations should use transactions.
 
 Examples:
+
 - moving files
 - permission updates
 - share revocation
@@ -441,6 +484,7 @@ Avoid partial state failures.
 Heavy operations belong in workers.
 
 Examples:
+
 - thumbnail generation
 - virus scanning
 - indexing
@@ -454,11 +498,13 @@ Avoid blocking API requests.
 # Cache Rules
 
 Caching must remain:
+
 - predictable
 - scoped
 - invalidatable
 
 Avoid:
+
 - stale authorization data
 - unsafe shared caches
 
@@ -467,6 +513,7 @@ Avoid:
 # Security Rules
 
 Backend systems must:
+
 - validate all input
 - sanitize errors
 - isolate tenants
@@ -480,11 +527,13 @@ Security is mandatory.
 # Testing Philosophy
 
 Critical systems should support:
+
 - unit tests
 - integration tests
 - authorization tests
 
 Especially:
+
 - RBAC
 - sharing
 - uploads
@@ -495,6 +544,7 @@ Especially:
 # Documentation Rules
 
 Important backend features must include:
+
 - API contracts
 - permission requirements
 - validation rules
@@ -505,6 +555,7 @@ Important backend features must include:
 # Future Scalability
 
 The backend architecture must support future:
+
 - realtime systems
 - enterprise SSO
 - MFA
@@ -522,7 +573,8 @@ The architecture must remain extensible.
 
 Whenever uncertain:
 prioritize:
+
 - correctness
 - security
 - maintainability
-over shortcuts and speed.
+  over shortcuts and speed.

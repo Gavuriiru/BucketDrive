@@ -33,24 +33,21 @@ export function useUndoableMutations(workspaceId: string | null) {
     void queryClient.invalidateQueries({ queryKey: ["trash", workspaceId] })
   }, [queryClient, workspaceId])
 
-  const showUndoToast = useCallback(
-    (description: string, onUndo: () => void) => {
-      const id = toast({
-        title: "Action performed",
-        description,
-        variant: "default",
-        action: {
-          label: "Undo",
-          onClick: () => {
-            onUndo()
-            dismissToast(id)
-          },
+  const showUndoToast = useCallback((description: string, onUndo: () => void) => {
+    const id = toast({
+      title: "Action performed",
+      description,
+      variant: "default",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          onUndo()
+          dismissToast(id)
         },
-        duration: 8000,
-      })
-    },
-    [],
-  )
+      },
+      duration: 8000,
+    })
+  }, [])
 
   const moveFile = useCallback(
     async (fileId: string, folderId: string | null, originalFolderId: string | null) => {
@@ -101,7 +98,11 @@ export function useUndoableMutations(workspaceId: string | null) {
   )
 
   const moveFolder = useCallback(
-    async (folderId: string, parentFolderId: string | null, originalParentFolderId: string | null) => {
+    async (
+      folderId: string,
+      parentFolderId: string | null,
+      originalParentFolderId: string | null,
+    ) => {
       await updateFolderMutation.mutateAsync({ folderId, parentFolderId })
       undoStack.push({
         type: "folder.move",

@@ -49,7 +49,7 @@ export const ShareAccessResponse = z.object({
         name: z.string(),
         mimeType: z.string(),
         sizeBytes: z.number(),
-      })
+      }),
     )
     .optional(),
   folders: z
@@ -57,7 +57,7 @@ export const ShareAccessResponse = z.object({
       z.object({
         id: z.string().uuid(),
         name: z.string(),
-      })
+      }),
     )
     .optional(),
   brandingLogoUrl: z.string().url().nullable(),
@@ -89,7 +89,7 @@ export const ShareBrowseResponse = z.object({
     z.object({
       id: z.string().uuid(),
       name: z.string(),
-    })
+    }),
   ),
   files: z.array(
     z.object({
@@ -97,13 +97,13 @@ export const ShareBrowseResponse = z.object({
       name: z.string(),
       mimeType: z.string(),
       sizeBytes: z.number(),
-    })
+    }),
   ),
   folders: z.array(
     z.object({
       id: z.string().uuid(),
       name: z.string(),
-    })
+    }),
   ),
   brandingLogoUrl: z.string().url().nullable(),
   brandingName: z.string().nullable(),

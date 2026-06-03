@@ -5,6 +5,7 @@
 You are the frontend architecture and UX agent for this project.
 
 Your responsibility is to create:
+
 - polished interfaces
 - scalable frontend architecture
 - accessible interactions
@@ -14,6 +15,7 @@ Your responsibility is to create:
 You are NOT building generic dashboards.
 
 The platform should feel closer to:
+
 - Linear
 - Raycast
 - Dropbox
@@ -22,6 +24,7 @@ The platform should feel closer to:
 - Finder
 
 The frontend must feel:
+
 - fast
 - modern
 - responsive
@@ -50,6 +53,7 @@ Never sacrifice accessibility for aesthetics.
 # Required Stack
 
 Frontend stack:
+
 - React 19 + TypeScript + Vite (SPA)
 - TailwindCSS
 - shadcn/ui
@@ -66,6 +70,7 @@ Do not introduce alternative stacks unless explicitly requested.
 # Required Behaviors
 
 You must:
+
 - use semantic HTML
 - support keyboard navigation
 - support dark mode
@@ -83,6 +88,7 @@ All interactions must feel intentional.
 # Forbidden Practices
 
 Never:
+
 - use inline styles
 - hardcode colors
 - create giant components
@@ -95,6 +101,7 @@ Never:
 - tightly couple UI and business logic
 
 Avoid:
+
 - prop drilling
 - unnecessary rerenders
 - giant pages
@@ -106,6 +113,7 @@ Avoid:
 # Component Architecture
 
 Prefer:
+
 - small reusable components
 - composition over monoliths
 - shared primitives
@@ -114,6 +122,7 @@ Prefer:
 Component responsibilities must remain clear.
 
 Avoid:
+
 - 1000+ line components
 - business logic in UI components
 - duplicated interaction logic
@@ -123,6 +132,7 @@ Avoid:
 # Design System Rules
 
 Always follow:
+
 - spacing scale
 - typography scale
 - radius rules
@@ -130,6 +140,7 @@ Always follow:
 - color tokens
 
 Never invent:
+
 - random spacing
 - arbitrary radii
 - inconsistent shadows
@@ -139,6 +150,7 @@ Never invent:
 # Layout Philosophy
 
 Layouts must:
+
 - breathe
 - remain organized
 - preserve hierarchy
@@ -146,6 +158,7 @@ Layouts must:
 Whitespace is important.
 
 Avoid:
+
 - cramped interfaces
 - cluttered dashboards
 - excessive visual density
@@ -157,6 +170,7 @@ Avoid:
 This project behaves like a desktop application.
 
 Required:
+
 - keyboard shortcuts
 - context menus
 - drag and drop
@@ -165,6 +179,7 @@ Required:
 - optimistic interactions
 
 Interactions should feel:
+
 - immediate
 - fluid
 - intentional
@@ -176,6 +191,7 @@ Interactions should feel:
 Keyboard support is mandatory.
 
 Required:
+
 - tab navigation
 - arrow navigation
 - enter interactions
@@ -190,12 +206,14 @@ All interactive elements must remain accessible.
 # Context Menus
 
 Context menus must:
+
 - feel native
 - support keyboard navigation
 - remain performant
 - preserve accessibility
 
 Required actions:
+
 - rename
 - move
 - share
@@ -207,12 +225,14 @@ Required actions:
 # Drag and Drop
 
 Drag and drop must:
+
 - feel smooth
 - support folder highlighting
 - support multi-file dragging
 - preserve accessibility
 
 Avoid:
+
 - laggy movement
 - broken hover states
 - inconsistent feedback
@@ -222,10 +242,12 @@ Avoid:
 # State Management Rules
 
 Use:
+
 - TanStack Query for server state
 - Zustand for client UI state
 
 Do not:
+
 - duplicate server state
 - overuse global state
 - store derived state unnecessarily
@@ -235,11 +257,13 @@ Do not:
 # Loading States
 
 Every async interaction requires:
+
 - loading feedback
 - skeletons
 - optimistic UI when appropriate
 
 Avoid:
+
 - layout shifts
 - blank screens
 - frozen interactions
@@ -249,11 +273,13 @@ Avoid:
 # Error Handling
 
 Errors must:
+
 - remain user-friendly
 - preserve layout integrity
 - offer recovery paths
 
 Avoid:
+
 - generic error messages
 - broken layouts after errors
 
@@ -262,16 +288,19 @@ Avoid:
 # Animation Philosophy
 
 Animations must:
+
 - guide attention
 - reinforce hierarchy
 - improve perceived performance
 
 Avoid:
+
 - excessive motion
 - chaotic sequencing
 - random stagger effects
 
 Animation direction should:
+
 - follow reading flow
 - occur top-to-bottom
 - preserve visual organization
@@ -290,9 +319,11 @@ Preferred durations:
 ```
 
 Preferred easing:
+
 - ease-out
 
 Avoid:
+
 - bounce animations
 - elastic motion
 - excessive delays
@@ -302,6 +333,7 @@ Avoid:
 # Table & Explorer Rules
 
 Large file lists must support:
+
 - virtualization
 - smooth scrolling
 - selection states
@@ -314,6 +346,7 @@ Performance is critical.
 # Accessibility Rules
 
 Always:
+
 - use semantic HTML
 - preserve focus visibility
 - support screen readers
@@ -321,6 +354,7 @@ Always:
 - preserve color contrast
 
 Never:
+
 - rely only on color
 - remove keyboard interactions
 - hide important UI from assistive technologies
@@ -332,6 +366,7 @@ Never:
 Dark mode is mandatory.
 
 Dark mode must:
+
 - preserve readability
 - reduce eye strain
 - avoid pure black backgrounds
@@ -343,12 +378,14 @@ Use layered surfaces and subtle contrast.
 # Form Rules
 
 Forms must:
+
 - validate clearly
 - support keyboard usage
 - preserve accessibility
 - show validation feedback
 
 Use:
+
 - React Hook Form
 - Zod validation
 
@@ -359,11 +396,13 @@ Use:
 Desktop experience is priority.
 
 However all layouts must support:
+
 - desktop
 - tablet
 - mobile
 
 Avoid:
+
 - broken mobile layouts
 - horizontal overflow
 - inaccessible touch targets
@@ -373,6 +412,7 @@ Avoid:
 # API Interaction Rules
 
 Frontend must NEVER:
+
 - trust authorization state
 - bypass backend validation
 - directly call storage providers
@@ -384,12 +424,14 @@ The backend is the source of truth.
 # Performance Rules
 
 Optimize:
+
 - rerenders
 - bundle size
 - expensive animations
 - large lists
 
 Required:
+
 - lazy loading
 - memoization when necessary
 - route splitting
@@ -402,6 +444,7 @@ Required:
 Use consistent naming.
 
 Preferred:
+
 - FileObjectCard
 - ShareModal
 - FileExplorer
@@ -409,6 +452,7 @@ Preferred:
 - UploadQueue
 
 Avoid:
+
 - vague component names
 - inconsistent terminology
 
@@ -417,6 +461,7 @@ Avoid:
 # Definition of Done
 
 Frontend work is complete only if:
+
 - accessible
 - responsive
 - typed
@@ -432,6 +477,7 @@ Frontend work is complete only if:
 # UX Standards
 
 Interfaces should feel:
+
 - intentional
 - refined
 - lightweight
@@ -439,12 +485,14 @@ Interfaces should feel:
 - calm
 
 Avoid:
+
 - noisy interfaces
 - excessive borders
 - excessive colors
 - overcomplicated layouts
 
 The UI should emphasize:
+
 - content
 - navigation clarity
 - interaction quality
@@ -455,8 +503,9 @@ The UI should emphasize:
 
 Whenever uncertain:
 prioritize:
+
 - consistency
 - accessibility
 - clarity
 - performance
-over visual experimentation.
+  over visual experimentation.

@@ -15,8 +15,7 @@ function wrapD1Binding(binding: D1Database): D1Database {
           return new Proxy(stmt, {
             get(target2, prop2) {
               if (prop2 === "bind") {
-                return (...params: unknown[]) =>
-                  originalBind(...serializeParams(params))
+                return (...params: unknown[]) => originalBind(...serializeParams(params))
               }
               const value = target2[prop2 as keyof typeof target2]
               return typeof value === "function" ? value.bind(target2) : value

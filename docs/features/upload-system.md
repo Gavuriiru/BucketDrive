@@ -5,6 +5,7 @@
 This document defines the file upload architecture for the platform.
 
 Upload is the most critical user action. It must be:
+
 - Reliable (handles network failures, large files)
 - Secure (validated server-side, RBAC-enforced)
 - Transparent (progress visible, cancellable, retryable)
@@ -18,6 +19,7 @@ Upload is the most critical user action. It must be:
 ## 1. Validation Happens Server-Side First
 
 Before any bytes are transferred to storage, the backend validates:
+
 - User has `files.upload` permission in the workspace
 - File size does not exceed workspace quota
 - MIME type is not in the blocklist
@@ -95,7 +97,7 @@ POST /api/workspaces/:id/files/upload/complete
 ```ts
 // apps/api/src/services/upload.service.ts
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024  // 5 GB per file
+const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024 // 5 GB per file
 const BLOCKED_EXTENSIONS = [".exe", ".bat", ".sh", ".msi", ".app", ".dmg"]
 const BLOCKED_MIME_PREFIXES = [
   "application/x-msdownload",
@@ -121,7 +123,7 @@ function validateUpload(params: UploadParams, workspaceQuota: number, usedBytes:
   }
 
   // MIME blocklist
-  const blocked = BLOCKED_MIME_PREFIXES.some(p => params.mimeType.startsWith(p))
+  const blocked = BLOCKED_MIME_PREFIXES.some((p) => params.mimeType.startsWith(p))
   if (blocked) {
     throw new UploadError("BLOCKED_MIME", `MIME type ${params.mimeType} is not allowed`)
   }
@@ -167,6 +169,7 @@ id, uploadSessionId, partNumber, etag, sizeBytes, uploadedAt
 ## Resumability
 
 If the user's connection drops:
+
 1. The `UploadSession` persists in DB
 2. The frontend queries `GET /api/uploads/:sessionId` to get the session state
 3. Returns: which parts are already completed (with ETags), which parts remain
@@ -182,7 +185,7 @@ If the user's connection drops:
 ```ts
 // apps/web/src/hooks/use-upload.ts
 const MAX_RETRIES = 3
-const RETRY_BASE_DELAY = 1000  // 1 second
+const RETRY_BASE_DELAY = 1000 // 1 second
 
 async function uploadWithRetry(chunk: Blob, signedUrl: string, retries = 0): Promise<string> {
   try {
@@ -195,7 +198,7 @@ async function uploadWithRetry(chunk: Blob, signedUrl: string, retries = 0): Pro
   } catch (err) {
     if (retries < MAX_RETRIES) {
       const delay = RETRY_BASE_DELAY * Math.pow(2, retries)
-      await new Promise(r => setTimeout(r, delay))
+      await new Promise((r) => setTimeout(r, delay))
       return uploadWithRetry(chunk, signedUrl, retries + 1)
     }
     throw err
@@ -205,14 +208,14 @@ async function uploadWithRetry(chunk: Blob, signedUrl: string, retries = 0): Pro
 
 ## Server-Side Errors
 
-| Error Code | Cause | Action |
-|---|---|---|
-| `FILE_TOO_LARGE` | File > 5 GB | Frontend shows max size in error message |
-| `QUOTA_EXCEEDED` | Workspace over quota | Show quota usage + upgrade CTA |
-| `BLOCKED_EXTENSION` | .exe, .bat, etc. | Show blocked extension list |
-| `BLOCKED_MIME` | Executable MIME | Show allowed MIME categories |
-| `INVALID_NAME` | Path traversal attempt | Log as security event, show generic error |
-| `UPLOAD_SESSION_EXPIRED` | Session > 24h old | Restart upload from beginning |
+| Error Code               | Cause                  | Action                                    |
+| ------------------------ | ---------------------- | ----------------------------------------- |
+| `FILE_TOO_LARGE`         | File > 5 GB            | Frontend shows max size in error message  |
+| `QUOTA_EXCEEDED`         | Workspace over quota   | Show quota usage + upgrade CTA            |
+| `BLOCKED_EXTENSION`      | .exe, .bat, etc.       | Show blocked extension list               |
+| `BLOCKED_MIME`           | Executable MIME        | Show allowed MIME categories              |
+| `INVALID_NAME`           | Path traversal attempt | Log as security event, show generic error |
+| `UPLOAD_SESSION_EXPIRED` | Session > 24h old      | Restart upload from beginning             |
 
 ---
 
@@ -287,6 +290,7 @@ workspace/{workspaceId}/files/{uploadId}/{fileName}
 ```
 
 Example:
+
 ```txt
 workspace/ws_abc123/files/550e8400-e29b-41d4-a716-446655440000/AGENTS.md
 ```
