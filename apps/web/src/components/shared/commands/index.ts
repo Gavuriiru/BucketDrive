@@ -6,7 +6,7 @@ import { getFileOperationCommandsFiltered } from "./file-operations"
 export type { Command, CommandCategory } from "./types"
 
 export function getAllCommands(
-  navigate: (opts: { to: string }) => void,
+  navigate: (opts: { to: string; search?: Record<string, unknown> }) => void,
   userRole?: string,
 ): Command[] {
   return [

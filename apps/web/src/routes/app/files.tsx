@@ -31,6 +31,7 @@ import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
 import { FILE_COMMAND_EVENT, type FileCommandAction } from "@/components/shared/commands/file-operations"
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
+import { useNavigate, useRouterState } from "@tanstack/react-router"
 import { can } from "@bucketdrive/shared"
 
 const typeFilterOptions = [
@@ -45,6 +46,12 @@ const typeFilterOptions = [
 export function FilesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
+  const routeSearch = useRouterState({
+    select: (state) => state.location.search,
+  })
+  const routeFolderId = routeSearch.folderId ?? null
+  const routePreviewFileId = routeSearch.previewFileId ?? null
   const addFiles = useUploadStore((s) => s.addFiles)
   const {
     viewMode,
@@ -53,7 +60,6 @@ export function FilesPage() {
     order,
     setViewMode,
     navigateTo,
-    navigateToRoot,
     selectedFileIds,
     selectedFolderIds,
     clearSelection,
@@ -67,6 +73,31 @@ export function FilesPage() {
   const setDashboardSort = useSearchStore((state) => state.setDashboardSort)
   const setDashboardOrder = useSearchStore((state) => state.setDashboardOrder)
   const clearDashboardSearch = useSearchStore((state) => state.clearDashboardSearch)
+
+  useEffect(() => {
+    if (currentFolderId !== routeFolderId) {
+      navigateTo(routeFolderId)
+    }
+  }, [currentFolderId, routeFolderId, navigateTo])
+
+  useEffect(() => {
+    if (previewFileId !== routePreviewFileId) {
+      setPreviewFileId(routePreviewFileId)
+    }
+  }, [previewFileId, routePreviewFileId, setPreviewFileId])
+
+  const navigateFiles = useCallback(
+    (folderId: string | null, nextPreviewFileId: string | null = null) => {
+      void navigate({
+        to: "/dashboard/files",
+        search: {
+          folderId: folderId ?? undefined,
+          previewFileId: nextPreviewFileId ?? undefined,
+        },
+      })
+    },
+    [navigate],
+  )
 
   const debouncedQuery = useDebouncedValue(dashboardSearch.query.trim(), 300)
   const isSearchActive =
@@ -252,25 +283,25 @@ export function FilesPage() {
   const handleOpenItem = useCallback(
     (id: string, type: "file" | "folder") => {
       if (type === "folder") {
-        navigateTo(id)
+        navigateFiles(id)
       } else {
         const file = files.find((candidate) => candidate.id === id)
         if (file) {
-          setPreviewFileId(file.id)
+          navigateFiles(currentFolderId, file.id)
         }
       }
     },
-    [files, navigateTo, setPreviewFileId],
+    [currentFolderId, files, navigateFiles],
   )
 
   const handlePreviewItem = useCallback(
     (id: string) => {
       const file = files.find((candidate) => candidate.id === id)
       if (file) {
-        setPreviewFileId(file.id)
+        navigateFiles(currentFolderId, file.id)
       }
     },
-    [files, setPreviewFileId],
+    [currentFolderId, files, navigateFiles],
   )
 
   const handlePreviewNext = useCallback(() => {
@@ -279,9 +310,9 @@ export function FilesPage() {
     const currentIndex = fileIds.indexOf(previewFileId)
     if (currentIndex >= 0 && currentIndex < fileIds.length - 1) {
       const nextId = fileIds[currentIndex + 1]
-      if (nextId) setPreviewFileId(nextId)
+      if (nextId) navigateFiles(currentFolderId, nextId)
     }
-  }, [previewFileId, files, setPreviewFileId])
+  }, [currentFolderId, previewFileId, files, navigateFiles])
 
   const handlePreviewPrev = useCallback(() => {
     if (!previewFileId) return
@@ -289,13 +320,13 @@ export function FilesPage() {
     const currentIndex = fileIds.indexOf(previewFileId)
     if (currentIndex > 0) {
       const prevId = fileIds[currentIndex - 1]
-      if (prevId) setPreviewFileId(prevId)
+      if (prevId) navigateFiles(currentFolderId, prevId)
     }
-  }, [previewFileId, files, setPreviewFileId])
+  }, [currentFolderId, previewFileId, files, navigateFiles])
 
   const handleClosePreview = useCallback(() => {
-    setPreviewFileId(null)
-  }, [setPreviewFileId])
+    navigateFiles(currentFolderId)
+  }, [currentFolderId, navigateFiles])
 
   const handleDeleteSelected = useCallback(() => {
     const fileCount = selectedFileIds.length
@@ -324,12 +355,12 @@ export function FilesPage() {
     if (currentFolderId && breadcrumbsData && breadcrumbsData.length > 1) {
       const parent = breadcrumbsData[breadcrumbsData.length - 2]
       if (parent) {
-        navigateTo(parent.id)
+        navigateFiles(parent.id)
       }
     } else {
-      navigateToRoot()
+      navigateFiles(null)
     }
-  }, [currentFolderId, breadcrumbsData, navigateTo, navigateToRoot])
+  }, [currentFolderId, breadcrumbsData, navigateFiles])
 
   const handleRenameItem = useCallback(
     (id: string, type: "file" | "folder") => {
@@ -559,15 +590,11 @@ export function FilesPage() {
   }, [handleFilesDrop])
 
   const handleFolderClick = (folderId: string) => {
-    navigateTo(folderId)
+    navigateFiles(folderId)
   }
 
   const handleBreadcrumbNavigate = (id: string | null) => {
-    if (id === null) {
-      navigateToRoot()
-    } else {
-      navigateTo(id)
-    }
+    navigateFiles(id)
   }
 
   const rootBreadcrumb: BreadcrumbItem[] = [{ id: null, name: workspaceName }]

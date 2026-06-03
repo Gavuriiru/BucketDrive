@@ -75,6 +75,9 @@ export function Sidebar() {
           <Link
             key={item.label}
             to={item.to}
+            {...(item.to === "/dashboard/files"
+              ? { search: { folderId: undefined, previewFileId: undefined } }
+              : {})}
             activeOptions={{ exact: true }}
             className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary [&.active]:bg-surface-active [&.active]:text-text-primary"
           >

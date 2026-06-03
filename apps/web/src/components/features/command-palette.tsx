@@ -105,14 +105,10 @@ export function CommandPalette() {
 
   const handleFileSelect = (fileId: string, folderId: string | null) => {
     close()
-    // Navigate to the folder containing the file
-    if (folderId) {
-      useExplorerStore.getState().navigateTo(folderId)
-    } else {
-      useExplorerStore.getState().navigateToRoot()
-    }
-    void router.navigate({ to: "/dashboard/files" })
-    // Set focused item to the selected file for visibility
+    void router.navigate({
+      to: "/dashboard/files",
+      search: { folderId: folderId ?? undefined, previewFileId: undefined },
+    })
     useExplorerStore.getState().setFocusedItem(fileId, "file")
   }
 

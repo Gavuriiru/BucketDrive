@@ -12,6 +12,7 @@ export function HomePage() {
       <div className="mt-4 flex gap-3">
         <Link
           to="/dashboard/files"
+          search={{ folderId: undefined, previewFileId: undefined }}
           className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90"
         >
           <Upload className="h-4 w-4" />

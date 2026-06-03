@@ -95,7 +95,7 @@ function isAdminRole(role: string | undefined): boolean {
 }
 
 export function getNavigationCommands(
-  navigate: (opts: { to: string }) => void,
+  navigate: (opts: { to: string; search?: Record<string, unknown> }) => void,
   userRole?: string,
 ): Command[] {
   return navigationDefs
@@ -111,7 +111,11 @@ export function getNavigationCommands(
       category: def.category,
       keywords: def.keywords,
       action: () => {
-        navigate({ to: def.to })
+        navigate(
+          def.to === "/dashboard/files"
+            ? { to: def.to, search: { folderId: undefined, previewFileId: undefined } }
+            : { to: def.to },
+        )
       },
     }))
 }

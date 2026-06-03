@@ -3,6 +3,7 @@ import { useState, useCallback } from "react"
 import { ChevronRight, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react"
 import { useFolders, useWorkspaces, useCreateFolder, useUpdateFolder, useDeleteFolder } from "@/lib/api"
 import { useExplorerStore } from "@/stores/explorer-store"
+import { useNavigate } from "@tanstack/react-router"
 import * as ContextMenu from "@radix-ui/react-context-menu"
 import type { Folder as FolderType } from "@bucketdrive/shared"
 
@@ -17,6 +18,7 @@ interface TreeNodeProps {
   onRename: (folderId: string, currentName: string) => void
   onDelete: (folderId: string, name: string) => void
   onCreateSubfolder: (parentFolderId: string) => void
+  onNavigate: (folderId: string | null) => void
 }
 
 function TreeNode({
@@ -27,13 +29,15 @@ function TreeNode({
   onRename,
   onDelete,
   onCreateSubfolder,
+  onNavigate,
 }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const { data: childrenData } = useFolders(workspaceId, expanded ? folder.id : undefined)
   const children = childrenData?.data ?? []
-  const navigateTo = useExplorerStore((s) => s.navigateTo)
   const isActive = currentFolderId === folder.id
-  const handleNavigate = () => navigateTo(folder.id)
+  const handleNavigate = () => {
+    onNavigate(folder.id)
+  }
 
   return (
     <div>
@@ -119,6 +123,7 @@ function TreeNode({
             onRename={onRename}
             onDelete={onDelete}
             onCreateSubfolder={onCreateSubfolder}
+            onNavigate={onNavigate}
           />
         ))}
     </div>
@@ -126,6 +131,7 @@ function TreeNode({
 }
 
 export function FolderTree() {
+  const navigate = useNavigate()
   const { data: workspacesData } = useWorkspaces()
   const workspaceId = workspacesData?.data?.[0]?.id ?? null
   const currentFolderId = useExplorerStore((s) => s.currentFolderId)
@@ -134,7 +140,16 @@ export function FolderTree() {
   const createFolderMutation = useCreateFolder(workspaceId)
   const updateFolderMutation = useUpdateFolder(workspaceId)
   const deleteFolderMutation = useDeleteFolder(workspaceId)
-  const navigateToRoot = useExplorerStore((s) => s.navigateToRoot)
+
+  const handleNavigate = useCallback(
+    (folderId: string | null) => {
+      void navigate({
+        to: "/dashboard/files",
+        search: { folderId: folderId ?? undefined, previewFileId: undefined },
+      })
+    },
+    [navigate],
+  )
 
   const handleCreateRootFolder = useCallback(() => {
     const name = window.prompt("Folder name:")
@@ -192,7 +207,9 @@ export function FolderTree() {
       </div>
       <button
         type="button"
-        onClick={() => navigateToRoot()}
+        onClick={() => {
+          handleNavigate(null)
+        }}
         className={`flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover ${
           currentFolderId === null
             ? "bg-surface-active text-text-primary"
@@ -212,6 +229,7 @@ export function FolderTree() {
           onRename={handleRename}
           onDelete={handleDelete}
           onCreateSubfolder={handleCreateSubfolder}
+          onNavigate={handleNavigate}
         />
       ))}
     </div>

@@ -115,6 +115,13 @@ const dashboardRoute = createRoute({
 const filesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard/files",
+  validateSearch: (search: Record<string, unknown>) => ({
+    folderId: typeof search.folderId === "string" && search.folderId.length > 0 ? search.folderId : undefined,
+    previewFileId:
+      typeof search.previewFileId === "string" && search.previewFileId.length > 0
+        ? search.previewFileId
+        : undefined,
+  }),
   component: withSuspense(FilesPage),
 })
 

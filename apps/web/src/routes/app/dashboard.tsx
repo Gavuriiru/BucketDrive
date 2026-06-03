@@ -292,6 +292,9 @@ function QuickLink({
   return (
     <Link
       to={to}
+      {...(to === "/dashboard/files"
+        ? { search: { folderId: undefined, previewFileId: undefined } }
+        : {})}
       className="inline-flex items-center gap-2 rounded-xl border border-border-default bg-surface-default px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
     >
       <Icon className="h-4 w-4" />

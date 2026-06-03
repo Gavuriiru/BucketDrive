@@ -166,17 +166,17 @@ export function useExplorerShortcuts({
         return
       }
 
+      if (e.key === "Backspace" && allSelected === 0) {
+        e.preventDefault()
+        onNavigateParent()
+        return
+      }
+
       if (e.key === "Delete" || e.key === "Backspace") {
         if (allSelected > 0) {
           e.preventDefault()
           onDeleteSelected()
         }
-        return
-      }
-
-      if (e.key === "Backspace" && allSelected === 0) {
-        e.preventDefault()
-        onNavigateParent()
         return
       }
 

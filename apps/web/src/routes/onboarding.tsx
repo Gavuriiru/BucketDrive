@@ -93,7 +93,10 @@ export function OnboardingPage() {
             onClick={() => {
               joinPlatform.mutate(undefined, {
                 onSuccess: () => {
-                  void navigate({ to: "/dashboard/files" })
+                  void navigate({
+                    to: "/dashboard/files",
+                    search: { folderId: undefined, previewFileId: undefined },
+                  })
                 },
               })
             }}
@@ -114,7 +117,10 @@ export function OnboardingPage() {
                 createWorkspace.mutate({ name: name.trim() }, {
                   onSuccess: (data: { id: string }) => {
                     localStorage.setItem("bucketdrive-workspace-id", data.id)
-                    void navigate({ to: "/dashboard/files" })
+                    void navigate({
+                      to: "/dashboard/files",
+                      search: { folderId: undefined, previewFileId: undefined },
+                    })
                   },
                 })
               }
