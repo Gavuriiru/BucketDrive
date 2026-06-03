@@ -85,7 +85,9 @@ export function FileThumbnail({
       alt=""
       className={`object-cover ${className ?? ""}`}
       loading="lazy"
-      onError={() => setImageFailed(true)}
+      onError={() => {
+        setImageFailed(true)
+      }}
     />
   )
 }

@@ -54,7 +54,7 @@ verifiable result.
 | 28 | Notifications | In-app notification system + toast integration | ✅ |
 | 29 | Thumbnails & processing | Async preview generation via workers | ✅ `14f6fb6` |
 | 29 | Thumbnails & processing | Backfill pending thumbnails via scheduled worker | ✅ |
-| 30 | Contract tests | API contract validation against test D1 | ⬜ |
+| 30 | Contract tests | API contract validation against test D1 | ✅ |
 | 31 | E2E & a11y | Playwright journeys, axe-core compliance | ⬜ |
 | 32 | Staging & final polish | Deploy pipeline, Lighthouse CI, docs sync | ⬜ |
 
@@ -1690,9 +1690,19 @@ git commit -m "feat(processing): async thumbnail generation for images and video
 
 ---
 
-## Day 30 - Contract Tests
+## Day 30 - Contract Tests DONE
 
-> **Gap vs docs:** `docs/architecture/testing-strategy.md` requires contract tests in `apps/api/src/__tests__/contracts/` verifying every endpoint against shared Zod schemas using a test D1 database. **Not implemented.**
+> **Notes from implementation:**
+> - Added a real API contract harness under `apps/api/src/__tests__/contracts/` using migrated in-memory SQLite through a D1-compatible binding shim.
+> - Mocked Better Auth sessions, R2 bucket behavior, and Photon WASM so contract tests run deterministically without OAuth, Cloudflare, or image-processing services.
+> - Added endpoint contract coverage for auth, files, folders, shares, search, tags, trash, dashboard, members, invitations, notifications, workspaces, platform routes, and public share schemas.
+> - Contract tests validate successful responses with shared Zod schemas plus representative unauthenticated, RBAC-denied, conflict, and validation-error cases.
+> - Added test-only DB singleton reset support and made top-level Zod validation errors return `400 VALIDATION_ERROR` instead of falling through to `500`.
+> - Fixed search response normalization so raw D1 search rows include `thumbnailKey`/`metadata` and boolean `isDeleted`, matching `SearchResponse`.
+> - Fixed a frontend lint violation in `file-thumbnail.tsx` so CI-style lint passes.
+
+> **Implemented:** Contract tests now live in `apps/api/src/__tests__/contracts/` and verify
+> routed API responses against shared Zod schemas using an isolated migrated test database.
 
 **Goal:** Every API endpoint has contract test coverage.
 

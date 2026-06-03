@@ -17,6 +17,7 @@ interface SearchVariables {
 
 type SearchSort = "relevance" | "name" | "created_at" | "size" | "type"
 type SearchFileRow = typeof fileObject.$inferSelect
+type RawSearchFileRow = Omit<SearchFileRow, "isDeleted"> & { isDeleted: boolean | number }
 
 const FILE_SELECT = `
   f.id,
@@ -30,6 +31,8 @@ const FILE_SELECT = `
   f.extension AS extension,
   f.size_bytes AS sizeBytes,
   f.checksum AS checksum,
+  f.thumbnail_key AS thumbnailKey,
+  f.metadata AS metadata,
   f.is_deleted AS isDeleted,
   f.deleted_at AS deletedAt,
   f.created_at AS createdAt,
@@ -135,7 +138,11 @@ search.get("/", requirePermission("files.read"), async (c) => {
     rowsStmt.all<Record<string, unknown>>(),
   ])
 
-  const rows = (rowResult.results ?? []) as SearchFileRow[]
+  const rawRows = (rowResult.results ?? []) as RawSearchFileRow[]
+  const rows = rawRows.map((row) => ({
+    ...row,
+    isDeleted: row.isDeleted === true || row.isDeleted === 1,
+  }))
   const hydrated = await hydrateFiles(db, workspaceId, user.id, rows)
   const total = countRow?.count ?? 0
 

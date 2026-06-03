@@ -43,3 +43,10 @@ export function getDB() {
   if (!db) throw new Error("Database not initialized. Call createD1DB first.")
   return db
 }
+
+export function resetD1DBForTests() {
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("resetD1DBForTests can only be used in tests")
+  }
+  db = undefined
+}

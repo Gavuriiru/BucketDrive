@@ -1,5 +1,6 @@
 import { Hono } from "hono"
 import { cors } from "hono/cors"
+import { ZodError } from "zod"
 import { securityHeaders } from "./middleware/security-headers"
 import { createAuth } from "./lib/auth"
 import { createD1DB } from "./lib/db"
@@ -110,6 +111,16 @@ app.route("/api/platform", platformHandler)
 app.notFound((c) => c.json({ code: "NOT_FOUND", message: "Not found" }, 404))
 
 app.onError((err, c) => {
+  if (err instanceof ZodError) {
+    return c.json({
+      code: "VALIDATION_ERROR",
+      message: "Invalid request",
+      details: {
+        issues: err.issues,
+      },
+    }, 400)
+  }
+
   console.error("Unhandled error:", err)
   return c.json({
     code: "INTERNAL_ERROR",
