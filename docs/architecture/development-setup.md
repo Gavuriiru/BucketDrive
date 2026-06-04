@@ -39,7 +39,7 @@ pnpm env:link
 ```
 
 Edit `.dev.vars` with your credentials. It is the canonical local env file; `pnpm env:link`
-points `apps/api/.env` and `apps/api/.dev.vars` at the same file so Wrangler, local scripts, and
+points API and Workers `.env`/`.dev.vars` files at the same file so Wrangler, local scripts, and
 legacy tooling read one set of values.
 
 ```env
@@ -85,13 +85,18 @@ upload uses the R2 bucket's CORS rules because it sends `PUT` directly to `*.r2.
 Useful env commands:
 
 ```bash
-pnpm env:check         # verify required local runtime keys in .dev.vars
-pnpm env:link          # recreate apps/api env links to .dev.vars
-pnpm env:push:staging  # push runtime vars from .env.staging or .dev.vars to Wrangler staging secrets
-pnpm env:push:prod     # push runtime vars from .env.production or .dev.vars to Wrangler production secrets
+pnpm env:check              # verify required local runtime keys in .dev.vars
+pnpm env:link               # recreate API/Workers env links to .dev.vars
+pnpm env:check:staging      # verify staging deploy/runtime keys from .env.staging or process env
+pnpm env:prepare:staging    # fill staging Wrangler IDs/URLs from env values
+pnpm env:push:staging       # push runtime vars to API and Workers staging secrets
+pnpm env:check:production   # verify production deploy/runtime keys from .env.production or process env
+pnpm env:prepare:production # fill production Wrangler IDs/URLs from env values
+pnpm env:push:production    # push runtime vars to API and Workers production secrets
 ```
 
-For deploys, prefer `.env.staging` and `.env.production` for environment-specific values. The push
+For deploys, prefer `.env.staging` and `.env.production` for environment-specific values. GitHub
+Actions uses GitHub Secrets/Vars with the same names instead of importing a local env file. The push
 commands skip local CLI credentials such as `CLOUDFLARE_API_TOKEN` and only send app runtime vars.
 
 ## 4. Initialize the database
@@ -196,8 +201,8 @@ pnpm format:check    # Check formatting without writing
 pnpm build           # Build all apps
 
 # Deploy to Cloudflare (staging)
-STAGING_D1_DATABASE_ID=<database-id> pnpm staging:prepare
-pnpm staging:check
+STAGING_D1_DATABASE_ID=<database-id> pnpm env:prepare:staging
+pnpm env:check:staging
 pnpm db:migrate:staging
 pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml deploy --env staging
 pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name bucketdrive --branch staging

@@ -5,7 +5,7 @@
 ```bash
 pnpm install
 cp .env.example .dev.vars       # must fill in BETTER_AUTH_SECRET + at least one OAuth
-pnpm env:link                   # links apps/api/.env and apps/api/.dev.vars to .dev.vars
+pnpm env:link                   # links api/workers .env and .dev.vars files to .dev.vars
 pnpm db:reset                    # rm local Wrangler D1 → migrate → seed
 pnpm dev                         # Vite :5173 + Wrangler :8787
 ```

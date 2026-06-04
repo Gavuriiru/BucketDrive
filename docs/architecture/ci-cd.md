@@ -78,22 +78,22 @@ The versioned workflow in `.github/workflows/deploy-staging.yml` runs:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm staging:prepare
-pnpm staging:check
+pnpm env:prepare:staging
+pnpm env:check:staging
 pnpm db:migrate:staging
 pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml deploy --env staging
 pnpm build
 pnpm perf:bundle
 pnpm perf:lighthouse
-pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name bucketdrive --branch staging
+pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name "$PAGES_PROJECT_NAME" --branch "$PAGES_BRANCH"
 pnpm test:e2e
 pnpm test:a11y
 ```
 
 The staging E2E base URL is read from `PLAYWRIGHT_BASE_URL`, matching `playwright.config.ts`.
-`pnpm staging:prepare` fills `wrangler.toml` from `STAGING_D1_DATABASE_ID` in the GitHub
-environment, and `pnpm staging:check` fails early if Cloudflare credentials or the staging D1 ID
-are missing.
+`pnpm env:prepare:staging` fills API/Workers Wrangler configs from `STAGING_D1_DATABASE_ID`,
+`APP_URL`, and `API_URL` in the GitHub environment. `pnpm env:check:staging` fails early if
+Cloudflare credentials, runtime values, OAuth, or the staging D1 ID are missing.
 
 ## `deploy-prod.yml` — Production Deploy
 
@@ -129,7 +129,7 @@ Vite prefixes all client-side env vars with `VITE_`.
 ### Backend (`apps/api`)
 
 ```
-# .env.staging / .env.production, then pnpm env:push:staging or pnpm env:push:prod
+# .env.staging / .env.production, then pnpm env:push:staging or pnpm env:push:production
 
 # Better Auth
 BETTER_AUTH_SECRET=<random-64-char>
@@ -146,7 +146,8 @@ R2_SECRET_ACCESS_KEY=...
 R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
 
 # D1
-D1_DATABASE_ID=... # bound via wrangler.toml [[d1_databases]]
+STAGING_D1_DATABASE_ID=... # bound via wrangler.toml [[env.staging.d1_databases]]
+PRODUCTION_D1_DATABASE_ID=... # bound via wrangler.toml [[env.production.d1_databases]]
 
 # App
 APP_URL=https://bucketdrive.app
@@ -158,12 +159,14 @@ PLATFORM_OWNER_EMAIL=admin@example.com
 runtime vars, so `pnpm env:push:*` does not upload them as secrets.
 
 For staging, create the D1 database once and store the returned non-secret database ID as the
-GitHub environment variable `STAGING_D1_DATABASE_ID`:
+GitHub environment variable `STAGING_D1_DATABASE_ID`. Production uses `PRODUCTION_D1_DATABASE_ID`.
+GitHub Actions reads the same variable names defined in `.env.example`; it does not import a local
+env file.
 
 ```bash
 npx wrangler d1 create bucketdrive-db-staging
-STAGING_D1_DATABASE_ID=<database-id> pnpm staging:prepare
-STAGING_D1_DATABASE_ID=<database-id> CLOUDFLARE_ACCOUNT_ID=<account-id> CLOUDFLARE_API_TOKEN=<token> pnpm staging:check
+STAGING_D1_DATABASE_ID=<database-id> pnpm env:prepare:staging
+STAGING_D1_DATABASE_ID=<database-id> CLOUDFLARE_ACCOUNT_ID=<account-id> CLOUDFLARE_API_TOKEN=<token> pnpm env:check:staging
 ```
 
 ---

@@ -12,8 +12,23 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      APP_URL: ${{ vars.APP_URL }}
+      API_URL: ${{ vars.API_URL }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+      BETTER_AUTH_URL: ${{ vars.BETTER_AUTH_URL }}
+      GITHUB_CLIENT_ID: ${{ vars.GITHUB_CLIENT_ID }}
+      GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+      GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+      PLATFORM_OWNER_EMAIL: ${{ vars.PLATFORM_OWNER_EMAIL }}
       STAGING_D1_DATABASE_ID: ${{ vars.STAGING_D1_DATABASE_ID }}
       PLAYWRIGHT_BASE_URL: ${{ vars.PLAYWRIGHT_BASE_URL }}
+      PAGES_PROJECT_NAME: ${{ vars.PAGES_PROJECT_NAME || 'bucketdrive' }}
+      PAGES_BRANCH: ${{ vars.PAGES_BRANCH || 'staging' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,13 +42,13 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm staging:prepare
-      - run: pnpm staging:check
+      - run: pnpm env:prepare:staging
+      - run: pnpm env:check:staging
       - run: pnpm db:migrate:staging
       - run: pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml deploy --env staging
       - run: pnpm build
       - run: pnpm perf:bundle
       - run: pnpm perf:lighthouse
-      - run: pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name bucketdrive --branch staging
+      - run: pnpm --filter @bucketdrive/api exec wrangler pages deploy ../../apps/web/dist --project-name "$PAGES_PROJECT_NAME" --branch "$PAGES_BRANCH"
       - run: pnpm test:e2e
       - run: pnpm test:a11y

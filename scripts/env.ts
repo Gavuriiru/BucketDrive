@@ -1,16 +1,55 @@
 /* eslint-disable no-console */
-import { existsSync, lstatSync, mkdirSync, readlinkSync, renameSync, symlinkSync } from "fs"
-import { resolve, relative, dirname } from "path"
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readlinkSync,
+  renameSync,
+  symlinkSync,
+  writeFileSync,
+} from "fs"
+import { dirname, relative, resolve } from "path"
 import { spawnSync } from "child_process"
-import { loadEnvFiles, parseEnvFile } from "./env-utils"
+import {
+  API_RUNTIME_KEYS,
+  LOCAL_ENV_LINKS,
+  LOCAL_RUNTIME_KEYS,
+  OAUTH_KEY_PAIRS,
+  ROOT_ENV_FILE,
+  WORKERS_RUNTIME_KEYS,
+  getDeployEnvFile,
+  loadEnvFiles,
+  loadEnvWithProcess,
+  parseEnvFile,
+} from "./env-utils"
 
-const ROOT_ENV = resolve(__dirname, "../.dev.vars")
-const API_ENV_LINKS = [
-  resolve(__dirname, "../apps/api/.dev.vars"),
-  resolve(__dirname, "../apps/api/.env"),
+type DeployEnvironment = "staging" | "production"
+
+type WranglerTarget = {
+  configPath: string
+  packageName: string
+  runtimeKeys: string[]
+}
+
+const ROOT_DIR = resolve(__dirname, "..")
+const API_WRANGLER = resolve(ROOT_DIR, "wrangler.toml")
+const WORKERS_WRANGLER = resolve(ROOT_DIR, "apps/workers/wrangler.toml")
+
+const WRANGLER_TARGETS: WranglerTarget[] = [
+  {
+    configPath: API_WRANGLER,
+    packageName: "@bucketdrive/api",
+    runtimeKeys: API_RUNTIME_KEYS,
+  },
+  {
+    configPath: WORKERS_WRANGLER,
+    packageName: "@bucketdrive/workers",
+    runtimeKeys: WORKERS_RUNTIME_KEYS,
+  },
 ]
 
-const REQUIRED_LOCAL_KEYS = [
+const DEPLOY_REQUIRED_KEYS = [
   "APP_URL",
   "API_URL",
   "BETTER_AUTH_SECRET",
@@ -20,22 +59,8 @@ const REQUIRED_LOCAL_KEYS = [
   "R2_BUCKET_NAME",
   "R2_ENDPOINT",
   "PLATFORM_OWNER_EMAIL",
-]
-
-const DEPLOY_RUNTIME_KEYS = [
-  "APP_URL",
-  "API_URL",
-  "BETTER_AUTH_SECRET",
-  "BETTER_AUTH_URL",
-  "GITHUB_CLIENT_ID",
-  "GITHUB_CLIENT_SECRET",
-  "GOOGLE_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET",
-  "R2_ACCESS_KEY_ID",
-  "R2_SECRET_ACCESS_KEY",
-  "R2_BUCKET_NAME",
-  "R2_ENDPOINT",
-  "PLATFORM_OWNER_EMAIL",
+  "CLOUDFLARE_ACCOUNT_ID",
+  "CLOUDFLARE_API_TOKEN",
 ]
 
 function usage() {
@@ -43,25 +68,37 @@ function usage() {
     [
       "Usage:",
       "  pnpm env:check",
+      "  pnpm env:check:staging",
+      "  pnpm env:check:production",
       "  pnpm env:link",
+      "  pnpm env:prepare:staging",
+      "  pnpm env:prepare:production",
       "  pnpm env:push:staging",
-      "  pnpm env:push:prod",
+      "  pnpm env:push:production",
+      "  pnpm env:check -- <local|staging|production> [path/to/env-file]",
+      "  pnpm env:prepare -- <staging|production> [path/to/env-file]",
       "  pnpm env:push -- <staging|production> [path/to/env-file]",
     ].join("\n"),
   )
 }
 
+function normalizeEnvironment(environment?: string): DeployEnvironment {
+  if (environment === "prod") return "production"
+  if (environment === "staging" || environment === "production") return environment
+  throw new Error("Environment must be staging or production.")
+}
+
 function ensureCanonicalEnv() {
-  if (existsSync(ROOT_ENV)) return
+  if (existsSync(ROOT_ENV_FILE)) return
   throw new Error("Missing .dev.vars. Create it from .env.example first.")
 }
 
 function linkLocalEnv() {
   ensureCanonicalEnv()
 
-  for (const target of API_ENV_LINKS) {
+  for (const target of LOCAL_ENV_LINKS) {
     mkdirSync(dirname(target), { recursive: true })
-    const linkTarget = relative(dirname(target), ROOT_ENV)
+    const linkTarget = relative(dirname(target), ROOT_ENV_FILE)
 
     if (existsSync(target)) {
       const stat = lstatSync(target)
@@ -82,103 +119,235 @@ function linkLocalEnv() {
   }
 }
 
-function checkEnv() {
-  const vars = loadEnvFiles([ROOT_ENV])
-  const missing = REQUIRED_LOCAL_KEYS.filter((key) => !vars[key]?.trim())
+function checkLocalEnv() {
+  const vars = loadEnvFiles([ROOT_ENV_FILE])
+  const missing = LOCAL_RUNTIME_KEYS.filter((key) => !vars[key]?.trim())
 
   if (missing.length > 0) {
     console.error(`Missing required local env keys in .dev.vars: ${missing.join(", ")}`)
     process.exit(1)
   }
 
-  const oauthConfigured =
-    Boolean(vars.GITHUB_CLIENT_ID && vars.GITHUB_CLIENT_SECRET) ||
-    Boolean(vars.GOOGLE_CLIENT_ID && vars.GOOGLE_CLIENT_SECRET)
-
-  if (!oauthConfigured) {
-    console.error(
-      "Missing OAuth credentials. Configure GitHub or Google client id/secret in .dev.vars.",
-    )
-    process.exit(1)
-  }
-
+  assertOauthConfigured(vars, ".dev.vars")
   console.log(".dev.vars has the required local runtime keys.")
 }
 
-function getDeployEnvFile(environment: string, explicitFile?: string) {
-  if (explicitFile) return resolve(process.cwd(), explicitFile)
+function checkDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
+  const vars = loadDeployVars(environment, explicitFile)
+  const d1Key = getD1Key(environment)
+  const missing = [...DEPLOY_REQUIRED_KEYS, d1Key].filter((key) => !vars[key]?.trim())
 
-  const preferred = resolve(process.cwd(), `.env.${environment}`)
-  if (existsSync(preferred)) return preferred
-
-  return ROOT_ENV
-}
-
-function pushDeployEnv(environment: string, explicitFile?: string) {
-  if (environment !== "staging" && environment !== "production") {
-    throw new Error("Environment must be staging or production.")
+  if (missing.length > 0) {
+    console.error(`Missing required ${environment} env keys: ${missing.join(", ")}`)
+    process.exit(1)
   }
 
+  assertOauthConfigured(vars, `${environment} env`)
+  console.log(`${environment} env has the required deploy and runtime keys.`)
+}
+
+function assertOauthConfigured(vars: Record<string, string>, source: string) {
+  const oauthConfigured = OAUTH_KEY_PAIRS.some(([clientId, clientSecret]) =>
+    Boolean(vars[clientId]?.trim() && vars[clientSecret]?.trim()),
+  )
+
+  if (!oauthConfigured) {
+    console.error(
+      `Missing OAuth credentials. Configure GitHub or Google client id/secret in ${source}.`,
+    )
+    process.exit(1)
+  }
+}
+
+function loadDeployVars(environment: DeployEnvironment, explicitFile?: string) {
+  const envFile = getDeployEnvFile(environment, explicitFile)
+  const files = existsSync(envFile) ? [envFile] : []
+  return loadEnvWithProcess(files)
+}
+
+function prepareDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
+  const vars = loadDeployVars(environment, explicitFile)
+  const d1Id = vars[getD1Key(environment)]?.trim() || vars.D1_DATABASE_ID?.trim()
+
+  if (!d1Id) {
+    console.log(`No ${getD1Key(environment)} provided; leaving Wrangler configs unchanged.`)
+    return
+  }
+
+  const appUrl = vars.APP_URL?.trim()
+  const apiUrl = vars.API_URL?.trim()
+  const r2BucketName = vars.R2_BUCKET_NAME?.trim()
+
+  patchWranglerConfig(API_WRANGLER, environment, d1Id, appUrl, apiUrl, r2BucketName)
+  patchWranglerConfig(WORKERS_WRANGLER, environment, d1Id, appUrl, apiUrl, r2BucketName)
+  console.log(`Prepared Wrangler configs for ${environment} from environment values.`)
+}
+
+function patchWranglerConfig(
+  configPath: string,
+  environment: DeployEnvironment,
+  d1Id: string,
+  appUrl?: string,
+  apiUrl?: string,
+  r2BucketName?: string,
+) {
+  if (!existsSync(configPath)) {
+    throw new Error(`Missing Wrangler config: ${relative(process.cwd(), configPath)}`)
+  }
+
+  const current = readFileSync(configPath, "utf8")
+  const d1Pattern = new RegExp(
+    `(\\[\\[env\\.${environment}\\.d1_databases\\]\\][\\s\\S]*?database_id\\s*=\\s*")([^"]*)(")`,
+  )
+  let next = current.replace(
+    d1Pattern,
+    (_match: string, prefix: string, _current: string, suffix: string) =>
+      `${prefix}${d1Id}${suffix}`,
+  )
+
+  if (next === current) {
+    throw new Error(
+      `Could not locate env.${environment}.d1_databases.database_id in ${relative(
+        process.cwd(),
+        configPath,
+      )}.`,
+    )
+  }
+
+  if (appUrl) next = replaceWranglerVar(next, environment, "APP_URL", appUrl)
+  if (apiUrl) next = replaceWranglerVar(next, environment, "API_URL", apiUrl)
+  if (r2BucketName)
+    next = replaceWranglerBinding(next, environment, "r2_buckets", "bucket_name", r2BucketName)
+
+  writeFileSync(configPath, next)
+}
+
+function replaceWranglerBinding(
+  wrangler: string,
+  environment: DeployEnvironment,
+  binding: "r2_buckets",
+  key: "bucket_name",
+  value: string,
+) {
+  const pattern = new RegExp(
+    `(\\[\\[env\\.${environment}\\.${binding}\\]\\][\\s\\S]*?${key}\\s*=\\s*")([^"]*)(")`,
+  )
+  if (!pattern.test(wrangler)) {
+    throw new Error(`Could not locate env.${environment}.${binding}.${key} in Wrangler config.`)
+  }
+
+  const next = wrangler.replace(
+    pattern,
+    (_match: string, prefix: string, _current: string, suffix: string) =>
+      `${prefix}${value}${suffix}`,
+  )
+
+  return next
+}
+
+function replaceWranglerVar(
+  wrangler: string,
+  environment: DeployEnvironment,
+  key: "APP_URL" | "API_URL",
+  value: string,
+) {
+  const section = `[env.${environment}.vars]`
+  const lines = wrangler.split(/\r?\n/)
+  const sectionIndex = lines.findIndex((line) => line.trim() === section)
+
+  if (sectionIndex === -1) {
+    throw new Error(`Could not locate ${section} in Wrangler config.`)
+  }
+
+  for (let index = sectionIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (!line) continue
+    if (line.trim().startsWith("[")) break
+
+    if (line.trim().startsWith(`${key} =`)) {
+      lines[index] = `${key} = "${value}"`
+      return lines.join("\n")
+    }
+  }
+
+  throw new Error(`Could not locate env.${environment}.vars.${key} in Wrangler config.`)
+}
+
+function pushDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
   const envFile = getDeployEnvFile(environment, explicitFile)
   if (!existsSync(envFile)) {
     throw new Error(`Missing env file: ${relative(process.cwd(), envFile)}`)
   }
 
   const vars = parseEnvFile(envFile)
-  const keys = DEPLOY_RUNTIME_KEYS.filter((key) => vars[key]?.trim())
 
-  if (keys.length === 0) {
-    throw new Error(`No deploy runtime keys found in ${relative(process.cwd(), envFile)}`)
-  }
+  for (const target of WRANGLER_TARGETS) {
+    const keys = target.runtimeKeys.filter((key) => vars[key]?.trim())
 
-  console.log(
-    `Pushing ${String(keys.length)} runtime vars from ${relative(process.cwd(), envFile)} to ${environment}.`,
-  )
+    if (keys.length === 0) {
+      console.log(`No runtime keys found for ${target.packageName}; skipping ${environment}.`)
+      continue
+    }
 
-  for (const key of keys) {
-    const result = spawnSync(
-      "pnpm",
-      [
-        "--filter",
-        "@bucketdrive/api",
-        "exec",
-        "wrangler",
-        "secret",
-        "put",
-        key,
-        "--env",
-        environment,
-      ],
-      {
-        cwd: resolve(__dirname, ".."),
-        input: vars[key],
-        stdio: ["pipe", "inherit", "inherit"],
-        shell: process.platform === "win32",
-      },
+    console.log(
+      `Pushing ${String(keys.length)} runtime vars from ${relative(
+        process.cwd(),
+        envFile,
+      )} to ${target.packageName} ${environment}.`,
     )
 
-    if (result.status !== 0) {
-      throw new Error(`Failed to push ${key} to ${environment}.`)
+    for (const key of keys) {
+      const result = spawnSync(
+        "pnpm",
+        [
+          "--filter",
+          target.packageName,
+          "exec",
+          "wrangler",
+          "secret",
+          "put",
+          key,
+          "--env",
+          environment,
+        ],
+        {
+          cwd: ROOT_DIR,
+          input: vars[key],
+          stdio: ["pipe", "inherit", "inherit"],
+          shell: process.platform === "win32",
+        },
+      )
+
+      if (result.status !== 0) {
+        throw new Error(`Failed to push ${key} to ${target.packageName} ${environment}.`)
+      }
     }
   }
 }
 
+function getD1Key(environment: DeployEnvironment) {
+  return environment === "staging" ? "STAGING_D1_DATABASE_ID" : "PRODUCTION_D1_DATABASE_ID"
+}
+
 function main() {
-  const [command, environment, file] = process.argv.slice(2)
+  const [command, environmentArg, file] = process.argv.slice(2)
 
   switch (command) {
     case "check":
-      checkEnv()
+      if (!environmentArg || environmentArg === "local") {
+        checkLocalEnv()
+        return
+      }
+      checkDeployEnv(normalizeEnvironment(environmentArg), file)
       return
     case "link":
       linkLocalEnv()
       return
+    case "prepare":
+      prepareDeployEnv(normalizeEnvironment(environmentArg), file)
+      return
     case "push":
-      if (!environment) {
-        usage()
-        process.exit(1)
-      }
-      pushDeployEnv(environment, file)
+      pushDeployEnv(normalizeEnvironment(environmentArg), file)
       return
     default:
       usage()

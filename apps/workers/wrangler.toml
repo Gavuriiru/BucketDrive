@@ -9,6 +9,19 @@ cron = "0 3 * * *"
 [[d1_databases]]
 binding = "DB"
 database_name = "bucketdrive-db"
+# Local-only placeholder so Wrangler can apply migrations to D1 local state.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "../../packages/shared/src/db/migrations"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "bucketdrive-db-staging"
+database_id = ""
+migrations_dir = "../../packages/shared/src/db/migrations"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "bucketdrive-db"
 database_id = ""
 migrations_dir = "../../packages/shared/src/db/migrations"
 
@@ -16,6 +29,22 @@ migrations_dir = "../../packages/shared/src/db/migrations"
 binding = "STORAGE"
 bucket_name = "bucketdrive-files"
 
+[[env.staging.r2_buckets]]
+binding = "STORAGE"
+bucket_name = "bucketdrive-staging"
+
+[[env.production.r2_buckets]]
+binding = "STORAGE"
+bucket_name = "bucketdrive-files"
+
 [vars]
 APP_URL = "http://localhost:5173"
 API_URL = "http://localhost:8787"
+
+[env.staging.vars]
+APP_URL = "https://staging.bucketdrive.dev"
+API_URL = "https://staging-api.bucketdrive.dev"
+
+[env.production.vars]
+APP_URL = "https://drive.nekomata.moe"
+API_URL = "https://drive.nekomata.moe/api"

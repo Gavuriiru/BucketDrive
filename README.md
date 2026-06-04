@@ -72,7 +72,7 @@ pnpm install
 # Set up environment
 cp .env.example .dev.vars
 pnpm env:link
-# Edit .dev.vars with your Cloudflare credentials
+# Edit .dev.vars with your local runtime and Cloudflare credentials
 
 # Start development
 pnpm db:reset:empty # Initialize empty Wrangler D1 local for onboarding
