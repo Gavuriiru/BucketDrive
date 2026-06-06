@@ -34,7 +34,7 @@ members.get("/", requirePermission("users.read"), async (c) => {
     email: row.email,
     name: row.name,
     image: row.image,
-    createdAt: row.createdAt,
+    createdAt: toIsoDateTime(row.createdAt),
   }))
   return c.json(
     ListMembersResponse.parse({
@@ -126,7 +126,7 @@ members.patch("/:memberId", requirePermission("users.update_roles"), async (c) =
           email: updated.email,
           name: updated.name,
           image: updated.image,
-          createdAt: updated.createdAt,
+          createdAt: toIsoDateTime(updated.createdAt),
         }
       : null,
   )
@@ -171,6 +171,14 @@ async function writeAudit(
       createdAt: new Date().toISOString(),
     })
     .run()
+}
+
+function toIsoDateTime(value: string): string {
+  const sqliteTimestamp = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
+  const normalized = sqliteTimestamp.test(value) ? `${value.replace(" ", "T")}Z` : value
+  const date = new Date(normalized)
+
+  return Number.isNaN(date.getTime()) ? value : date.toISOString()
 }
 
 export const membersHandler = members

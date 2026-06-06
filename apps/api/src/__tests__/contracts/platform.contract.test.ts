@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  AcceptPlatformInvitationResponse,
+  CreatePlatformInvitationResponse,
+  ListPlatformInvitationsResponse,
   PlatformJoinResponse,
   PlatformSettingsResponse,
   UploadPlatformAssetResponse,
@@ -54,6 +57,36 @@ describe("platform contracts", () => {
     expect(asset.headers.get("content-type")).toContain("image/png")
   })
 
+  it("lists, creates, and accepts platform invitations", async () => {
+    const ctx = createContractTestContext()
+
+    const create = await ctx.request("/api/platform/invitations", {
+      method: "POST",
+      body: JSON.stringify({ email: "platform-invitee@example.com", role: "editor" }),
+    })
+    expect(create.status).toBe(201)
+    const created = CreatePlatformInvitationResponse.parse(await ctx.json(create))
+    expect(created.inviteLink).toContain("/join?token=")
+
+    const list = await ctx.request("/api/platform/invitations")
+    expect(list.status).toBe(200)
+    const invitations = ListPlatformInvitationsResponse.parse(await ctx.json(list))
+    expect(invitations.data.some((entry) => entry.id === created.id)).toBe(true)
+
+    const token = new URL(created.inviteLink, "http://localhost:5173").searchParams.get("token")
+    const invitee = ctx.seedUser({
+      email: "platform-invitee@example.com",
+      name: "Platform Invitee",
+      role: "viewer",
+    })
+    const accept = await ctx.request(`/api/platform/invitations/${String(token)}/accept`, {
+      method: "POST",
+      userId: invitee.id,
+    })
+    expect(accept.status).toBe(200)
+    AcceptPlatformInvitationResponse.parse(await ctx.json(accept))
+  })
+
   it("denies platform admin routes to non-admins and validates payloads", async () => {
     const ctx = createContractTestContext()
 
@@ -65,12 +98,25 @@ describe("platform contracts", () => {
     expect(denied.status).toBe(403)
     expectApiError(await ctx.json(denied))
 
+    const deniedInvitations = await ctx.request("/api/platform/invitations", {
+      userId: ctx.viewer.id,
+    })
+    expect(deniedInvitations.status).toBe(403)
+    expectApiError(await ctx.json(deniedInvitations))
+
     const invalid = await ctx.request("/api/platform/settings", {
       method: "PATCH",
       body: JSON.stringify({ platformName: "" }),
     })
     expect(invalid.status).toBe(400)
     expectApiError(await ctx.json(invalid))
+
+    const invalidInvitation = await ctx.request("/api/platform/invitations", {
+      method: "POST",
+      body: JSON.stringify({ email: "bad", role: "viewer" }),
+    })
+    expect(invalidInvitation.status).toBe(400)
+    expectApiError(await ctx.json(invalidInvitation))
 
     const form = new FormData()
     form.set("file", new File(["not image"], "notes.txt", { type: "text/plain" }))

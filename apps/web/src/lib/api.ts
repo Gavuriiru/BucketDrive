@@ -863,8 +863,11 @@ export function useMembers(
 ): UseQueryResult<MembersResponse, ApiRequestError> {
   return useQuery<MembersResponse, ApiRequestError>({
     queryKey: ["members", workspaceId],
-    queryFn: () => api.get<MembersResponse>(buildWorkspacePath(workspaceId, "/members")),
-    enabled: true,
+    queryFn: () =>
+      api.get<MembersResponse>(
+        buildWorkspacePath(requireId(workspaceId, "workspaceId"), "/members"),
+      ),
+    enabled: workspaceId !== null,
   })
 }
 
@@ -883,9 +886,12 @@ export function useUpdateMemberRole(
     { memberId: string; role: WorkspaceRole }
   >({
     mutationFn: ({ memberId, role }) =>
-      api.patch<WorkspaceMemberListItem>(buildWorkspacePath(workspaceId, `/members/${memberId}`), {
-        role,
-      }),
+      api.patch<WorkspaceMemberListItem>(
+        buildWorkspacePath(requireId(workspaceId, "workspaceId"), `/members/${memberId}`),
+        {
+          role,
+        },
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
     },
@@ -900,7 +906,7 @@ export function useRemoveMember(
   return useMutation<{ success: true; memberId: string }, ApiRequestError, { memberId: string }>({
     mutationFn: ({ memberId }) =>
       api.delete<{ success: true; memberId: string }>(
-        buildWorkspacePath(workspaceId, `/members/${memberId}`),
+        buildWorkspacePath(requireId(workspaceId, "workspaceId"), `/members/${memberId}`),
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
@@ -1474,8 +1480,10 @@ export function useInvitations(
   return useQuery<ListInvitationsResponse, ApiRequestError>({
     queryKey: ["invitations", workspaceId],
     queryFn: () =>
-      api.get<ListInvitationsResponse>(buildWorkspacePath(workspaceId, "/invitations")),
-    enabled: true,
+      api.get<ListInvitationsResponse>(
+        buildWorkspacePath(requireId(workspaceId, "workspaceId"), "/invitations"),
+      ),
+    enabled: workspaceId !== null,
   })
 }
 
@@ -1505,7 +1513,10 @@ export function useAddMember(
     { email: string; role: Exclude<WorkspaceRole, "owner"> }
   >({
     mutationFn: (body) =>
-      api.post<CreateInvitationResponse>(buildWorkspacePath(workspaceId, "/members"), body),
+      api.post<CreateInvitationResponse>(
+        buildWorkspacePath(requireId(workspaceId, "workspaceId"), "/members"),
+        body,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["members", workspaceId] })
       void queryClient.invalidateQueries({ queryKey: ["invitations", workspaceId] })
@@ -1530,7 +1541,7 @@ export function useRevokeInvitation(
   >({
     mutationFn: ({ invitationId }) =>
       api.delete<{ success: true; invitationId: string }>(
-        buildWorkspacePath(workspaceId, `/invitations/${invitationId}`),
+        buildWorkspacePath(requireId(workspaceId, "workspaceId"), `/invitations/${invitationId}`),
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["invitations", workspaceId] })

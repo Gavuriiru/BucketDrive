@@ -11,7 +11,12 @@ import { createContractTestContext, expectApiError } from "./test-harness"
 describe("members contracts", () => {
   it("lists members, creates invitations, updates roles, and removes members", async () => {
     const ctx = createContractTestContext()
-    const target = ctx.seedUser({ email: "editor@example.com", name: "Editor", role: "editor" })
+    const target = ctx.seedUser({
+      id: "better-auth-editor-id",
+      email: "editor@example.com",
+      name: "Editor",
+      role: "editor",
+    })
 
     const list = await ctx.request(`/api/workspaces/${ctx.workspaceId}/members`)
     expect(list.status).toBe(200)
@@ -46,6 +51,21 @@ describe("members contracts", () => {
     )
     expect(remove.status).toBe(200)
     RemoveMemberResponse.parse(await ctx.json(remove))
+  })
+
+  it("normalizes SQLite timestamps when listing members", async () => {
+    const ctx = createContractTestContext()
+    const target = ctx.seedUser({ email: "sqlite-date@example.com", name: "SQLite Date" })
+    ctx.sqlite
+      .prepare("update user set created_at = ? where id = ?")
+      .run("2026-06-06 10:00:00", target.id)
+
+    const list = await ctx.request(`/api/workspaces/${ctx.workspaceId}/members`)
+    expect(list.status).toBe(200)
+    const members = ListMembersResponse.parse(await ctx.json(list))
+    const targetMember = members.data.find((entry) => entry.userId === target.id)
+
+    expect(targetMember?.createdAt).toBe("2026-06-06T10:00:00.000Z")
   })
 
   it("enforces member RBAC and validation", async () => {

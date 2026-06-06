@@ -2,7 +2,7 @@ import { z } from "zod"
 import { AuthUserId, PaginatedResponseSchema, WorkspaceRole } from "../schemas/common"
 
 export const BucketMemberListItemSchema = z.object({
-  id: z.string().uuid(),
+  id: AuthUserId,
   userId: AuthUserId,
   role: WorkspaceRole,
   email: z.string().email(),
@@ -25,7 +25,7 @@ export const UpdateMemberRoleRequest = z.object({
 
 export const RemoveMemberResponse = z.object({
   success: z.literal(true),
-  memberId: z.string().uuid(),
+  memberId: AuthUserId,
 })
 
 export type WorkspaceMemberListItem = z.infer<typeof WorkspaceMemberListItemSchema>

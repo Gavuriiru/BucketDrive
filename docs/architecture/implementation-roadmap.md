@@ -2004,6 +2004,12 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - Kept external bucket logo URLs compatible while adding `brandingLogoAssetUrl` for uploaded logo previews.
 > - Public share pages now fall back from bucket branding to global platform branding.
 
+## Implementation Notes - Members and Platform Invitations
+
+> - Fixed member list response validation for Better Auth user IDs and SQLite timestamp defaults.
+> - Delayed member and invitation queries until the current bucket context is resolved in the web client.
+> - Added platform invitation endpoints for listing, creating, and accepting invites through the existing bucket invitation table.
+
 ---
 
 # Quick Reference
