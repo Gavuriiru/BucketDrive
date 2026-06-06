@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { PaginatedResponseSchema } from "../schemas/common"
-import { WorkspaceSettingsSchema } from "../schemas/workspace"
+import { BucketSettingsSchema } from "../schemas/workspace"
 
 export const DashboardOverviewSummarySchema = z.object({
   totalFiles: z.number().int().min(0),
@@ -53,7 +53,6 @@ export const DashboardAuditRequest = z.object({
 
 export const DashboardAuditItemSchema = z.object({
   id: z.string().uuid(),
-  workspaceId: z.string().uuid(),
   actorId: z.string(),
   actorName: z.string().nullable(),
   action: z.string(),
@@ -67,9 +66,9 @@ export const DashboardAuditItemSchema = z.object({
 
 export const DashboardAuditResponse = PaginatedResponseSchema(DashboardAuditItemSchema)
 
-export const DashboardSettingsResponse = WorkspaceSettingsSchema
+export const DashboardSettingsResponse = BucketSettingsSchema
 
-export const UpdateDashboardSettingsRequest = WorkspaceSettingsSchema.pick({
+export const UpdateDashboardSettingsRequest = BucketSettingsSchema.pick({
   defaultShareExpirationDays: true,
   enablePublicSignup: true,
   trashRetentionDays: true,

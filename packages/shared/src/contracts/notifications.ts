@@ -12,7 +12,6 @@ export const NotificationTypeSchema = z.enum([
 export const NotificationSchema = z.object({
   id: z.string().uuid(),
   userId: z.string(),
-  workspaceId: z.string().uuid().nullable(),
   type: NotificationTypeSchema,
   title: z.string(),
   message: z.string(),

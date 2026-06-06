@@ -1,10 +1,8 @@
-export { user, session, account, verification, organization, member } from "./auth"
+export { user, session, account, verification } from "./auth"
 export {
-  workspace,
-  workspaceSettings,
-  workspaceMember,
-  workspaceInvitation,
   bucket,
+  bucketSettings,
+  bucketInvitation,
   fileObject,
   folder,
   platformSettings,

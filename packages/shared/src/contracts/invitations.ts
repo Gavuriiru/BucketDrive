@@ -11,7 +11,6 @@ export const CreateInvitationRequest = z.object({
 
 export const InvitationListItemSchema = z.object({
   id: z.string().uuid(),
-  workspaceId: z.string().uuid(),
   email: z.string().email(),
   role: WorkspaceRole,
   invitedBy: AuthUserId,
@@ -25,9 +24,6 @@ export const ListInvitationsResponse = PaginatedResponseSchema(InvitationListIte
 
 export const InvitationDetailResponse = z.object({
   id: z.string().uuid(),
-  workspaceId: z.string().uuid(),
-  workspaceName: z.string(),
-  workspaceSlug: z.string(),
   email: z.string().email(),
   role: WorkspaceRole,
   invitedByName: z.string(),
@@ -42,7 +38,6 @@ export const AcceptInvitationRequest = z.object({
 
 export const AcceptInvitationResponse = z.object({
   success: z.literal(true),
-  workspaceId: z.string().uuid(),
   role: WorkspaceRole,
 })
 
@@ -61,7 +56,6 @@ export const AcceptOwnershipTransferRequest = z.object({
 
 export const OwnershipTransferResponse = z.object({
   success: z.literal(true),
-  workspaceId: z.string().uuid(),
   previousOwnerId: AuthUserId,
   newOwnerId: AuthUserId,
 })

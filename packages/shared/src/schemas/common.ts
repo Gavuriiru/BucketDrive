@@ -6,13 +6,13 @@ export const ErrorCode = z.enum([
   "INVALID_CREDENTIALS",
   "SESSION_REVOKED",
   "FORBIDDEN",
-  "WORKSPACE_ACCESS_DENIED",
+  "ACCESS_DENIED",
   "OWNER_REQUIRED",
   "ROLE_TOO_LOW",
   "NOT_FOUND",
   "FILE_NOT_FOUND",
   "FOLDER_NOT_FOUND",
-  "WORKSPACE_NOT_FOUND",
+  "BUCKET_NOT_FOUND",
   "CONFLICT",
   "FOLDER_EXISTS",
   "FILE_EXISTS",
@@ -82,8 +82,10 @@ export type ShareType = z.infer<typeof ShareType>
 export const ResourceType = z.enum(["file", "folder"])
 export type ResourceType = z.infer<typeof ResourceType>
 
-export const WorkspaceRole = z.enum(["owner", "admin", "manager", "editor", "viewer", "guest"])
-export type WorkspaceRole = z.infer<typeof WorkspaceRole>
+export const BucketRole = z.enum(["owner", "admin", "manager", "editor", "viewer", "guest"])
+export type BucketRole = z.infer<typeof BucketRole>
+export const WorkspaceRole = BucketRole
+export type WorkspaceRole = BucketRole
 
 export const AuthUserId = z.string().min(1)
 export type AuthUserId = z.infer<typeof AuthUserId>

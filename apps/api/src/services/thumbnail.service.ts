@@ -28,7 +28,6 @@ export class ThumbnailService {
 
   async generate(params: {
     fileId: string
-    workspaceId: string
     storageKey: string
     mimeType: string
   }): Promise<boolean> {
@@ -69,7 +68,7 @@ export class ThumbnailService {
       inputImage.free()
       outputImage.free()
 
-      const thumbnailKey = `workspace/${params.workspaceId}/thumbnails/${params.fileId}.webp`
+      const thumbnailKey = `bucket/thumbnails/${params.fileId}.webp`
 
       await this.putThumbnail(thumbnailKey, thumbnailBytes)
 
@@ -86,9 +85,7 @@ export class ThumbnailService {
           }),
           updatedAt: new Date().toISOString(),
         })
-        .where(
-          and(eq(fileObject.id, params.fileId), eq(fileObject.workspaceId, params.workspaceId)),
-        )
+        .where(eq(fileObject.id, params.fileId))
         .run()
 
       console.warn(`Thumbnail generated for ${params.fileId}: ${thumbnailKey}`)
@@ -100,14 +97,10 @@ export class ThumbnailService {
     }
   }
 
-  async uploadVideoFrame(params: {
-    fileId: string
-    workspaceId: string
-    blob: Blob
-  }): Promise<void> {
+  async uploadVideoFrame(params: { fileId: string; blob: Blob }): Promise<void> {
     try {
       const bytes = new Uint8Array(await params.blob.arrayBuffer())
-      const thumbnailKey = `workspace/${params.workspaceId}/thumbnails/${params.fileId}.webp`
+      const thumbnailKey = `bucket/thumbnails/${params.fileId}.webp`
 
       await this.putThumbnail(thumbnailKey, bytes)
 
@@ -118,9 +111,7 @@ export class ThumbnailService {
           thumbnailKey,
           updatedAt: new Date().toISOString(),
         })
-        .where(
-          and(eq(fileObject.id, params.fileId), eq(fileObject.workspaceId, params.workspaceId)),
-        )
+        .where(eq(fileObject.id, params.fileId))
         .run()
     } catch (err) {
       console.warn(`Video thumbnail upload failed for ${params.fileId}:`, err)
@@ -128,7 +119,7 @@ export class ThumbnailService {
   }
 
   private async putThumbnail(key: string, bytes: Uint8Array): Promise<void> {
-    const put = this.deps.storage.put.bind(this.deps.storage) as unknown as ThumbnailPut
+    const put: ThumbnailPut = this.deps.storage.put.bind(this.deps.storage)
     await put(key, bytes, {
       httpMetadata: { contentType: "image/webp" },
     })
@@ -136,7 +127,6 @@ export class ThumbnailService {
 
   async processPending(
     params: {
-      workspaceId?: string
       limit?: number
     } = {},
   ): Promise<ThumbnailBackfillResult> {
@@ -148,14 +138,9 @@ export class ThumbnailService {
       or(like(fileObject.mimeType, "image/%"), like(fileObject.mimeType, "video/%")),
     ]
 
-    if (params.workspaceId) {
-      conditions.push(eq(fileObject.workspaceId, params.workspaceId))
-    }
-
     const pendingFiles = await db
       .select({
         id: fileObject.id,
-        workspaceId: fileObject.workspaceId,
         storageKey: fileObject.storageKey,
         mimeType: fileObject.mimeType,
       })
@@ -179,7 +164,6 @@ export class ThumbnailService {
 
       const generated = await this.generate({
         fileId: file.id,
-        workspaceId: file.workspaceId,
         storageKey: file.storageKey,
         mimeType: file.mimeType,
       })

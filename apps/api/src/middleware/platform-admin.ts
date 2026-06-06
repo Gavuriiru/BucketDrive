@@ -6,7 +6,6 @@ interface PlatformAdminVariables {
     email: string
     name: string
     isPlatformAdmin: boolean
-    canCreateWorkspaces: boolean
   }
 }
 

@@ -1,10 +1,9 @@
 import { z } from "zod"
 import { AuthUserId, PaginatedResponseSchema, WorkspaceRole } from "../schemas/common"
 
-export const WorkspaceMemberListItemSchema = z.object({
+export const BucketMemberListItemSchema = z.object({
   id: z.string().uuid(),
   userId: AuthUserId,
-  workspaceId: z.string().uuid(),
   role: WorkspaceRole,
   email: z.string().email(),
   name: z.string(),
@@ -12,7 +11,8 @@ export const WorkspaceMemberListItemSchema = z.object({
   createdAt: z.string().datetime(),
 })
 
-export const ListMembersResponse = PaginatedResponseSchema(WorkspaceMemberListItemSchema)
+export const WorkspaceMemberListItemSchema = BucketMemberListItemSchema
+export const ListMembersResponse = PaginatedResponseSchema(BucketMemberListItemSchema)
 
 export const AddMemberRequest = z.object({
   email: z.string().email(),

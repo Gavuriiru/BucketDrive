@@ -1,34 +1,25 @@
 import { Hono } from "hono"
-import { and, eq, gte } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import {
+  PlatformJoinResponse,
   PlatformSettingsResponse,
   UpdatePlatformSettingsRequest,
   UpdatePlatformSettingsResponse,
-  PlatformJoinResponse,
-  CreatePlatformInvitationRequest,
-  ListPlatformInvitationsResponse,
-  CreatePlatformInvitationResponse,
-  AcceptPlatformInvitationResponse,
 } from "@bucketdrive/shared"
-import {
-  platformSettings,
-  member,
-  workspaceInvitation,
-  user as userSchema,
-} from "@bucketdrive/shared/db/schema"
+import { platformSettings } from "@bucketdrive/shared/db/schema"
+import { getDB } from "../../lib/db"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePlatformAdmin } from "../../middleware/platform-admin"
-import { getDB } from "../../lib/db"
-import {
-  ensureOrganizationForWorkspace,
-  syncMemberToLegacyWorkspaceMember,
-  syncWorkspaceMemberships,
-} from "../../lib/workspace-membership"
-import type { WorkspaceRole } from "@bucketdrive/shared"
+import { createStorageProvider } from "../../services/storage"
+import { readUploadedBrandingImage, sanitizeAssetName } from "../../lib/branding-assets"
 
 interface PlatformEnv {
   DB: D1Database
-  APP_URL?: string
+  STORAGE: R2Bucket
+  R2_ACCESS_KEY_ID?: string
+  R2_SECRET_ACCESS_KEY?: string
+  R2_ENDPOINT?: string
+  R2_BUCKET_NAME?: string
 }
 
 interface PlatformVariables {
@@ -37,15 +28,13 @@ interface PlatformVariables {
     email: string
     name: string
     isPlatformAdmin: boolean
-    canCreateWorkspaces: boolean
+    role: string
   }
 }
 
-const INVITE_EXPIRY_DAYS = 7
-
 const platform = new Hono<{ Bindings: PlatformEnv; Variables: PlatformVariables }>()
+const PLATFORM_SETTINGS_ID = "default"
 
-// Protected: get current user platform info
 platform.get("/me", authMiddleware, (c) => {
   const currentUser = c.get("user")
   return c.json({
@@ -53,383 +42,133 @@ platform.get("/me", authMiddleware, (c) => {
     email: currentUser.email,
     name: currentUser.name,
     isPlatformAdmin: currentUser.isPlatformAdmin,
-    canCreateWorkspaces: currentUser.canCreateWorkspaces,
+    role: currentUser.role,
   })
 })
 
-// Public: get platform settings
-platform.get("/settings", async (c) => {
-  const db = getDB()
-  const settings = await db.select().from(platformSettings).get()
-
-  if (!settings) {
-    return c.json({
-      platformName: "BucketDrive",
-      defaultWorkspaceId: null,
-      allowUserWorkspaceCreation: false,
-      enablePublicSignup: true,
-    })
-  }
-
-  return c.json(
-    PlatformSettingsResponse.parse({
-      platformName: settings.platformName,
-      defaultWorkspaceId: settings.defaultWorkspaceId,
-      allowUserWorkspaceCreation: settings.allowUserWorkspaceCreation,
-      enablePublicSignup: settings.enablePublicSignup,
-    }),
+platform.get("/settings", async () => {
+  return Response.json(
+    PlatformSettingsResponse.parse(toPlatformSettingsResponse(await ensurePlatformSettings())),
   )
 })
 
-// Protected: update platform settings (platform admin only)
+platform.get("/assets/:kind", async (c) => {
+  const kind = parseAssetKind(c.req.param("kind"))
+  if (!kind) return c.json({ code: "NOT_FOUND", message: "Asset not found" }, 404)
+
+  const settings = await ensurePlatformSettings()
+  const key = kind === "logo" ? settings.logoKey : settings.faviconKey
+  if (!key) return c.json({ code: "NOT_FOUND", message: "Asset not found" }, 404)
+
+  const object = await createStorageProvider(c.env).getObject(key)
+  if (!object) return c.json({ code: "NOT_FOUND", message: "Asset not found" }, 404)
+
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": object.contentType ?? "application/octet-stream",
+      "Content-Length": String(object.size),
+      "Cache-Control": "public, max-age=300",
+    },
+  })
+})
+
 platform.patch("/settings", authMiddleware, requirePlatformAdmin, async (c) => {
-  const db = getDB()
   const body = UpdatePlatformSettingsRequest.parse(await c.req.json())
-
-  let settings = await db.select().from(platformSettings).get()
+  const settings = await ensurePlatformSettings()
   const now = new Date().toISOString()
-
-  if (!settings) {
-    const newSettings = {
-      id: crypto.randomUUID(),
-      platformName: body.platformName ?? "BucketDrive",
-      defaultWorkspaceId: body.defaultWorkspaceId ?? null,
-      allowUserWorkspaceCreation: body.allowUserWorkspaceCreation ?? false,
-      enablePublicSignup: body.enablePublicSignup ?? true,
-      createdAt: now,
+  await getDB()
+    .update(platformSettings)
+    .set({
+      platformName: body.platformName ?? settings.platformName,
+      enablePublicSignup: body.enablePublicSignup ?? settings.enablePublicSignup,
       updatedAt: now,
-    }
-    await db.insert(platformSettings).values(newSettings).run()
-    settings = newSettings
-  } else {
-    await db
-      .update(platformSettings)
-      .set({
-        platformName: body.platformName ?? settings.platformName,
-        defaultWorkspaceId:
-          body.defaultWorkspaceId !== undefined
-            ? body.defaultWorkspaceId
-            : settings.defaultWorkspaceId,
-        allowUserWorkspaceCreation:
-          body.allowUserWorkspaceCreation ?? settings.allowUserWorkspaceCreation,
-        enablePublicSignup: body.enablePublicSignup ?? settings.enablePublicSignup,
-        updatedAt: now,
-      })
-      .where(eq(platformSettings.id, settings.id))
-      .run()
-    settings = await db.select().from(platformSettings).get()
-  }
-
-  if (!settings) {
-    return c.json({ code: "INTERNAL_ERROR", message: "Failed to retrieve platform settings" }, 500)
-  }
+    })
+    .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
+    .run()
 
   return c.json(
     UpdatePlatformSettingsResponse.parse({
       success: true,
-      settings: {
-        platformName: settings.platformName,
-        defaultWorkspaceId: settings.defaultWorkspaceId,
-        allowUserWorkspaceCreation: settings.allowUserWorkspaceCreation,
-        enablePublicSignup: settings.enablePublicSignup,
-      },
+      settings: toPlatformSettingsResponse(await ensurePlatformSettings()),
     }),
   )
 })
 
-// Protected: join default workspace (auto-add user to platform default workspace)
-platform.post("/join", authMiddleware, async (c) => {
-  const currentUser = c.get("user")
-  const db = getDB()
+platform.post("/assets/:kind", authMiddleware, requirePlatformAdmin, async (c) => {
+  const kind = parseAssetKind(c.req.param("kind"))
+  if (!kind) return c.json({ code: "NOT_FOUND", message: "Asset not found" }, 404)
 
-  const settings = await db.select().from(platformSettings).get()
-  if (!settings || !settings.defaultWorkspaceId) {
-    return c.json({ code: "NOT_FOUND", message: "No default workspace configured" }, 404)
-  }
+  const file = await readUploadedBrandingImage(c.req.raw)
+  if ("error" in file) return c.json(file.error, file.status as never)
 
-  const workspaceId = settings.defaultWorkspaceId
-
-  await Promise.all([
-    ensureOrganizationForWorkspace(db, workspaceId),
-    syncWorkspaceMemberships(db, workspaceId),
-  ])
-
-  // Check if already a member
-  const existing = await db
-    .select({ id: member.id })
-    .from(member)
-    .where(and(eq(member.organizationId, workspaceId), eq(member.userId, currentUser.id)))
-    .get()
-
-  if (existing) {
-    const existingRole = await db
-      .select({ role: member.role })
-      .from(member)
-      .where(and(eq(member.organizationId, workspaceId), eq(member.userId, currentUser.id)))
-      .get()
-    return c.json(
-      PlatformJoinResponse.parse({
-        success: true,
-        workspaceId,
-        role: (existingRole?.role ?? "viewer") as WorkspaceRole,
-      }),
-    )
-  }
+  const key = `branding/platform/${kind}-${crypto.randomUUID()}-${sanitizeAssetName(file.name)}`
+  await createStorageProvider(c.env).upload({
+    key,
+    body: await file.arrayBuffer(),
+    contentType: file.type,
+  })
 
   const now = new Date().toISOString()
-  const newMember = {
-    id: crypto.randomUUID(),
-    organizationId: workspaceId,
-    userId: currentUser.id,
-    role: "viewer" as const,
-    createdAt: now,
-  }
-
-  await db.insert(member).values(newMember).run()
-  await syncMemberToLegacyWorkspaceMember(db, workspaceId, currentUser.id, "viewer")
-
-  return c.json(
-    PlatformJoinResponse.parse({
-      success: true,
-      workspaceId,
-      role: "viewer",
-    }),
-  )
-})
-
-// Protected: create platform invitation (platform admin only)
-platform.post("/invitations", authMiddleware, requirePlatformAdmin, async (c) => {
-  const actor = c.get("user")
-  const db = getDB()
-  const body = CreatePlatformInvitationRequest.parse(await c.req.json())
-  const appUrl = c.env.APP_URL
-
-  const settings = await db.select().from(platformSettings).get()
-  if (!settings || !settings.defaultWorkspaceId) {
-    return c.json({ code: "NOT_FOUND", message: "No default workspace configured" }, 404)
-  }
-
-  const workspaceId = settings.defaultWorkspaceId
-  await Promise.all([
-    ensureOrganizationForWorkspace(db, workspaceId),
-    syncWorkspaceMemberships(db, workspaceId),
-  ])
-
-  // Check if email is already a member
-  const targetUser = await db
-    .select({ id: userSchema.id })
-    .from(userSchema)
-    .where(eq(userSchema.email, body.email.toLowerCase()))
-    .get()
-  if (targetUser) {
-    const alreadyMember = await db
-      .select({ id: member.id })
-      .from(member)
-      .where(and(eq(member.organizationId, workspaceId), eq(member.userId, targetUser.id)))
-      .get()
-    if (alreadyMember) {
-      return c.json({ code: "USER_ALREADY_MEMBER", message: "User is already a member" }, 409)
-    }
-  }
-
-  // Check for existing pending invitation for this email
-  const existingInvite = await db
-    .select({ id: workspaceInvitation.id })
-    .from(workspaceInvitation)
-    .where(
-      and(
-        eq(workspaceInvitation.workspaceId, workspaceId),
-        eq(workspaceInvitation.email, body.email.toLowerCase()),
-        eq(workspaceInvitation.status, "pending"),
-      ),
-    )
-    .get()
-
-  if (existingInvite) {
-    return c.json(
-      { code: "CONFLICT", message: "Pending invitation already exists for this email" },
-      409,
-    )
-  }
-
-  const now = new Date()
-  const expiresAt = new Date(now.getTime() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
-  const token = crypto.randomUUID()
-
-  const createdInvitation = {
-    id: crypto.randomUUID(),
-    workspaceId,
-    email: body.email.toLowerCase(),
-    token,
-    role: body.role,
-    canCreateWorkspaces: body.canCreateWorkspaces,
-    invitedBy: actor.id,
-    status: "pending" as const,
-    expiresAt: expiresAt.toISOString(),
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-  }
-
-  await db.insert(workspaceInvitation).values(createdInvitation).run()
-
-  const base = appUrl?.replace(/\/$/, "") ?? ""
-  const inviteLink = `${base}/join?token=${token}`
-
-  return c.json(
-    CreatePlatformInvitationResponse.parse({
-      id: createdInvitation.id,
-      email: createdInvitation.email,
-      role: createdInvitation.role,
-      canCreateWorkspaces: createdInvitation.canCreateWorkspaces,
-      status: createdInvitation.status,
-      expiresAt: createdInvitation.expiresAt,
-      createdAt: createdInvitation.createdAt,
-      inviteLink,
-    }),
-    201,
-  )
-})
-
-// Protected: list platform invitations (platform admin only)
-platform.get("/invitations", authMiddleware, requirePlatformAdmin, async (c) => {
-  const db = getDB()
-  const now = new Date().toISOString()
-
-  const settings = await db.select().from(platformSettings).get()
-  if (!settings || !settings.defaultWorkspaceId) {
-    return c.json(ListPlatformInvitationsResponse.parse({ data: [] }))
-  }
-
-  const rows = await db
-    .select({
-      id: workspaceInvitation.id,
-      email: workspaceInvitation.email,
-      token: workspaceInvitation.token,
-      role: workspaceInvitation.role,
-      canCreateWorkspaces: workspaceInvitation.canCreateWorkspaces,
-      status: workspaceInvitation.status,
-      expiresAt: workspaceInvitation.expiresAt,
-      createdAt: workspaceInvitation.createdAt,
+  await ensurePlatformSettings()
+  await getDB()
+    .update(platformSettings)
+    .set({
+      [kind === "logo" ? "logoKey" : "faviconKey"]: key,
+      updatedAt: now,
     })
-    .from(workspaceInvitation)
-    .where(
-      and(
-        eq(workspaceInvitation.workspaceId, settings.defaultWorkspaceId),
-        eq(workspaceInvitation.status, "pending"),
-        gte(workspaceInvitation.expiresAt, now),
-      ),
-    )
-    .all()
+    .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
+    .run()
 
-  const base = c.env.APP_URL?.replace(/\/$/, "") ?? ""
-  const data = rows.map((row) => ({
-    id: row.id,
-    email: row.email,
-    role: row.role,
-    canCreateWorkspaces: row.canCreateWorkspaces,
-    status: row.status,
-    expiresAt: row.expiresAt,
-    createdAt: row.createdAt,
-    inviteLink: `${base}/join?token=${row.token}`,
-  }))
-
-  return c.json(ListPlatformInvitationsResponse.parse({ data }))
+  return c.json({
+    success: true,
+    settings: PlatformSettingsResponse.parse(
+      toPlatformSettingsResponse(await ensurePlatformSettings()),
+    ),
+  })
 })
 
-// Public: accept platform invitation
-platform.post("/invitations/:token/accept", authMiddleware, async (c) => {
-  const token = c.req.param("token")
-  const currentUser = c.get("user")
+platform.post("/join", authMiddleware, async (c) => {
+  const settings = await ensurePlatformSettings()
+  if (!settings.enablePublicSignup) {
+    return c.json({ code: "FORBIDDEN", message: "Public signup is disabled" }, 403)
+  }
+  return c.json(PlatformJoinResponse.parse({ success: true, role: c.get("user").role }))
+})
+
+async function ensurePlatformSettings() {
   const db = getDB()
-  const now = new Date().toISOString()
-
-  const invite = await db
-    .select()
-    .from(workspaceInvitation)
-    .where(and(eq(workspaceInvitation.token, token), eq(workspaceInvitation.status, "pending")))
-    .get()
-
-  if (!invite) {
-    return c.json({ code: "NOT_FOUND", message: "Invitation not found or already used" }, 404)
-  }
-
-  if (invite.expiresAt < now) {
-    await db
-      .update(workspaceInvitation)
-      .set({ status: "expired", updatedAt: now })
-      .where(eq(workspaceInvitation.id, invite.id))
-      .run()
-    return c.json({ code: "SHARE_EXPIRED", message: "Invitation has expired" }, 410)
-  }
-
-  if (invite.email.toLowerCase() !== currentUser.email.toLowerCase()) {
-    return c.json(
-      { code: "FORBIDDEN", message: "This invitation is for a different email address" },
-      403,
-    )
-  }
-
-  const workspaceId = invite.workspaceId
-
-  await Promise.all([
-    ensureOrganizationForWorkspace(db, workspaceId),
-    syncWorkspaceMemberships(db, workspaceId),
-  ])
-
-  // Check if already a member
   const existing = await db
-    .select({ id: member.id })
-    .from(member)
-    .where(and(eq(member.organizationId, workspaceId), eq(member.userId, currentUser.id)))
+    .select()
+    .from(platformSettings)
+    .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
     .get()
+  if (existing) return existing
 
-  if (existing) {
-    await db
-      .update(workspaceInvitation)
-      .set({ status: "accepted", acceptedAt: now, updatedAt: now })
-      .where(eq(workspaceInvitation.id, invite.id))
-      .run()
-  } else {
-    const createdAt = now
-    const newMember = {
-      id: crypto.randomUUID(),
-      organizationId: workspaceId,
-      userId: currentUser.id,
-      role: invite.role,
-      createdAt,
-    }
-
-    await db.insert(member).values(newMember).run()
-    await syncMemberToLegacyWorkspaceMember(
-      db,
-      workspaceId,
-      currentUser.id,
-      invite.role as WorkspaceRole,
-    )
-
-    await db
-      .update(workspaceInvitation)
-      .set({ status: "accepted", acceptedAt: now, updatedAt: now })
-      .where(eq(workspaceInvitation.id, invite.id))
-      .run()
+  const now = new Date().toISOString()
+  const created = {
+    id: PLATFORM_SETTINGS_ID,
+    platformName: "BucketDrive",
+    enablePublicSignup: true,
+    logoKey: null,
+    faviconKey: null,
+    createdAt: now,
+    updatedAt: now,
   }
+  await db.insert(platformSettings).values(created).run()
+  return created
+}
 
-  // Update user canCreateWorkspaces if invitation allows it
-  if (invite.canCreateWorkspaces) {
-    await db
-      .update(userSchema)
-      .set({ canCreateWorkspaces: true })
-      .where(eq(userSchema.id, currentUser.id))
-      .run()
+function toPlatformSettingsResponse(settings: Awaited<ReturnType<typeof ensurePlatformSettings>>) {
+  return {
+    platformName: settings.platformName,
+    enablePublicSignup: settings.enablePublicSignup,
+    platformLogoUrl: settings.logoKey ? `/api/platform/assets/logo?v=${settings.updatedAt}` : null,
+    faviconUrl: settings.faviconKey ? `/api/platform/assets/favicon?v=${settings.updatedAt}` : null,
   }
+}
 
-  return c.json(
-    AcceptPlatformInvitationResponse.parse({
-      success: true,
-      workspaceId,
-      role: invite.role as WorkspaceRole,
-    }),
-  )
-})
+function parseAssetKind(value: string | undefined): "logo" | "favicon" | null {
+  return value === "logo" || value === "favicon" ? value : null
+}
 
 export const platformHandler = platform

@@ -8,9 +8,7 @@ export const user = sqliteTable("user", {
   emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
   image: text("image"),
   isPlatformAdmin: integer("is_platform_admin", { mode: "boolean" }).notNull().default(false),
-  canCreateWorkspaces: integer("can_create_workspaces", { mode: "boolean" })
-    .notNull()
-    .default(false),
+  role: text("role").notNull().default("viewer"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),
@@ -67,31 +65,6 @@ export const verification = sqliteTable("verification", {
     .notNull()
     .default(sql`(current_timestamp)`),
   updatedAt: text("updated_at")
-    .notNull()
-    .default(sql`(current_timestamp)`),
-})
-
-export const organization = sqliteTable("organization", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  logo: text("logo"),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(current_timestamp)`),
-  metadata: text("metadata"),
-})
-
-export const member = sqliteTable("member", {
-  id: text("id").primaryKey(),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  role: text("role").notNull(),
-  createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),
 })

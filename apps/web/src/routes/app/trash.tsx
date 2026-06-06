@@ -90,7 +90,7 @@ export function TrashPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No bucket found</p>
       </div>
     )
   }

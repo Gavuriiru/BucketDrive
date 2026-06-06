@@ -1,22 +1,15 @@
 import { describe, expect, it } from "vitest"
 import {
-  AcceptPlatformInvitationResponse,
-  CreatePlatformInvitationResponse,
-  ListPlatformInvitationsResponse,
   PlatformJoinResponse,
   PlatformSettingsResponse,
+  UploadPlatformAssetResponse,
   UpdatePlatformSettingsResponse,
 } from "@bucketdrive/shared"
 import { createContractTestContext, expectApiError } from "./test-harness"
 
 describe("platform contracts", () => {
-  it("returns user info, updates settings, joins default workspace, and manages platform invitations", async () => {
+  it("returns user info, updates settings, and joins the bucket", async () => {
     const ctx = createContractTestContext()
-    const invitee = ctx.seedUser({
-      email: "platform-invitee@example.com",
-      name: "Platform Invitee",
-      role: null,
-    })
 
     const me = await ctx.request("/api/platform/me")
     expect(me.status).toBe(200)
@@ -31,7 +24,9 @@ describe("platform contracts", () => {
 
     const readSettings = await ctx.request("/api/platform/settings", { userId: null })
     expect(readSettings.status).toBe(200)
-    PlatformSettingsResponse.parse(await ctx.json(readSettings))
+    expect(PlatformSettingsResponse.parse(await ctx.json(readSettings)).platformName).toBe(
+      "BucketDrive Test",
+    )
 
     const join = await ctx.request("/api/platform/join", {
       method: "POST",
@@ -39,25 +34,24 @@ describe("platform contracts", () => {
     })
     expect(join.status).toBe(200)
     PlatformJoinResponse.parse(await ctx.json(join))
+  })
 
-    const createInvite = await ctx.request("/api/platform/invitations", {
+  it("uploads and serves platform branding assets", async () => {
+    const ctx = createContractTestContext()
+    const form = new FormData()
+    form.set("file", new File([new Uint8Array([1, 2, 3])], "logo.png", { type: "image/png" }))
+
+    const upload = await ctx.request("/api/platform/assets/logo", {
       method: "POST",
-      body: JSON.stringify({ email: invitee.email, role: "viewer", canCreateWorkspaces: true }),
+      body: form,
     })
-    expect(createInvite.status).toBe(201)
-    const invite = CreatePlatformInvitationResponse.parse(await ctx.json(createInvite))
+    expect(upload.status).toBe(200)
+    const uploadBody = UploadPlatformAssetResponse.parse(await ctx.json(upload))
+    expect(uploadBody.settings.platformLogoUrl).toMatch(/^\/api\/platform\/assets\/logo/)
 
-    const list = await ctx.request("/api/platform/invitations")
-    expect(list.status).toBe(200)
-    ListPlatformInvitationsResponse.parse(await ctx.json(list))
-
-    const token = new URL(invite.inviteLink, "http://localhost:5173").searchParams.get("token")
-    const accept = await ctx.request(`/api/platform/invitations/${String(token)}/accept`, {
-      method: "POST",
-      userId: invitee.id,
-    })
-    expect(accept.status).toBe(200)
-    AcceptPlatformInvitationResponse.parse(await ctx.json(accept))
+    const asset = await ctx.request("/api/platform/assets/logo", { userId: null })
+    expect(asset.status).toBe(200)
+    expect(asset.headers.get("content-type")).toContain("image/png")
   })
 
   it("denies platform admin routes to non-admins and validates payloads", async () => {
@@ -77,5 +71,14 @@ describe("platform contracts", () => {
     })
     expect(invalid.status).toBe(400)
     expectApiError(await ctx.json(invalid))
+
+    const form = new FormData()
+    form.set("file", new File(["not image"], "notes.txt", { type: "text/plain" }))
+    const invalidUpload = await ctx.request("/api/platform/assets/favicon", {
+      method: "POST",
+      body: form,
+    })
+    expect(invalidUpload.status).toBe(415)
+    expectApiError(await ctx.json(invalidUpload))
   })
 })

@@ -5,7 +5,6 @@ import type { NotificationType } from "@bucketdrive/shared"
 
 export interface CreateNotificationParams {
   userId: string
-  workspaceId?: string | null
   type: NotificationType
   title: string
   message: string
@@ -23,7 +22,6 @@ export class NotificationsService {
       .values({
         id,
         userId: params.userId,
-        workspaceId: params.workspaceId ?? null,
         type: params.type,
         title: params.title,
         message: params.message,
@@ -36,7 +34,6 @@ export class NotificationsService {
     return {
       id,
       userId: params.userId,
-      workspaceId: params.workspaceId ?? null,
       type: params.type,
       title: params.title,
       message: params.message,

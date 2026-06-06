@@ -1,12 +1,18 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { useEffect, useState, type ReactNode } from "react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
-import { useDashboardSettings, useUpdateDashboardSettings } from "@/lib/api"
+import {
+  useDashboardSettings,
+  useUpdateDashboardSettings,
+  useUploadBucketBrandingLogo,
+} from "@/lib/api"
+import { Image, Upload } from "lucide-react"
 
 export function SettingsPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const settingsQuery = useDashboardSettings(workspaceId)
   const updateSettings = useUpdateDashboardSettings(workspaceId)
+  const uploadBrandingLogo = useUploadBucketBrandingLogo(workspaceId)
 
   const [quotaGb, setQuotaGb] = useState("10")
   const [maxFileSizeMb, setMaxFileSizeMb] = useState("5120")
@@ -46,7 +52,7 @@ export function SettingsPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No bucket found</p>
       </div>
     )
   }
@@ -59,7 +65,7 @@ export function SettingsPage() {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <div>
-        <h1 className="text-text-primary text-2xl font-semibold">Workspace Settings</h1>
+        <h1 className="text-text-primary text-2xl font-semibold">Bucket Settings</h1>
         <p className="text-text-secondary mt-2 text-sm">
           Update quota, upload policy, retention, branding, and public signup behavior.
         </p>
@@ -143,7 +149,39 @@ export function SettingsPage() {
               className={inputClasses}
             />
           </Field>
-          <Field label="Branding logo URL">
+          <Field label="Branding logo">
+            <label className="border-border-muted bg-bg-tertiary hover:bg-surface-hover flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors">
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="bg-surface-default flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+                  {settings.brandingLogoAssetUrl || brandingLogoUrl ? (
+                    <img
+                      src={settings.brandingLogoAssetUrl ?? brandingLogoUrl}
+                      alt=""
+                      className="h-8 w-8 object-contain"
+                    />
+                  ) : (
+                    <Image className="text-text-tertiary h-5 w-5" />
+                  )}
+                </span>
+                <span className="text-text-secondary truncate text-sm">
+                  {uploadBrandingLogo.isPending ? "Uploading..." : "Upload image"}
+                </span>
+              </span>
+              <Upload className="text-accent h-4 w-4 shrink-0" />
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploadBrandingLogo.isPending}
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) uploadBrandingLogo.mutate({ file })
+                  event.target.value = ""
+                }}
+              />
+            </label>
+          </Field>
+          <Field label="External logo URL">
             <input
               value={brandingLogoUrl}
               onChange={(event) => setBrandingLogoUrl(event.target.value)}
@@ -167,7 +205,7 @@ export function SettingsPage() {
             onChange={(event) => setEnablePublicSignup(event.target.checked)}
             className="accent-accent h-4 w-4"
           />
-          Enable public signup for this workspace
+          Enable public signup for this bucket
         </label>
 
         <div className="flex items-center justify-between gap-3">
@@ -184,9 +222,11 @@ export function SettingsPage() {
         </div>
       </form>
 
-      {(settingsQuery.isError || updateSettings.isError) && (
+      {(settingsQuery.isError || updateSettings.isError || uploadBrandingLogo.isError) && (
         <div className="border-error/40 bg-error/10 text-error rounded-xl border px-4 py-3 text-sm">
-          {settingsQuery.error?.message ?? updateSettings.error?.message}
+          {settingsQuery.error?.message ??
+            updateSettings.error?.message ??
+            uploadBrandingLogo.error?.message}
         </div>
       )}
     </div>

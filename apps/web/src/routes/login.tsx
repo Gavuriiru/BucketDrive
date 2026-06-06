@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { Link, useSearch } from "@tanstack/react-router"
-import { FolderOpen } from "lucide-react"
+import { BrandMark, useBranding } from "@/lib/branding"
 
 const GitHubIcon = () => (
   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -25,14 +26,15 @@ async function signIn(provider: string, redirectPath: string) {
 export function LoginPage() {
   const search: { redirect?: string } = useSearch({ strict: false })
   const redirectPath = search.redirect?.startsWith("/") ? search.redirect : "/dashboard"
+  const branding = useBranding()
 
   return (
     <main className="bg-bg-primary flex min-h-screen flex-col items-center justify-center gap-6">
       <div className="bg-surface-hover flex h-16 w-16 items-center justify-center rounded-2xl">
-        <FolderOpen className="text-accent h-8 w-8" />
+        <BrandMark className="h-8 w-8" />
       </div>
       <div className="text-center">
-        <h1 className="text-text-primary text-3xl font-semibold">BucketDrive</h1>
+        <h1 className="text-text-primary text-3xl font-semibold">{branding.name}</h1>
         <p className="text-text-secondary mt-2">Sign in to access your files</p>
       </div>
       <button

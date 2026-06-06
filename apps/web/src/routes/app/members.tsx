@@ -6,7 +6,6 @@ import {
   useMembers,
   useRemoveMember,
   useRevokeInvitation,
-  useTransferOwnership,
   useUpdateMemberRole,
 } from "@/lib/api"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
@@ -14,14 +13,12 @@ import { can, type WorkspaceRole } from "@bucketdrive/shared"
 
 const editableRoles: WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer"]
 const inviteRoles: Array<Exclude<WorkspaceRole, "owner">> = ["admin", "manager", "editor", "viewer"]
-const ownershipTransferRecipientRoles = new Set<WorkspaceRole>(["admin"])
 
 type Tab = "members" | "invitations"
 
 export function MembersPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
   const currentUserRole = workspace?.role ?? "viewer"
-  const isOwner = can(currentUserRole, "workspace.transfer")
   const canInviteMembers = can(currentUserRole, "users.invite")
   const canManageMembers = can(currentUserRole, "users.update_roles")
 
@@ -31,7 +28,6 @@ export function MembersPage() {
   const updateMemberRole = useUpdateMemberRole(workspaceId)
   const removeMember = useRemoveMember(workspaceId)
   const revokeInvitation = useRevokeInvitation(workspaceId)
-  const transferOwnership = useTransferOwnership(workspaceId)
 
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<Exclude<WorkspaceRole, "owner">>("editor")
@@ -40,7 +36,6 @@ export function MembersPage() {
     null,
   )
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
-  const [transferTargetId, setTransferTargetId] = useState<string | null>(null)
 
   if (workspacesLoading || membersQuery.isLoading) {
     return (
@@ -53,7 +48,7 @@ export function MembersPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No bucket found</p>
       </div>
     )
   }
@@ -66,7 +61,7 @@ export function MembersPage() {
       <div>
         <h1 className="text-text-primary text-2xl font-semibold">Members</h1>
         <p className="text-text-secondary mt-2 text-sm">
-          Invite members by email, manage roles, and transfer workspace ownership.
+          Invite members by email and manage global bucket roles.
         </p>
       </div>
 
@@ -240,19 +235,11 @@ export function MembersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {isOwner && ownershipTransferRecipientRoles.has(entry.role) && (
-                        <button
-                          onClick={() => setTransferTargetId(entry.userId)}
-                          className="border-accent/40 text-accent hover:bg-accent/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
-                        >
-                          Transfer ownership
-                        </button>
-                      )}
                       {can(currentUserRole, "users.remove") && (
                         <button
                           onClick={() => {
                             const confirmed = window.confirm(
-                              `Remove ${entry.name} from this workspace?`,
+                              `Remove ${entry.name} from this bucket?`,
                             )
                             if (confirmed) {
                               removeMember.mutate({ memberId: entry.id })
@@ -353,45 +340,6 @@ export function MembersPage() {
               No pending invitations.
             </div>
           )}
-        </div>
-      )}
-
-      {transferTargetId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="border-border-default bg-surface-default w-full max-w-md rounded-2xl border p-6 shadow-lg">
-            <h3 className="text-text-primary text-lg font-semibold">Transfer Ownership</h3>
-            <p className="text-text-secondary mt-2 text-sm">
-              You are about to transfer ownership of this workspace. You will be downgraded to
-              admin. This action cannot be undone.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setTransferTargetId(null)}
-                className="border-border-default text-text-secondary hover:bg-surface-hover rounded-xl border px-4 py-2 text-sm font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  transferOwnership.mutate(
-                    { newOwnerId: transferTargetId },
-                    {
-                      onSuccess: () => {
-                        setTransferTargetId(null)
-                      },
-                    },
-                  )
-                }}
-                disabled={transferOwnership.isPending}
-                className="bg-accent rounded-xl px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {transferOwnership.isPending ? "Transferring..." : "Confirm Transfer"}
-              </button>
-            </div>
-            {transferOwnership.isError && (
-              <p className="text-error mt-3 text-sm">{transferOwnership.error.message}</p>
-            )}
-          </div>
         </div>
       )}
 

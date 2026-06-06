@@ -27,6 +27,16 @@ export interface StorageProvider {
     expiresIn?: number,
     options?: { filename?: string },
   ): Promise<string>
+  upload(input: {
+    key: string
+    body: ArrayBuffer | Uint8Array | string
+    contentType?: string
+  }): Promise<void>
+  getObject(key: string): Promise<{
+    body: ReadableStream
+    contentType?: string
+    size: number
+  } | null>
   delete(key: string): Promise<void>
   copy(fromKey: string, toKey: string): Promise<void>
   createMultipartUpload(key: string): Promise<{ uploadId: string }>
@@ -150,6 +160,31 @@ export class R2StorageProvider implements StorageProvider {
 
   async delete(key: string): Promise<void> {
     await this.binding.delete(key)
+  }
+
+  async upload(input: {
+    key: string
+    body: ArrayBuffer | Uint8Array | string
+    contentType?: string
+  }): Promise<void> {
+    await this.binding.put(input.key, input.body, {
+      httpMetadata: input.contentType ? { contentType: input.contentType } : undefined,
+    })
+  }
+
+  async getObject(key: string): Promise<{
+    body: ReadableStream
+    contentType?: string
+    size: number
+  } | null> {
+    const object = await this.binding.get(key)
+    if (!object) return null
+    if (!object.body) return null
+    return {
+      body: object.body,
+      contentType: object.httpMetadata?.contentType,
+      size: object.size,
+    }
   }
 
   async copy(fromKey: string, toKey: string): Promise<void> {
@@ -313,6 +348,31 @@ class R2BindingProvider implements StorageProvider {
 
   async delete(key: string): Promise<void> {
     await this.binding.delete(key)
+  }
+
+  async upload(input: {
+    key: string
+    body: ArrayBuffer | Uint8Array | string
+    contentType?: string
+  }): Promise<void> {
+    await this.binding.put(input.key, input.body, {
+      httpMetadata: input.contentType ? { contentType: input.contentType } : undefined,
+    })
+  }
+
+  async getObject(key: string): Promise<{
+    body: ReadableStream
+    contentType?: string
+    size: number
+  } | null> {
+    const object = await this.binding.get(key)
+    if (!object) return null
+    if (!object.body) return null
+    return {
+      body: object.body,
+      contentType: object.httpMetadata?.contentType,
+      size: object.size,
+    }
   }
 
   async copy(fromKey: string, toKey: string): Promise<void> {

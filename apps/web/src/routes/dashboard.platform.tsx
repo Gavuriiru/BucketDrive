@@ -5,18 +5,19 @@ import {
   useUpdatePlatformSettings,
   usePlatformInvitations,
   useCreatePlatformInvitation,
+  useUploadPlatformAsset,
 } from "@/lib/api"
-import { Users, Settings, Copy, Check } from "lucide-react"
+import { Users, Settings, Copy, Check, Upload, Image } from "lucide-react"
 
 export function PlatformAdminPage() {
   const { data: settings, isLoading } = usePlatformSettings()
   const updateSettings = useUpdatePlatformSettings()
+  const uploadAsset = useUploadPlatformAsset()
   const { data: invitationsData } = usePlatformInvitations()
   const createInvitation = useCreatePlatformInvitation()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("viewer")
-  const [inviteCanCreate, setInviteCanCreate] = useState(false)
 
   if (isLoading) {
     return (
@@ -57,26 +58,23 @@ export function PlatformAdminPage() {
                 className="border-border-default bg-bg-primary text-text-primary focus:border-accent mt-1 block w-full rounded-xl border px-3 py-2 text-sm outline-none"
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-text-primary text-sm font-medium">Allow Workspace Creation</p>
-                <p className="text-text-tertiary text-xs">Let users create their own workspaces</p>
-              </div>
-              <button
-                type="button"
-                aria-pressed={Boolean(settings?.allowUserWorkspaceCreation)}
-                disabled={updateSettings.isPending}
-                onClick={() => {
-                  void updateSettings.mutate({
-                    allowUserWorkspaceCreation: !settings?.allowUserWorkspaceCreation,
-                  })
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AssetUpload
+                label="Logo"
+                previewUrl={settings?.platformLogoUrl}
+                disabled={uploadAsset.isPending}
+                onSelect={(file) => {
+                  uploadAsset.mutate({ kind: "logo", file })
                 }}
-                className={`relative h-6 w-11 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${settings?.allowUserWorkspaceCreation ? "bg-accent" : "bg-border-default"}`}
-              >
-                <span
-                  className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${settings?.allowUserWorkspaceCreation ? "translate-x-5" : ""}`}
-                />
-              </button>
+              />
+              <AssetUpload
+                label="Favicon"
+                previewUrl={settings?.faviconUrl}
+                disabled={uploadAsset.isPending}
+                onSelect={(file) => {
+                  uploadAsset.mutate({ kind: "favicon", file })
+                }}
+              />
             </div>
             <div className="flex items-center justify-between">
               <div>
@@ -113,13 +111,11 @@ export function PlatformAdminPage() {
                 {
                   email: inviteEmail.trim(),
                   role: inviteRole,
-                  canCreateWorkspaces: inviteCanCreate,
                 },
                 {
                   onSuccess: () => {
                     setInviteEmail("")
                     setInviteRole("viewer")
-                    setInviteCanCreate(false)
                   },
                 },
               )
@@ -149,17 +145,6 @@ export function PlatformAdminPage() {
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
-              <label className="text-text-secondary flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={inviteCanCreate}
-                  onChange={(e) => {
-                    setInviteCanCreate(e.target.checked)
-                  }}
-                  className="border-border-default h-4 w-4 rounded"
-                />
-                Can create workspaces
-              </label>
             </div>
             {createInvitation.isError && (
               <p className="text-error text-sm">{createInvitation.error?.message ?? "Failed"}</p>
@@ -182,22 +167,14 @@ export function PlatformAdminPage() {
             <p className="text-text-tertiary text-sm">No pending invitations.</p>
           ) : (
             (invitationsData?.data ?? []).map(
-              (inv: {
-                id: string
-                email: string
-                role: string
-                canCreateWorkspaces: boolean
-                inviteLink?: string
-              }) => (
+              (inv: { id: string; email: string; role: string; inviteLink?: string }) => (
                 <div
                   key={inv.id}
                   className="border-border-muted bg-bg-tertiary flex items-center justify-between rounded-xl border px-4 py-3"
                 >
                   <div>
                     <p className="text-text-primary text-sm font-medium">{inv.email}</p>
-                    <p className="text-text-tertiary text-xs">
-                      Role: {inv.role} {inv.canCreateWorkspaces ? "(can create workspaces)" : ""}
-                    </p>
+                    <p className="text-text-tertiary text-xs">Role: {inv.role}</p>
                   </div>
                   <button
                     type="button"
@@ -225,5 +202,50 @@ export function PlatformAdminPage() {
         </div>
       </section>
     </div>
+  )
+}
+
+function AssetUpload({
+  label,
+  previewUrl,
+  disabled,
+  onSelect,
+}: {
+  label: string
+  previewUrl?: string | null
+  disabled: boolean
+  onSelect: (file: File) => void
+}) {
+  return (
+    <label className="border-border-muted bg-bg-tertiary hover:bg-surface-hover grid cursor-pointer gap-2 rounded-xl border p-3 transition-colors">
+      <span className="text-text-secondary flex items-center gap-2 text-sm font-medium">
+        <Image className="h-4 w-4" />
+        {label}
+      </span>
+      <span className="flex items-center justify-between gap-3">
+        <span className="bg-surface-default flex h-10 w-10 items-center justify-center rounded-lg">
+          {previewUrl ? (
+            <img src={previewUrl} alt="" className="h-8 w-8 object-contain" />
+          ) : (
+            <Image className="text-text-tertiary h-5 w-5" />
+          )}
+        </span>
+        <span className="text-accent inline-flex items-center gap-1 text-xs font-medium">
+          <Upload className="h-3.5 w-3.5" />
+          Upload
+        </span>
+      </span>
+      <input
+        type="file"
+        accept="image/*"
+        disabled={disabled}
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) onSelect(file)
+          event.target.value = ""
+        }}
+      />
+    </label>
   )
 }

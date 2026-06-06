@@ -31,7 +31,7 @@ export function DashboardPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No bucket found</p>
       </div>
     )
   }
@@ -72,7 +72,7 @@ export function DashboardPage() {
         <div className="flex flex-wrap gap-2">
           <QuickLink to="/dashboard/files" icon={Files} label="Open Files" />
           <QuickLink to="/dashboard/members" icon={Users} label="Manage Members" />
-          <QuickLink to="/dashboard/settings" icon={HardDrive} label="Workspace Settings" />
+          <QuickLink to="/dashboard/settings" icon={HardDrive} label="Bucket Settings" />
         </div>
       </section>
 
@@ -228,7 +228,7 @@ export function DashboardPage() {
         <div className="border-border-default bg-surface-default rounded-2xl border p-5">
           <h2 className="text-text-primary text-base font-semibold">Admin Shortcuts</h2>
           <p className="text-text-tertiary mt-1 text-xs">
-            Jump into the most common operations for workspace administration.
+            Jump into the most common operations for bucket administration.
           </p>
           <div className="mt-5 grid gap-3">
             <ShortcutCard

@@ -4,6 +4,7 @@ import { user as userSchema } from "@bucketdrive/shared/db/schema"
 import { createAuth } from "../lib/auth"
 import { getDB } from "../lib/db"
 import { getE2ESession } from "../lib/e2e-auth"
+import type { WorkspaceRole } from "@bucketdrive/shared"
 
 interface AuthVariables {
   user: {
@@ -11,7 +12,7 @@ interface AuthVariables {
     email: string
     name: string
     isPlatformAdmin: boolean
-    canCreateWorkspaces: boolean
+    role: WorkspaceRole
   }
   session: { id: string; userId: string; expiresAt: Date }
 }
@@ -44,7 +45,7 @@ export const authMiddleware = createMiddleware<{
   let dbUser = await db
     .select({
       isPlatformAdmin: userSchema.isPlatformAdmin,
-      canCreateWorkspaces: userSchema.canCreateWorkspaces,
+      role: userSchema.role,
     })
     .from(userSchema)
     .where(eq(userSchema.id, session.user.id))
@@ -53,12 +54,12 @@ export const authMiddleware = createMiddleware<{
   const ownerEmail = c.env.PLATFORM_OWNER_EMAIL?.trim().toLowerCase()
   const isConfiguredOwner = Boolean(ownerEmail) && session.user.email.toLowerCase() === ownerEmail
 
-  if (isConfiguredOwner && (!dbUser?.isPlatformAdmin || !dbUser.canCreateWorkspaces)) {
+  if (isConfiguredOwner && (!dbUser?.isPlatformAdmin || dbUser.role !== "owner")) {
     await db
       .update(userSchema)
       .set({
         isPlatformAdmin: true,
-        canCreateWorkspaces: true,
+        role: "owner",
         updatedAt: new Date().toISOString(),
       })
       .where(eq(userSchema.id, session.user.id))
@@ -66,14 +67,14 @@ export const authMiddleware = createMiddleware<{
 
     dbUser = {
       isPlatformAdmin: true,
-      canCreateWorkspaces: true,
+      role: "owner",
     }
   }
 
   c.set("user", {
     ...session.user,
     isPlatformAdmin: dbUser?.isPlatformAdmin ?? false,
-    canCreateWorkspaces: dbUser?.canCreateWorkspaces ?? false,
+    role: (dbUser?.role ?? "viewer") as WorkspaceRole,
   })
   c.set("session", session.session)
 

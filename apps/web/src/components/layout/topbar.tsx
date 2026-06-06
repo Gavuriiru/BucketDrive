@@ -8,6 +8,7 @@ import { useAppStore } from "@/stores/app-store"
 import { useSearchStore } from "@/stores/search-store"
 import { useCommandPaletteStore } from "@/stores/command-palette-store"
 import { NotificationBell } from "@/components/features/notification-bell"
+import { BrandMark, useBranding } from "@/lib/branding"
 
 export function Topbar() {
   const { data: session, isLoading } = useSession()
@@ -21,6 +22,7 @@ export function Topbar() {
   const routeKey = searchContext.routeKey
   const query = useSearchStore((state) => (routeKey ? state[routeKey].query : ""))
   const setRouteQuery = useSearchStore((state) => state.setRouteQuery)
+  const branding = useBranding()
 
   const themeOptions = [
     { value: "light" as const, label: "Light", icon: Sun },
@@ -33,7 +35,10 @@ export function Topbar() {
   return (
     <header className="h-topbar border-border-muted bg-bg-primary flex items-center gap-4 border-b px-4">
       <div className="flex items-center gap-2">
-        <span className="text-text-primary text-lg font-semibold tracking-tight">BucketDrive</span>
+        <BrandMark className="h-6 w-6" />
+        <span className="text-text-primary text-lg font-semibold tracking-tight">
+          {branding.name}
+        </span>
       </div>
 
       <div className="flex flex-1 items-center justify-center">

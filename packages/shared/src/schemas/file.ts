@@ -3,7 +3,6 @@ import { AuthUserId } from "./common"
 
 export const FileObjectSchema = z.object({
   id: z.string().uuid(),
-  workspaceId: z.string().uuid(),
   bucketId: z.string().uuid(),
   folderId: z.string().uuid().nullable(),
   ownerId: AuthUserId,

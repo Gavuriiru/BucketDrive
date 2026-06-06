@@ -9,17 +9,10 @@ import {
   RevokeInvitationResponse,
   type WorkspaceRole,
 } from "@bucketdrive/shared"
-import { workspaceInvitation, workspace, member, user } from "@bucketdrive/shared/db/schema"
+import { auditLog, bucketInvitation, user } from "@bucketdrive/shared/db/schema"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
-import {
-  ensureOrganizationForWorkspace,
-  syncMemberToLegacyWorkspaceMember,
-  syncWorkspaceMemberships,
-} from "../../lib/workspace-membership"
-import { auditLog } from "@bucketdrive/shared/db/schema"
-import { NotificationsService } from "../notifications/notifications.service"
 
 interface InvitationsEnv {
   DB: D1Database
@@ -31,65 +24,44 @@ interface InvitationsVariables {
   session: { id: string; userId: string; expiresAt: Date }
 }
 
-const INVITE_EXPIRY_DAYS = 7
+const invitations = new Hono<{ Bindings: InvitationsEnv; Variables: InvitationsVariables }>()
+const publicInvitations = new Hono<{ Bindings: InvitationsEnv; Variables: InvitationsVariables }>()
 
-function generateToken(): string {
-  return crypto.randomUUID()
-}
+invitations.use("*", authMiddleware)
 
-function getInviteLink(appUrl: string | undefined, token: string): string {
+function inviteLink(appUrl: string | undefined, token: string) {
   const base = appUrl?.replace(/\/$/, "") ?? ""
   return `${base}/join?token=${token}`
 }
 
-const invitations = new Hono<{ Bindings: InvitationsEnv; Variables: InvitationsVariables }>()
-
-invitations.use("*", authMiddleware)
-
 invitations.get("/", requirePermission("users.invite"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
   const db = getDB()
-  const now = new Date().toISOString()
-
   const rows = await db
     .select({
-      id: workspaceInvitation.id,
-      workspaceId: workspaceInvitation.workspaceId,
-      email: workspaceInvitation.email,
-      role: workspaceInvitation.role,
-      invitedBy: workspaceInvitation.invitedBy,
-      status: workspaceInvitation.status,
-      expiresAt: workspaceInvitation.expiresAt,
-      createdAt: workspaceInvitation.createdAt,
+      id: bucketInvitation.id,
+      email: bucketInvitation.email,
+      role: bucketInvitation.role,
+      invitedBy: bucketInvitation.invitedBy,
+      status: bucketInvitation.status,
+      expiresAt: bucketInvitation.expiresAt,
+      createdAt: bucketInvitation.createdAt,
     })
-    .from(workspaceInvitation)
+    .from(bucketInvitation)
     .where(
       and(
-        eq(workspaceInvitation.workspaceId, workspaceId),
-        eq(workspaceInvitation.status, "pending"),
-        gte(workspaceInvitation.expiresAt, now),
+        eq(bucketInvitation.status, "pending"),
+        gte(bucketInvitation.expiresAt, new Date().toISOString()),
       ),
     )
     .all()
-
-  const inviterIds = [...new Set(rows.map((r) => r.invitedBy))]
-
-  // Query all users and filter since inArray support varies across SQLite drivers
-  const allInviters =
-    inviterIds.length > 0 ? await db.select({ id: user.id, name: user.name }).from(user).all() : []
-  const inviterMap = new Map(allInviters.map((u) => [u.id, u.name]))
-
+  const users = await db.select({ id: user.id, name: user.name }).from(user).all()
+  const userNameById = new Map(users.map((row) => [row.id, row.name]))
   const data = rows.map((row) =>
     InvitationListItemSchema.parse({
       ...row,
-      invitedByName: inviterMap.get(row.invitedBy) ?? "Unknown",
+      invitedByName: userNameById.get(row.invitedBy) ?? "Unknown",
     }),
   )
-
   return c.json(
     ListInvitationsResponse.parse({
       data,
@@ -104,208 +76,95 @@ invitations.get("/", requirePermission("users.invite"), async (c) => {
 })
 
 invitations.post("/", requirePermission("users.invite"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
   const actor = c.get("user")
   const db = getDB()
   const body = CreateInvitationRequest.parse(await c.req.json())
-  const appUrl = c.env.APP_URL
-
-  await Promise.all([
-    ensureOrganizationForWorkspace(db, workspaceId),
-    syncWorkspaceMemberships(db, workspaceId),
-  ])
-
-  // Check if already a member
-  const existingMember = await db
-    .select({ id: member.id })
-    .from(member)
-    .where(and(eq(member.organizationId, workspaceId), eq(member.userId, actor.id)))
-    .get()
-
-  if (!existingMember) {
-    return c.json({ code: "WORKSPACE_ACCESS_DENIED", message: "Not a workspace member" }, 403)
-  }
-
-  // Check if email is already a member
   const targetUser = await db
     .select({ id: user.id })
     .from(user)
     .where(eq(user.email, body.email.toLowerCase()))
     .get()
-  if (targetUser) {
-    const alreadyMember = await db
-      .select({ id: member.id })
-      .from(member)
-      .where(and(eq(member.organizationId, workspaceId), eq(member.userId, targetUser.id)))
-      .get()
-    if (alreadyMember) {
-      return c.json({ code: "USER_ALREADY_MEMBER", message: "User is already a member" }, 409)
-    }
-  }
-
-  // Check for existing pending invitation for this email
-  const existingInvite = await db
-    .select({ id: workspaceInvitation.id })
-    .from(workspaceInvitation)
+  if (targetUser)
+    return c.json({ code: "USER_ALREADY_MEMBER", message: "User already exists" }, 409)
+  const existing = await db
+    .select({ id: bucketInvitation.id })
+    .from(bucketInvitation)
     .where(
       and(
-        eq(workspaceInvitation.workspaceId, workspaceId),
-        eq(workspaceInvitation.email, body.email.toLowerCase()),
-        eq(workspaceInvitation.status, "pending"),
+        eq(bucketInvitation.email, body.email.toLowerCase()),
+        eq(bucketInvitation.status, "pending"),
       ),
     )
     .get()
-
-  if (existingInvite) {
+  if (existing)
     return c.json(
       { code: "CONFLICT", message: "Pending invitation already exists for this email" },
       409,
     )
-  }
-
   const now = new Date()
-  const expiresAt = new Date(now.getTime() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
-  const token = generateToken()
-
-  const createdInvitation = {
+  const token = crypto.randomUUID()
+  const created = {
     id: crypto.randomUUID(),
-    workspaceId,
     email: body.email.toLowerCase(),
     token,
     role: body.role,
     invitedBy: actor.id,
-    status: "pending" as const,
-    expiresAt: expiresAt.toISOString(),
+    status: "pending",
+    expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    acceptedAt: null,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   }
-
-  await db.insert(workspaceInvitation).values(createdInvitation).run()
-  await writeInvitationAudit(db, {
-    workspaceId,
-    actorId: actor.id,
-    action: "member.invited",
-    resourceId: createdInvitation.id,
-    metadata: { email: body.email, role: body.role },
+  await db.insert(bucketInvitation).values(created).run()
+  await writeAudit(db, actor.id, "member.invited", created.id, {
+    email: body.email,
+    role: body.role,
   })
-
-  const ws = await db
-    .select({ name: workspace.name, slug: workspace.slug })
-    .from(workspace)
-    .where(eq(workspace.id, workspaceId))
-    .get()
-
   return c.json(
-    {
-      id: createdInvitation.id,
-      workspaceId,
-      workspaceName: ws?.name ?? "",
-      workspaceSlug: ws?.slug ?? "",
-      email: createdInvitation.email,
-      role: createdInvitation.role,
-      invitedByName: actor.name,
-      status: createdInvitation.status,
-      expiresAt: createdInvitation.expiresAt,
-      createdAt: createdInvitation.createdAt,
-      inviteLink: getInviteLink(appUrl, token),
-    },
+    { ...created, invitedByName: actor.name, inviteLink: inviteLink(c.env.APP_URL, token) },
     201,
   )
 })
 
 invitations.delete("/:invitationId", requirePermission("users.invite"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  const invitationId = c.req.param("invitationId")
-  if (!workspaceId || !invitationId) {
-    return c.json(
-      { code: "VALIDATION_ERROR", message: "workspaceId and invitationId are required" },
-      400,
-    )
-  }
-
   const actor = c.get("user")
   const db = getDB()
-
+  const invitationId = c.req.param("invitationId")
   const target = await db
     .select()
-    .from(workspaceInvitation)
-    .where(
-      and(
-        eq(workspaceInvitation.id, invitationId),
-        eq(workspaceInvitation.workspaceId, workspaceId),
-      ),
-    )
+    .from(bucketInvitation)
+    .where(eq(bucketInvitation.id, invitationId))
     .get()
-
-  if (!target) {
-    return c.json({ code: "NOT_FOUND", message: "Invitation not found" }, 404)
-  }
-
+  if (!target) return c.json({ code: "NOT_FOUND", message: "Invitation not found" }, 404)
   await db
-    .update(workspaceInvitation)
+    .update(bucketInvitation)
     .set({ status: "revoked", updatedAt: new Date().toISOString() })
-    .where(eq(workspaceInvitation.id, invitationId))
+    .where(eq(bucketInvitation.id, invitationId))
     .run()
-
-  await writeInvitationAudit(db, {
-    workspaceId,
-    actorId: actor.id,
-    action: "member.invitation_revoked",
-    resourceId: invitationId,
-    metadata: { email: target.email, role: target.role },
+  await writeAudit(db, actor.id, "member.invitation_revoked", invitationId, {
+    email: target.email,
+    role: target.role,
   })
-
   return c.json(RevokeInvitationResponse.parse({ success: true, invitationId }))
 })
 
-// Public endpoints (no auth required for GET by token)
-const publicInvitations = new Hono<{ Bindings: InvitationsEnv }>()
-
 publicInvitations.get("/:token", async (c) => {
-  const token = c.req.param("token")
   const db = getDB()
-  const now = new Date().toISOString()
-
+  const token = c.req.param("token")
   const invite = await db
     .select()
-    .from(workspaceInvitation)
-    .where(and(eq(workspaceInvitation.token, token), eq(workspaceInvitation.status, "pending")))
+    .from(bucketInvitation)
+    .where(eq(bucketInvitation.token, token))
     .get()
-
-  if (!invite) {
-    return c.json({ code: "NOT_FOUND", message: "Invitation not found or already used" }, 404)
-  }
-
-  if (invite.expiresAt < now) {
-    await db
-      .update(workspaceInvitation)
-      .set({ status: "expired", updatedAt: new Date().toISOString() })
-      .where(eq(workspaceInvitation.id, invite.id))
-      .run()
-    return c.json({ code: "SHARE_EXPIRED", message: "Invitation has expired" }, 410)
-  }
-
-  const ws = await db
-    .select({ name: workspace.name, slug: workspace.slug })
-    .from(workspace)
-    .where(eq(workspace.id, invite.workspaceId))
-    .get()
+  if (!invite) return c.json({ code: "NOT_FOUND", message: "Invitation not found" }, 404)
   const inviter = await db
     .select({ name: user.name })
     .from(user)
     .where(eq(user.id, invite.invitedBy))
     .get()
-
   return c.json(
     InvitationDetailResponse.parse({
       id: invite.id,
-      workspaceId: invite.workspaceId,
-      workspaceName: ws?.name ?? "",
-      workspaceSlug: ws?.slug ?? "",
       email: invite.email,
       role: invite.role,
       invitedByName: inviter?.name ?? "Unknown",
@@ -317,138 +176,63 @@ publicInvitations.get("/:token", async (c) => {
 })
 
 publicInvitations.post("/:token/accept", authMiddleware, async (c) => {
-  const token = c.req.param("token")
-  const user = c.get("user")
   const db = getDB()
+  const currentUser = c.get("user")
+  const token = c.req.param("token")
   const now = new Date().toISOString()
-
   const invite = await db
     .select()
-    .from(workspaceInvitation)
-    .where(and(eq(workspaceInvitation.token, token), eq(workspaceInvitation.status, "pending")))
+    .from(bucketInvitation)
+    .where(and(eq(bucketInvitation.token, token), eq(bucketInvitation.status, "pending")))
     .get()
-
-  if (!invite) {
+  if (!invite)
     return c.json({ code: "NOT_FOUND", message: "Invitation not found or already used" }, 404)
-  }
-
   if (invite.expiresAt < now) {
     await db
-      .update(workspaceInvitation)
+      .update(bucketInvitation)
       .set({ status: "expired", updatedAt: now })
-      .where(eq(workspaceInvitation.id, invite.id))
+      .where(eq(bucketInvitation.id, invite.id))
       .run()
     return c.json({ code: "SHARE_EXPIRED", message: "Invitation has expired" }, 410)
   }
-
-  if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
+  if (invite.email.toLowerCase() !== currentUser.email.toLowerCase()) {
     return c.json(
       { code: "FORBIDDEN", message: "This invitation is for a different email address" },
       403,
     )
   }
-
-  const workspaceId = invite.workspaceId
-
-  await Promise.all([
-    ensureOrganizationForWorkspace(db, workspaceId),
-    syncWorkspaceMemberships(db, workspaceId),
-  ])
-
-  // Check if already a member
-  const existing = await db
-    .select({ id: member.id })
-    .from(member)
-    .where(and(eq(member.organizationId, workspaceId), eq(member.userId, user.id)))
-    .get()
-
-  if (existing) {
-    // Mark invitation as accepted anyway
-    await db
-      .update(workspaceInvitation)
-      .set({ status: "accepted", acceptedAt: now, updatedAt: now })
-      .where(eq(workspaceInvitation.id, invite.id))
-      .run()
-    return c.json(
-      AcceptInvitationResponse.parse({
-        success: true,
-        workspaceId,
-        role: invite.role as WorkspaceRole,
-      }),
-    )
-  }
-
-  const createdAt = now
-  const newMember = {
-    id: crypto.randomUUID(),
-    organizationId: workspaceId,
-    userId: user.id,
-    role: invite.role,
-    createdAt,
-  }
-
-  await db.insert(member).values(newMember).run()
-  await syncMemberToLegacyWorkspaceMember(db, workspaceId, user.id, invite.role as WorkspaceRole)
-
   await db
-    .update(workspaceInvitation)
-    .set({ status: "accepted", acceptedAt: now, updatedAt: now })
-    .where(eq(workspaceInvitation.id, invite.id))
+    .update(user)
+    .set({ role: invite.role, updatedAt: now })
+    .where(eq(user.id, currentUser.id))
     .run()
-
-  await writeInvitationAudit(db, {
-    workspaceId,
-    actorId: user.id,
-    action: "member.joined",
-    resourceId: newMember.id,
-    metadata: { email: user.email, role: invite.role, invitationId: invite.id },
-  })
-
-  // Notify inviter that their invitation was accepted
-  const notifications = new NotificationsService()
-  const ws = await db
-    .select({ name: workspace.name })
-    .from(workspace)
-    .where(eq(workspace.id, workspaceId))
-    .get()
-  await notifications.createNotification({
-    userId: invite.invitedBy,
-    workspaceId,
-    type: "member.joined",
-    title: "Invitation accepted",
-    message: `${user.name} (${user.email}) has accepted your invitation to join ${ws?.name ?? "the workspace"}.`,
-    data: { invitationId: invite.id, memberId: newMember.id, workspaceId },
-  })
-
+  await db
+    .update(bucketInvitation)
+    .set({ status: "accepted", acceptedAt: now, updatedAt: now })
+    .where(eq(bucketInvitation.id, invite.id))
+    .run()
+  await writeAudit(db, currentUser.id, "member.joined", currentUser.id, { role: invite.role })
   return c.json(
-    AcceptInvitationResponse.parse({
-      success: true,
-      workspaceId,
-      role: invite.role as WorkspaceRole,
-    }),
+    AcceptInvitationResponse.parse({ success: true, role: invite.role as WorkspaceRole }),
   )
 })
 
-async function writeInvitationAudit(
+async function writeAudit(
   db: ReturnType<typeof getDB>,
-  params: {
-    workspaceId: string
-    actorId: string
-    action: string
-    resourceId: string
-    metadata: Record<string, unknown>
-  },
+  actorId: string,
+  action: string,
+  resourceId: string,
+  metadata: Record<string, unknown>,
 ) {
   await db
     .insert(auditLog)
     .values({
       id: crypto.randomUUID(),
-      workspaceId: params.workspaceId,
-      actorId: params.actorId,
-      action: params.action,
-      resourceType: "invitation",
-      resourceId: params.resourceId,
-      metadata: JSON.stringify(params.metadata),
+      actorId,
+      action,
+      resourceType: "member",
+      resourceId,
+      metadata: JSON.stringify(metadata),
       createdAt: new Date().toISOString(),
     })
     .run()

@@ -18,8 +18,8 @@ interface ShareModalProps {
 
 const shareTypeLabels: Record<ShareType, { label: string; description: string }> = {
   internal: {
-    label: "Workspace members",
-    description: "Share with members of your workspace",
+    label: "Bucket members",
+    description: "Share with members of your bucket",
   },
   external_direct: {
     label: "External link",
@@ -312,15 +312,14 @@ export function ShareModal({
                 <p className="text-text-secondary mb-1 text-xs font-medium">Share link created</p>
                 <p className="text-text-primary text-sm">
                   {createdShareType === "internal"
-                    ? "Workspace members can now access this content."
+                    ? "Bucket members can now access this content."
                     : "Anyone with the link can access this content."}
                 </p>
               </div>
 
               {createdShareType === "internal" ? (
                 <div className="border-border-muted bg-surface-secondary text-text-secondary rounded-lg border p-3 text-sm">
-                  This internal share is available to workspace members from the Shared with me
-                  page.
+                  This internal share is available to bucket members from the Shared with me page.
                 </div>
               ) : (
                 <button

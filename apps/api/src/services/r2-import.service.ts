@@ -1,18 +1,11 @@
 import { and, eq, isNull } from "drizzle-orm"
+import { auditLog, bucketSettings, fileObject, folder } from "@bucketdrive/shared/db/schema"
 import { getDB } from "../lib/db"
-import {
-  auditLog,
-  bucket,
-  fileObject,
-  folder,
-  workspace,
-  workspaceSettings,
-} from "@bucketdrive/shared/db/schema"
+import { ensureBucketSettings, getOrCreateDefaultBucket } from "../lib/bucket"
 import type { StorageProvider } from "./storage"
 
 const DEFAULT_MIME_TYPE = "application/octet-stream"
 const MAX_IMPORT_PAGES = 1000
-const APP_FILES_PREFIX_PART = "files"
 const THUMBNAILS_PREFIX_PART = "thumbnails"
 export const AUTO_R2_SYNC_INTERVAL_MS = 30_000
 export const SYSTEM_R2_SYNC_ACTOR_ID = "system"
@@ -33,45 +26,32 @@ export interface R2SyncAllWorkspacesResult extends R2ImportResult {
   failedWorkspaces: number
 }
 
-export async function syncR2WorkspaceIfStale(params: {
+export async function syncR2BucketIfStale(params: {
   storage: StorageProvider
-  workspaceId: string
   userId: string
   prefix?: string
   intervalMs?: number
 }): Promise<R2ImportResult | null> {
   const db = getDB()
-  const settings = await db
-    .select({
-      r2LastSyncAt: workspaceSettings.r2LastSyncAt,
-      r2SyncStatus: workspaceSettings.r2SyncStatus,
-      updatedAt: workspaceSettings.updatedAt,
-    })
-    .from(workspaceSettings)
-    .where(eq(workspaceSettings.workspaceId, params.workspaceId))
-    .get()
-
+  const settings = await ensureBucketSettings(db)
   const intervalMs = params.intervalMs ?? AUTO_R2_SYNC_INTERVAL_MS
   const now = Date.now()
-  const lastAttemptAt = settings?.updatedAt ? Date.parse(settings.updatedAt) : NaN
+  const lastAttemptAt = settings.updatedAt ? Date.parse(settings.updatedAt) : NaN
+
   if (
-    (settings?.r2SyncStatus === "syncing" || settings?.r2SyncStatus === "failed") &&
+    (settings.r2SyncStatus === "syncing" || settings.r2SyncStatus === "failed") &&
     Number.isFinite(lastAttemptAt) &&
     now - lastAttemptAt < intervalMs
   ) {
     return null
   }
 
-  if (settings?.r2LastSyncAt) {
+  if (settings.r2LastSyncAt) {
     const lastSyncAt = Date.parse(settings.r2LastSyncAt)
-    if (Number.isFinite(lastSyncAt) && now - lastSyncAt < intervalMs) {
-      return null
-    }
+    if (Number.isFinite(lastSyncAt) && now - lastSyncAt < intervalMs) return null
   }
 
-  const service = new R2ImportService(params.storage)
-  return service.syncWorkspace({
-    workspaceId: params.workspaceId,
+  return new R2ImportService(params.storage).syncBucket({
     userId: params.userId,
     prefix: params.prefix,
   })
@@ -82,102 +62,50 @@ export async function syncAllR2Workspaces(params: {
   userId?: string
   intervalMs?: number
 }): Promise<R2SyncAllWorkspacesResult> {
-  const db = getDB()
-  const rows = await db
-    .select({ workspaceId: workspace.id })
-    .from(workspace)
-    .innerJoin(bucket, eq(bucket.workspaceId, workspace.id))
-    .where(and(eq(workspace.isDeleted, false), eq(bucket.provider, "r2")))
-    .all()
+  const syncResult = await syncR2BucketIfStale({
+    storage: params.storage,
+    userId: params.userId ?? SYSTEM_R2_SYNC_ACTOR_ID,
+    prefix: "bucket/files/",
+    intervalMs: params.intervalMs,
+  })
 
-  const result: R2SyncAllWorkspacesResult = {
-    workspaces: rows.length,
-    synced: 0,
-    scanned: 0,
-    imported: 0,
-    updated: 0,
-    deleted: 0,
-    skipped: 0,
-    skippedWorkspaces: 0,
-    failed: 0,
+  return {
+    workspaces: 1,
+    synced: syncResult ? 1 : 0,
+    scanned: syncResult?.scanned ?? 0,
+    imported: syncResult?.imported ?? 0,
+    updated: syncResult?.updated ?? 0,
+    deleted: syncResult?.deleted ?? 0,
+    skipped: syncResult?.skipped ?? 0,
+    skippedWorkspaces: syncResult ? 0 : 1,
+    failed: syncResult?.failed ?? 0,
     failedWorkspaces: 0,
   }
-
-  for (const row of rows) {
-    try {
-      const syncResult = await syncR2WorkspaceIfStale({
-        storage: params.storage,
-        workspaceId: row.workspaceId,
-        userId: params.userId ?? SYSTEM_R2_SYNC_ACTOR_ID,
-        prefix: `workspace/${row.workspaceId}/${APP_FILES_PREFIX_PART}/`,
-        intervalMs: params.intervalMs,
-      })
-
-      if (!syncResult) {
-        result.skippedWorkspaces += 1
-        continue
-      }
-
-      result.synced += 1
-      result.scanned += syncResult.scanned
-      result.imported += syncResult.imported
-      result.updated += syncResult.updated
-      result.deleted += syncResult.deleted
-      result.skipped += syncResult.skipped
-      result.failed += syncResult.failed
-    } catch (err) {
-      result.failedWorkspaces += 1
-      console.warn(`Automatic R2 sync failed for workspace ${row.workspaceId}:`, err)
-    }
-  }
-
-  return result
 }
 
 export class R2ImportService {
   constructor(private storage: StorageProvider) {}
 
-  async syncWorkspace(params: {
-    workspaceId: string
-    userId: string
-    prefix?: string
-  }): Promise<R2ImportResult> {
-    return this.importWorkspace(params)
+  async syncBucket(params: { userId: string; prefix?: string }): Promise<R2ImportResult> {
+    return this.importBucket(params)
   }
 
-  async importWorkspace(params: {
-    workspaceId: string
-    userId: string
-    prefix?: string
-  }): Promise<R2ImportResult> {
+  async importBucket(params: { userId: string; prefix?: string }): Promise<R2ImportResult> {
     const db = getDB()
-    const wsBucket = await db
-      .select()
-      .from(bucket)
-      .where(eq(bucket.workspaceId, params.workspaceId))
-      .get()
-
-    if (!wsBucket) {
-      throw new Error("No storage bucket found for workspace")
-    }
-
+    const defaultBucket = await getOrCreateDefaultBucket(db)
+    const settings = await ensureBucketSettings(db)
     const now = new Date().toISOString()
-    await this.updateSyncState(params.workspaceId, {
+
+    await this.updateSyncState(settings.id, {
       r2SyncStatus: "syncing",
       r2SyncError: null,
       updatedAt: now,
     })
 
     const folderCache = new Map<string, string | null>([["", null]])
-    const existingFiles = await db
-      .select()
-      .from(fileObject)
-      .where(eq(fileObject.workspaceId, params.workspaceId))
-      .all()
+    const existingFiles = await db.select().from(fileObject).all()
     const existingByKey = new Map(existingFiles.map((file) => [file.storageKey, file]))
     const seenKeys = new Set<string>()
-    let cursor: string | undefined
-    let pages = 0
     const result: R2ImportResult = {
       scanned: 0,
       imported: 0,
@@ -186,36 +114,31 @@ export class R2ImportService {
       skipped: 0,
       failed: 0,
     }
+    let cursor: string | undefined
+    let pages = 0
 
     try {
       do {
         pages += 1
-        if (pages > MAX_IMPORT_PAGES) {
-          throw new Error("R2 import exceeded maximum page count")
-        }
+        if (pages > MAX_IMPORT_PAGES) throw new Error("R2 import exceeded maximum page count")
 
-        const page = await this.storage.list({
-          prefix: params.prefix,
-          cursor,
-          limit: 1000,
-        })
+        const page = await this.storage.list({ prefix: params.prefix, cursor, limit: 1000 })
 
         for (const object of page.objects) {
           result.scanned += 1
-
-          if (
-            !object.key ||
-            object.key.endsWith("/") ||
-            isInternalObjectKey(params.workspaceId, object.key)
-          ) {
+          if (!object.key || object.key.endsWith("/") || isInternalObjectKey(object.key)) {
             result.skipped += 1
             continue
           }
 
           seenKeys.add(object.key)
-
           try {
             const normalized = normalizeObjectKey(object.key)
+            if (!normalized.fileName) {
+              result.skipped += 1
+              continue
+            }
+
             const mimeType = getObjectMimeType(
               object.httpMetadata?.contentType,
               normalized.fileName,
@@ -227,7 +150,6 @@ export class R2ImportService {
                 result.skipped += 1
                 continue
               }
-
               const nextExtension = getExtension(existing.originalName)
               const hasChanges =
                 existing.sizeBytes !== object.size ||
@@ -241,39 +163,25 @@ export class R2ImportService {
 
               await db
                 .update(fileObject)
-                .set({
-                  mimeType,
-                  extension: nextExtension,
-                  sizeBytes: object.size,
-                  updatedAt: now,
-                })
+                .set({ mimeType, extension: nextExtension, sizeBytes: object.size, updatedAt: now })
                 .where(eq(fileObject.id, existing.id))
                 .run()
-
               result.updated += 1
               continue
             }
 
-            if (!normalized.fileName) {
-              result.skipped += 1
-              continue
-            }
-
             const folderId = await this.ensureFolderPath({
-              workspaceId: params.workspaceId,
               userId: params.userId,
               pathParts: normalized.folderParts,
               cache: folderCache,
               now,
             })
-
             const fileId = crypto.randomUUID()
             await db
               .insert(fileObject)
               .values({
                 id: fileId,
-                workspaceId: params.workspaceId,
-                bucketId: wsBucket.id,
+                bucketId: defaultBucket.id,
                 folderId,
                 ownerId: params.userId,
                 storageKey: object.key,
@@ -295,7 +203,6 @@ export class R2ImportService {
               .insert(auditLog)
               .values({
                 id: crypto.randomUUID(),
-                workspaceId: params.workspaceId,
                 actorId: params.userId,
                 action: "file.import_r2",
                 resourceType: "file",
@@ -304,36 +211,27 @@ export class R2ImportService {
                 createdAt: now,
               })
               .run()
-
             result.imported += 1
           } catch {
             result.failed += 1
           }
         }
 
-        cursor = page.cursor
-        if (!page.truncated) cursor = undefined
+        cursor = page.truncated ? page.cursor : undefined
       } while (cursor)
 
       for (const file of existingFiles) {
         if (file.isDeleted || seenKeys.has(file.storageKey)) continue
         if (params.prefix && !file.storageKey.startsWith(params.prefix)) continue
-
         await db
           .update(fileObject)
-          .set({
-            isDeleted: true,
-            deletedAt: now,
-            updatedAt: now,
-          })
+          .set({ isDeleted: true, deletedAt: now, updatedAt: now })
           .where(eq(fileObject.id, file.id))
           .run()
-
         await db
           .insert(auditLog)
           .values({
             id: crypto.randomUUID(),
-            workspaceId: params.workspaceId,
             actorId: params.userId,
             action: "file.r2_missing_trash",
             resourceType: "file",
@@ -342,20 +240,18 @@ export class R2ImportService {
             createdAt: now,
           })
           .run()
-
         result.deleted += 1
       }
 
-      await this.updateSyncState(params.workspaceId, {
+      await this.updateSyncState(settings.id, {
         r2LastSyncAt: now,
         r2SyncStatus: "idle",
         r2SyncError: null,
         updatedAt: now,
       })
-
       return result
     } catch (err) {
-      await this.updateSyncState(params.workspaceId, {
+      await this.updateSyncState(settings.id, {
         r2SyncStatus: "failed",
         r2SyncError: err instanceof Error ? err.message : "R2 sync failed",
         updatedAt: now,
@@ -365,7 +261,6 @@ export class R2ImportService {
   }
 
   private async ensureFolderPath(params: {
-    workspaceId: string
     userId: string
     pathParts: string[]
     cache: Map<string, string | null>
@@ -383,21 +278,16 @@ export class R2ImportService {
         continue
       }
 
-      const conditions = [
-        eq(folder.workspaceId, params.workspaceId),
-        eq(folder.name, part),
-        eq(folder.isDeleted, false),
-      ]
-      if (parentId === null) {
-        conditions.push(isNull(folder.parentFolderId))
-      } else {
-        conditions.push(eq(folder.parentFolderId, parentId))
-      }
-
       const existing = await db
         .select({ id: folder.id })
         .from(folder)
-        .where(and(...conditions))
+        .where(
+          and(
+            eq(folder.name, part),
+            eq(folder.isDeleted, false),
+            parentId === null ? isNull(folder.parentFolderId) : eq(folder.parentFolderId, parentId),
+          ),
+        )
         .get()
 
       if (existing) {
@@ -412,7 +302,6 @@ export class R2ImportService {
         .insert(folder)
         .values({
           id: newId,
-          workspaceId: params.workspaceId,
           parentFolderId: parentId,
           name: part,
           path: `/${cacheKey}`,
@@ -423,7 +312,6 @@ export class R2ImportService {
           updatedAt: params.now,
         })
         .run()
-
       parentId = newId
       parentPath = cacheKey
       params.cache.set(cacheKey, parentId)
@@ -433,7 +321,7 @@ export class R2ImportService {
   }
 
   private async updateSyncState(
-    workspaceId: string,
+    settingsId: string,
     values: {
       r2LastSyncAt?: string
       r2SyncStatus: "idle" | "syncing" | "failed"
@@ -441,12 +329,7 @@ export class R2ImportService {
       updatedAt: string
     },
   ): Promise<void> {
-    const db = getDB()
-    await db
-      .update(workspaceSettings)
-      .set(values)
-      .where(eq(workspaceSettings.workspaceId, workspaceId))
-      .run()
+    await getDB().update(bucketSettings).set(values).where(eq(bucketSettings.id, settingsId)).run()
   }
 }
 
@@ -455,17 +338,12 @@ function normalizeObjectKey(key: string): { folderParts: string[]; fileName: str
     .split("/")
     .map((part) => part.trim())
     .filter(Boolean)
-
   const fileName = parts.pop() ?? ""
-
-  return {
-    folderParts: parts,
-    fileName,
-  }
+  return { folderParts: parts, fileName }
 }
 
-function isInternalObjectKey(workspaceId: string, key: string): boolean {
-  return key.startsWith(`workspace/${workspaceId}/${THUMBNAILS_PREFIX_PART}/`)
+function isInternalObjectKey(key: string): boolean {
+  return key.includes(`/${THUMBNAILS_PREFIX_PART}/`) || key.startsWith(`${THUMBNAILS_PREFIX_PART}/`)
 }
 
 function getExtension(fileName: string): string | null {
@@ -475,17 +353,13 @@ function getExtension(fileName: string): string | null {
 }
 
 function getObjectMimeType(contentType: string | undefined, fileName: string): string {
-  if (!contentType || contentType === DEFAULT_MIME_TYPE) {
-    return inferMimeType(fileName)
-  }
-
+  if (!contentType || contentType === DEFAULT_MIME_TYPE) return inferMimeType(fileName)
   return contentType
 }
 
 function inferMimeType(fileName: string): string {
   const extension = getExtension(fileName)
   if (!extension) return DEFAULT_MIME_TYPE
-
   const mimeByExtension: Record<string, string> = {
     ".avif": "image/avif",
     ".css": "text/css",
@@ -511,6 +385,5 @@ function inferMimeType(fileName: string): string {
     ".webp": "image/webp",
     ".zip": "application/zip",
   }
-
   return mimeByExtension[extension] ?? DEFAULT_MIME_TYPE
 }

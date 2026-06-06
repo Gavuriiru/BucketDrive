@@ -25,13 +25,13 @@ describe("trash contracts", () => {
     RestoreFileResponse.parse(await ctx.json(restore))
   })
 
-  it("returns RBAC and validation errors", async () => {
+  it("allows global readers and returns validation errors", async () => {
     const ctx = createContractTestContext()
-    const denied = await ctx.request(`/api/workspaces/${ctx.workspaceId}/trash`, {
+    const allowed = await ctx.request(`/api/workspaces/${ctx.workspaceId}/trash`, {
       userId: ctx.outsider.id,
     })
-    expect(denied.status).toBe(403)
-    expectApiError(await ctx.json(denied))
+    expect(allowed.status).toBe(200)
+    ListTrashResponse.parse(await ctx.json(allowed))
 
     const invalid = await ctx.request(`/api/workspaces/${ctx.workspaceId}/trash?limit=500`)
     expect(invalid.status).toBe(400)

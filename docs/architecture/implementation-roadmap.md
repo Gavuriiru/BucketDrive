@@ -1982,12 +1982,27 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 
 ## Implementation Notes - Upload UX Follow-up
 
-> - Updated upload storage keys to preserve the original filename and extension under a UUID upload folder: `workspace/{workspaceId}/files/{uploadId}/{fileName}`.
+> - Updated upload storage keys to use the bucket-global prefix `bucket/files/{uploadId}`.
 > - Completed uploads now update the active files query cache immediately and invalidate workspace file/search queries, so normal app uploads no longer require R2 import to appear in Explorer.
 > - Removed fixed-height virtualization from list view to prevent rows with tags or variable content from overlapping during load/render.
 > - Added automatic R2 sync for Explorer file listing: new bucket objects are cataloged, changed R2 metadata updates existing rows, and active rows missing from R2 are moved to trash.
 > - Added `workspace_settings` R2 sync state fields so automatic sync is throttled and R2 failures are recorded without breaking cached Explorer listings.
 > - Extended automatic R2 sync to the scheduled Worker: cron now syncs active R2 workspaces by their app-owned prefix, logs aggregate results, and the Files UI no longer exposes a manual sync button.
+
+## Implementation Notes - Single Bucket Refactor
+
+> - Removed workspace and organization runtime concepts in favor of one default bucket with global user roles.
+> - Migrated API routes from `/api/workspaces/:workspaceId/...` to direct bucket routes such as `/api/files`, `/api/folders`, `/api/members`, `/api/shares`, `/api/tags`, `/api/trash`, `/api/search`, and `/api/dashboard`.
+> - Moved storage, tags, shares, folders, audit logs, upload sessions, notifications, invitations, and dashboard settings off `workspace_id`.
+> - Replaced workspace RBAC settings permissions with `bucket.settings.read` and `bucket.settings.update`.
+> - Added migration `0011_single_bucket.sql` and updated the dev seed for a bucket-first local database.
+
+## Implementation Notes - Branding Assets
+
+> - Persisted global platform branding in `platform_settings` so platform name changes survive Worker restarts and drive app title, login, home, topbar, workspaces, and breadcrumbs.
+> - Added uploaded platform logo/favicon and uploaded bucket share logo support, storing assets in R2 and serving them through API routes so no public R2 domain is required.
+> - Kept external bucket logo URLs compatible while adding `brandingLogoAssetUrl` for uploaded logo previews.
+> - Public share pages now fall back from bucket branding to global platform branding.
 
 ---
 

@@ -42,4 +42,41 @@ describe("dashboard contracts", () => {
     expect(invalid.status).toBe(400)
     expectApiError(await ctx.json(invalid))
   })
+
+  it("uploads bucket branding logo through settings permissions", async () => {
+    const ctx = createContractTestContext()
+    const form = new FormData()
+    form.set("file", new File([new Uint8Array([1, 2, 3])], "brand.webp", { type: "image/webp" }))
+
+    const denied = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/dashboard/settings/assets/logo`,
+      {
+        method: "POST",
+        userId: ctx.viewer.id,
+        body: form,
+      },
+    )
+    expect(denied.status).toBe(403)
+    expectApiError(await ctx.json(denied))
+
+    const allowedForm = new FormData()
+    allowedForm.set(
+      "file",
+      new File([new Uint8Array([1, 2, 3])], "brand.webp", { type: "image/webp" }),
+    )
+    const uploaded = await ctx.request(
+      `/api/workspaces/${ctx.workspaceId}/dashboard/settings/assets/logo`,
+      {
+        method: "POST",
+        body: allowedForm,
+      },
+    )
+    expect(uploaded.status).toBe(200)
+    const settings = DashboardSettingsResponse.parse(await ctx.json(uploaded))
+    expect(settings.brandingLogoAssetUrl).toMatch(/^\/api\/shares\/assets\/branding-logo/)
+
+    const asset = await ctx.request("/api/shares/assets/branding-logo", { userId: null })
+    expect(asset.status).toBe(200)
+    expect(asset.headers.get("content-type")).toContain("image/webp")
+  })
 })

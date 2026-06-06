@@ -1,6 +1,8 @@
 import { drizzle } from "drizzle-orm/d1"
 import * as schema from "@bucketdrive/shared/db/schema"
 
+declare const process: { env: { NODE_ENV?: string } }
+
 const serializeParams = (params: unknown[]): unknown[] =>
   params.map((p) => (p instanceof Date ? p.toISOString() : p))
 

@@ -30,7 +30,7 @@ export function SharedPage() {
   if (!workspaceId) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No bucket found</p>
       </div>
     )
   }
@@ -40,7 +40,7 @@ export function SharedPage() {
       <div className="mb-6">
         <h1 className="text-text-primary text-lg font-semibold">Shared with me</h1>
         <p className="text-text-tertiary text-xs">
-          Files and folders shared by other workspace members
+          Files and folders shared by other bucket members
         </p>
       </div>
 

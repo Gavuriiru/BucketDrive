@@ -19,7 +19,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useSearchStore } from "@/stores/search-store"
 import { can, type ShareDashboardItem } from "@bucketdrive/shared"
 
-type ShareTab = "mine" | "workspace"
+type ShareTab = "mine" | "bucket"
 
 export function ShareManagementPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -28,8 +28,8 @@ export function ShareManagementPage() {
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
 
   const mineSharesQuery = useShares(workspaceId, { scope: "mine", q: debouncedQuery || undefined })
-  const workspaceSharesQuery = useShares(workspaceId, {
-    scope: "workspace",
+  const bucketSharesQuery = useShares(workspaceId, {
+    scope: "bucket",
     q: debouncedQuery || undefined,
     enabled: canManageAll,
   })
@@ -39,13 +39,12 @@ export function ShareManagementPage() {
   const [editingShare, setEditingShare] = useState<ShareDashboardItem | null>(null)
 
   useEffect(() => {
-    if (!canManageAll && activeTab === "workspace") {
+    if (!canManageAll && activeTab === "bucket") {
       setActiveTab("mine")
     }
   }, [activeTab, canManageAll])
 
-  const currentQuery =
-    activeTab === "workspace" && canManageAll ? workspaceSharesQuery : mineSharesQuery
+  const currentQuery = activeTab === "bucket" && canManageAll ? bucketSharesQuery : mineSharesQuery
 
   const shares = currentQuery.data?.data ?? []
   const isLoading = workspacesLoading || currentQuery.isLoading
@@ -73,7 +72,7 @@ export function ShareManagementPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No bucket found</p>
       </div>
     )
   }
@@ -100,14 +99,14 @@ export function ShareManagementPage() {
           </button>
           {canManageAll && (
             <button
-              onClick={() => setActiveTab("workspace")}
+              onClick={() => setActiveTab("bucket")}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === "workspace"
+                activeTab === "bucket"
                   ? "bg-surface-active text-text-primary"
                   : "text-text-tertiary hover:text-text-primary"
               }`}
             >
-              All Workspace Shares
+              All Bucket Shares
             </button>
           )}
         </div>
@@ -134,9 +133,9 @@ export function ShareManagementPage() {
 
       <div className="border-border-default bg-surface-secondary mb-4 rounded-xl border px-4 py-3">
         <p className="text-text-secondary text-sm">
-          Internal shares stay inside the workspace and appear in{" "}
+          Internal shares stay inside the bucket and appear in{" "}
           <span className="text-text-primary font-medium">Shared with me</span>. External shares can
-          be copied and sent outside the workspace.
+          be copied and sent outside the bucket.
         </p>
       </div>
 
@@ -179,7 +178,7 @@ export function ShareManagementPage() {
                   key={share.id}
                   share={share}
                   copied={copiedShareId === share.id}
-                  showCreator={activeTab === "workspace"}
+                  showCreator={activeTab === "bucket"}
                   onCopyLink={handleCopyLink}
                   onEdit={() => setEditingShare(share)}
                 />
@@ -231,10 +230,10 @@ function EmptyState({ tab, workspace }: { tab: ShareTab; workspace: WorkspaceDat
     <div className="border-border-default bg-surface-default flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-10 text-center">
       <Link2 className="text-text-tertiary h-10 w-10" />
       <p className="text-text-primary text-sm font-medium">
-        {tab === "workspace" ? "No workspace shares yet" : "You have not created any shares yet"}
+        {tab === "bucket" ? "No bucket shares yet" : "You have not created any shares yet"}
       </p>
       <p className="text-text-tertiary max-w-xl text-xs">
-        {tab === "workspace"
+        {tab === "bucket"
           ? `${workspace.name} does not have any active or historical links in this scope yet.`
           : "Create a share from the explorer context menu to manage it here."}
       </p>

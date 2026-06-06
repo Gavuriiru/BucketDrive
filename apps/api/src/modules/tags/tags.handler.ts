@@ -1,5 +1,5 @@
 import { Hono } from "hono"
-import { and, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import {
   CreateTagRequest,
   DeleteTagResponse,
@@ -25,32 +25,18 @@ const tags = new Hono<{ Bindings: TagsEnv; Variables: TagsVariables }>()
 tags.use("*", authMiddleware)
 
 tags.get("/", requirePermission("files.read"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
-  const rows = await getDB()
-    .select()
-    .from(fileTag)
-    .where(eq(fileTag.workspaceId, workspaceId))
-    .all()
+  const rows = await getDB().select().from(fileTag).all()
 
   return c.json(ListTagsResponse.parse({ data: rows }))
 })
 
 tags.post("/", requirePermission("files.tag"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
   const db = getDB()
   const body = CreateTagRequest.parse(await c.req.json())
   const existing = await db
     .select({ id: fileTag.id })
     .from(fileTag)
-    .where(and(eq(fileTag.workspaceId, workspaceId), eq(fileTag.name, body.name)))
+    .where(eq(fileTag.name, body.name))
     .get()
 
   if (existing) {
@@ -60,7 +46,6 @@ tags.post("/", requirePermission("files.tag"), async (c) => {
   const now = new Date().toISOString()
   const created = {
     id: crypto.randomUUID(),
-    workspaceId,
     name: body.name,
     color: body.color,
     createdAt: now,
@@ -71,19 +56,14 @@ tags.post("/", requirePermission("files.tag"), async (c) => {
 })
 
 tags.patch("/:tagId", requirePermission("files.tag"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
   const tagId = c.req.param("tagId")
-  if (!workspaceId || !tagId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and tagId are required" }, 400)
+  if (!tagId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "tagId is required" }, 400)
   }
 
   const db = getDB()
   const body = UpdateTagRequest.parse(await c.req.json())
-  const existing = await db
-    .select()
-    .from(fileTag)
-    .where(and(eq(fileTag.id, tagId), eq(fileTag.workspaceId, workspaceId)))
-    .get()
+  const existing = await db.select().from(fileTag).where(eq(fileTag.id, tagId)).get()
 
   if (!existing) {
     return c.json({ code: "NOT_FOUND", message: "Tag not found" }, 404)
@@ -93,7 +73,7 @@ tags.patch("/:tagId", requirePermission("files.tag"), async (c) => {
     const duplicate = await db
       .select({ id: fileTag.id })
       .from(fileTag)
-      .where(and(eq(fileTag.workspaceId, workspaceId), eq(fileTag.name, body.name)))
+      .where(eq(fileTag.name, body.name))
       .get()
 
     if (duplicate) {
@@ -115,17 +95,16 @@ tags.patch("/:tagId", requirePermission("files.tag"), async (c) => {
 })
 
 tags.delete("/:tagId", requirePermission("files.tag"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
   const tagId = c.req.param("tagId")
-  if (!workspaceId || !tagId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and tagId are required" }, 400)
+  if (!tagId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "tagId is required" }, 400)
   }
 
   const db = getDB()
   const existing = await db
     .select({ id: fileTag.id })
     .from(fileTag)
-    .where(and(eq(fileTag.id, tagId), eq(fileTag.workspaceId, workspaceId)))
+    .where(eq(fileTag.id, tagId))
     .get()
 
   if (!existing) {

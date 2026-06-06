@@ -14,7 +14,6 @@ import { sharesHandler, publicSharesHandler } from "./modules/shares/shares.hand
 import { tagsHandler } from "./modules/tags/tags.handler"
 import { notificationsHandler } from "./modules/notifications/notifications.handler"
 import { trashHandler } from "./modules/trash/trash.handler"
-import { workspacesHandler } from "./modules/workspaces/workspaces.handler"
 import { platformHandler } from "./modules/platform/platform.handler"
 import { authMiddleware } from "./middleware/auth"
 import {
@@ -118,19 +117,18 @@ app.get("/api/storage/status", authMiddleware, (c) => {
   })
 })
 
-app.route("/api/workspaces/:workspaceId/files", filesHandler)
-app.route("/api/workspaces/:workspaceId/folders", foldersHandler)
-app.route("/api/workspaces/:workspaceId/members", membersHandler)
-app.route("/api/workspaces/:workspaceId/invitations", invitationsHandler)
+app.route("/api/files", filesHandler)
+app.route("/api/folders", foldersHandler)
+app.route("/api/members", membersHandler)
 app.route("/api/invitations", publicInvitationsHandler)
-app.route("/api/workspaces/:workspaceId/search", searchHandler)
-app.route("/api/workspaces/:workspaceId/dashboard", dashboardHandler)
-app.route("/api/workspaces/:workspaceId/shares", sharesHandler)
-app.route("/api/workspaces/:workspaceId/tags", tagsHandler)
-app.route("/api/workspaces/:workspaceId/trash", trashHandler)
-app.route("/api/notifications", notificationsHandler)
+app.route("/api/invitations", invitationsHandler)
+app.route("/api/search", searchHandler)
+app.route("/api/dashboard", dashboardHandler)
 app.route("/api/shares", publicSharesHandler)
-app.route("/api/workspaces", workspacesHandler)
+app.route("/api/shares", sharesHandler)
+app.route("/api/tags", tagsHandler)
+app.route("/api/trash", trashHandler)
+app.route("/api/notifications", notificationsHandler)
 app.route("/api/platform", platformHandler)
 
 app.notFound((c) => c.json({ code: "NOT_FOUND", message: "Not found" }, 404))

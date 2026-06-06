@@ -21,7 +21,6 @@ type RawSearchFileRow = Omit<SearchFileRow, "isDeleted"> & { isDeleted: boolean 
 
 const FILE_SELECT = `
   f.id,
-  f.workspace_id AS workspaceId,
   f.bucket_id AS bucketId,
   f.folder_id AS folderId,
   f.owner_id AS ownerId,
@@ -44,11 +43,6 @@ const search = new Hono<{ Bindings: SearchEnv; Variables: SearchVariables }>()
 search.use("*", authMiddleware)
 
 search.get("/", requirePermission("files.read"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
   const request = SearchRequest.parse({
     q: c.req.query("q") ?? undefined,
     type: c.req.query("type"),
@@ -69,14 +63,12 @@ search.get("/", requirePermission("files.read"), async (c) => {
   const order = request.order
   const offset = (request.page - 1) * request.limit
 
-  const whereClauses: string[] = ["f.workspace_id = ?", "f.is_deleted = 0"]
-  const params: unknown[] = [workspaceId]
+  const whereClauses: string[] = ["f.is_deleted = 0"]
+  const params: unknown[] = []
 
   if (hasTextSearch) {
     whereClauses.unshift("file_search_idx MATCH ?")
-    whereClauses.unshift("fs.workspace_id = ?")
     params.unshift(ftsQuery)
-    params.unshift(workspaceId)
   }
 
   const mimePrefixes = getMimePrefixesForCategory(request.type)
@@ -100,12 +92,12 @@ search.get("/", requirePermission("files.read"), async (c) => {
         SELECT fot.file_object_id
         FROM file_object_tag fot
         JOIN file_tag ft ON ft.id = fot.tag_id
-        WHERE ft.workspace_id = ? AND fot.tag_id IN (${request.tags.map(() => "?").join(", ")})
+        WHERE fot.tag_id IN (${request.tags.map(() => "?").join(", ")})
         GROUP BY fot.file_object_id
         HAVING COUNT(DISTINCT fot.tag_id) = ?
       )
     `)
-    params.push(workspaceId, ...request.tags, request.tags.length)
+    params.push(...request.tags, request.tags.length)
   }
 
   const fromClause = hasTextSearch
@@ -143,7 +135,7 @@ search.get("/", requirePermission("files.read"), async (c) => {
     ...row,
     isDeleted: row.isDeleted === true || row.isDeleted === 1,
   }))
-  const hydrated = await hydrateFiles(db, workspaceId, user.id, rows)
+  const hydrated = await hydrateFiles(db, user.id, rows)
   const total = countRow?.count ?? 0
 
   return c.json(

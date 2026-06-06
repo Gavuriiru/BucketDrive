@@ -1,11 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { Link } from "@tanstack/react-router"
-import { FolderOpen, Upload } from "lucide-react"
+import { Upload } from "lucide-react"
+import { BrandMark, useBranding } from "@/lib/branding"
 
 export function HomePage() {
+  const branding = useBranding()
+
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center gap-4">
-      <FolderOpen className="text-text-tertiary h-16 w-16" />
-      <h1 className="text-text-primary text-3xl font-semibold">BucketDrive</h1>
+      <BrandMark className="h-16 w-16" />
+      <h1 className="text-text-primary text-3xl font-semibold">{branding.name}</h1>
       <p className="text-text-secondary">Your cloud storage, beautifully organized.</p>
       <div className="mt-4 flex gap-3">
         <Link

@@ -9,25 +9,27 @@ import {
 } from "@bucketdrive/shared"
 import {
   auditLog,
+  bucketSettings,
   fileObject,
   folder,
-  member,
   shareLink,
   user,
-  workspace,
-  workspaceSettings,
 } from "@bucketdrive/shared/db/schema"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
 import { getDB } from "../../lib/db"
+import { ensureBucketSettings } from "../../lib/bucket"
+import { readUploadedBrandingImage, sanitizeAssetName } from "../../lib/branding-assets"
+import { createStorageProvider } from "../../services/storage"
 import { buildStorageTrend, parseAllowedMimeTypes } from "./dashboard.utils"
-import {
-  ensureOrganizationForWorkspace,
-  syncWorkspaceMemberships,
-} from "../../lib/workspace-membership"
 
 interface DashboardEnv {
   DB: D1Database
+  STORAGE: R2Bucket
+  R2_ACCESS_KEY_ID?: string
+  R2_SECRET_ACCESS_KEY?: string
+  R2_ENDPOINT?: string
+  R2_BUCKET_NAME?: string
 }
 
 interface DashboardVariables {
@@ -40,20 +42,9 @@ const dashboard = new Hono<{ Bindings: DashboardEnv; Variables: DashboardVariabl
 dashboard.use("*", authMiddleware)
 
 dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
   const db = getDB()
-  await Promise.all([
-    ensureOrganizationForWorkspace(db, workspaceId),
-    syncWorkspaceMemberships(db, workspaceId),
-    ensureWorkspaceSettingsRow(db, workspaceId),
-  ])
-
+  const settings = await ensureBucketSettings(db)
   const [
-    workspaceRow,
     fileCountRow,
     folderCountRow,
     shareCountRow,
@@ -63,29 +54,14 @@ dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
     auditRows,
     storageRows,
   ] = await Promise.all([
-    db.select().from(workspace).where(eq(workspace.id, workspaceId)).get(),
+    db.select({ value: count() }).from(fileObject).where(eq(fileObject.isDeleted, false)).get(),
+    db.select({ value: count() }).from(folder).where(eq(folder.isDeleted, false)).get(),
+    db.select({ value: count() }).from(shareLink).where(eq(shareLink.isActive, true)).get(),
+    db.select({ value: count() }).from(user).get(),
     db
-      .select({ value: count() })
+      .select({ value: sql<number>`coalesce(sum(${fileObject.sizeBytes}), 0)` })
       .from(fileObject)
-      .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
-      .get(),
-    db
-      .select({ value: count() })
-      .from(folder)
-      .where(and(eq(folder.workspaceId, workspaceId), eq(folder.isDeleted, false)))
-      .get(),
-    db
-      .select({ value: count() })
-      .from(shareLink)
-      .where(and(eq(shareLink.workspaceId, workspaceId), eq(shareLink.isActive, true)))
-      .get(),
-    db.select({ value: count() }).from(member).where(eq(member.organizationId, workspaceId)).get(),
-    db
-      .select({
-        value: sql<number>`coalesce(sum(${fileObject.sizeBytes}), 0)`,
-      })
-      .from(fileObject)
-      .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
+      .where(eq(fileObject.isDeleted, false))
       .get(),
     db
       .select({
@@ -96,7 +72,7 @@ dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
         createdAt: fileObject.createdAt,
       })
       .from(fileObject)
-      .where(and(eq(fileObject.workspaceId, workspaceId), eq(fileObject.isDeleted, false)))
+      .where(eq(fileObject.isDeleted, false))
       .orderBy(desc(fileObject.sizeBytes), desc(fileObject.createdAt))
       .limit(5)
       .all(),
@@ -112,7 +88,6 @@ dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
       })
       .from(auditLog)
       .leftJoin(user, eq(user.id, auditLog.actorId))
-      .where(eq(auditLog.workspaceId, workspaceId))
       .orderBy(desc(auditLog.createdAt))
       .limit(10)
       .all(),
@@ -123,13 +98,8 @@ dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
         deletedAt: fileObject.deletedAt,
       })
       .from(fileObject)
-      .where(eq(fileObject.workspaceId, workspaceId))
       .all(),
   ])
-
-  if (!workspaceRow) {
-    return c.json({ code: "WORKSPACE_NOT_FOUND", message: "Workspace not found" }, 404)
-  }
 
   return c.json(
     DashboardOverviewResponse.parse({
@@ -139,7 +109,7 @@ dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
         memberCount: memberCountRow?.value ?? 0,
         activeShares: shareCountRow?.value ?? 0,
         usedStorageBytes: usageRow?.value ?? 0,
-        quotaBytes: workspaceRow.storageQuotaBytes,
+        quotaBytes: settings.storageQuotaBytes,
       },
       storageTrend: buildStorageTrend(storageRows),
       largestFiles,
@@ -149,11 +119,6 @@ dashboard.get("/overview", requirePermission("analytics.read"), async (c) => {
 })
 
 dashboard.get("/audit", requirePermission("audit.read"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
   const request = DashboardAuditRequest.parse({
     actorId: c.req.query("actorId") ?? undefined,
     action: c.req.query("action") ?? undefined,
@@ -163,24 +128,20 @@ dashboard.get("/audit", requirePermission("audit.read"), async (c) => {
     page: c.req.query("page"),
     limit: c.req.query("limit"),
   })
-
-  const filters = [eq(auditLog.workspaceId, workspaceId)]
+  const filters = []
   if (request.actorId) filters.push(eq(auditLog.actorId, request.actorId))
   if (request.action) filters.push(eq(auditLog.action, request.action))
   if (request.resourceType) filters.push(eq(auditLog.resourceType, request.resourceType))
   if (request.from) filters.push(gte(auditLog.createdAt, request.from))
   if (request.to) filters.push(lte(auditLog.createdAt, request.to))
-
+  const whereClause = filters.length > 0 ? and(...filters) : undefined
   const offset = (request.page - 1) * request.limit
   const db = getDB()
-  const whereClause = filters.length === 1 ? filters[0] : and(...filters)
-
   const [totalRow, rows] = await Promise.all([
     db.select({ value: count() }).from(auditLog).where(whereClause).get(),
     db
       .select({
         id: auditLog.id,
-        workspaceId: auditLog.workspaceId,
         actorId: auditLog.actorId,
         actorName: user.name,
         action: auditLog.action,
@@ -199,7 +160,6 @@ dashboard.get("/audit", requirePermission("audit.read"), async (c) => {
       .offset(offset)
       .all(),
   ])
-
   return c.json(
     DashboardAuditResponse.parse({
       data: rows.map((row) => ({
@@ -216,49 +176,41 @@ dashboard.get("/audit", requirePermission("audit.read"), async (c) => {
   )
 })
 
-dashboard.get("/settings", requirePermission("workspace.settings.read"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
-  const settings = await getWorkspaceSettings(getDB(), workspaceId)
-  if (!settings) {
-    return c.json({ code: "WORKSPACE_NOT_FOUND", message: "Workspace not found" }, 404)
-  }
-
-  return c.json(DashboardSettingsResponse.parse(settings))
+dashboard.get("/settings", requirePermission("bucket.settings.read"), async (c) => {
+  return c.json(
+    DashboardSettingsResponse.parse(toSettingsResponse(await ensureBucketSettings(getDB()))),
+  )
 })
 
-dashboard.patch("/settings", requirePermission("workspace.settings.update"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
+dashboard.get("/settings/assets/logo", async (c) => {
+  const settings = await ensureBucketSettings(getDB())
+  const key = settings.brandingLogoKey
+  if (!key) {
+    return c.json({ code: "NOT_FOUND", message: "Asset not found" }, 404)
   }
 
+  const object = await createStorageProvider(c.env).getObject(key)
+  if (!object) return c.json({ code: "NOT_FOUND", message: "Asset not found" }, 404)
+
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": object.contentType ?? "application/octet-stream",
+      "Content-Length": String(object.size),
+      "Cache-Control": "public, max-age=300",
+    },
+  })
+})
+
+dashboard.patch("/settings", requirePermission("bucket.settings.update"), async (c) => {
   const actor = c.get("user")
   const db = getDB()
   const body = UpdateDashboardSettingsRequest.parse(await c.req.json())
-  const existing = await getWorkspaceSettings(db, workspaceId)
-
-  if (!existing) {
-    return c.json({ code: "WORKSPACE_NOT_FOUND", message: "Workspace not found" }, 404)
-  }
-
+  const settings = await ensureBucketSettings(db)
   const now = new Date().toISOString()
-
   await db
-    .update(workspace)
+    .update(bucketSettings)
     .set({
       storageQuotaBytes: body.storageQuotaBytes,
-      updatedAt: now,
-    })
-    .where(eq(workspace.id, workspaceId))
-    .run()
-
-  await db
-    .update(workspaceSettings)
-    .set({
       defaultShareExpirationDays: body.defaultShareExpirationDays,
       enablePublicSignup: body.enablePublicSignup,
       trashRetentionDays: body.trashRetentionDays,
@@ -270,106 +222,80 @@ dashboard.patch("/settings", requirePermission("workspace.settings.update"), asy
       r2PublicBaseUrl: normalizeBaseUrl(body.r2PublicBaseUrl),
       updatedAt: now,
     })
-    .where(eq(workspaceSettings.workspaceId, workspaceId))
+    .where(eq(bucketSettings.id, settings.id))
     .run()
-
   await db
     .insert(auditLog)
     .values({
       id: crypto.randomUUID(),
-      workspaceId,
       actorId: actor.id,
-      action: "workspace.settings_updated",
-      resourceType: "workspace",
-      resourceId: workspaceId,
+      action: "bucket.settings_updated",
+      resourceType: "bucket",
+      resourceId: settings.bucketId,
       metadata: JSON.stringify(body),
       createdAt: now,
     })
     .run()
-
-  const updated = await getWorkspaceSettings(db, workspaceId)
-  return c.json(DashboardSettingsResponse.parse(updated))
+  return c.json(DashboardSettingsResponse.parse(toSettingsResponse(await ensureBucketSettings(db))))
 })
 
-async function ensureWorkspaceSettingsRow(db: ReturnType<typeof getDB>, workspaceId: string) {
-  const currentWorkspace = await db
-    .select()
-    .from(workspace)
-    .where(eq(workspace.id, workspaceId))
-    .get()
-  if (!currentWorkspace) {
-    return null
-  }
+dashboard.post("/settings/assets/logo", requirePermission("bucket.settings.update"), async (c) => {
+  const actor = c.get("user")
+  const db = getDB()
+  const settings = await ensureBucketSettings(db)
+  const file = await readUploadedBrandingImage(c.req.raw)
+  if ("error" in file) return c.json(file.error, file.status as never)
 
-  const existing = await db
-    .select({ id: workspaceSettings.id })
-    .from(workspaceSettings)
-    .where(eq(workspaceSettings.workspaceId, workspaceId))
-    .get()
+  const key = `branding/bucket/${settings.bucketId}/logo-${crypto.randomUUID()}-${sanitizeAssetName(file.name)}`
+  await createStorageProvider(c.env).upload({
+    key,
+    body: await file.arrayBuffer(),
+    contentType: file.type,
+  })
 
-  if (!existing) {
-    const now = new Date().toISOString()
-    await db
-      .insert(workspaceSettings)
-      .values({
-        id: crypto.randomUUID(),
-        workspaceId,
-        allowedMimeTypes: JSON.stringify([]),
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run()
-  }
-
-  return currentWorkspace
-}
-
-async function getWorkspaceSettings(db: ReturnType<typeof getDB>, workspaceId: string) {
-  await ensureWorkspaceSettingsRow(db, workspaceId)
-
-  const row = await db
-    .select({
-      id: workspaceSettings.id,
-      workspaceId: workspaceSettings.workspaceId,
-      defaultShareExpirationDays: workspaceSettings.defaultShareExpirationDays,
-      enablePublicSignup: workspaceSettings.enablePublicSignup,
-      trashRetentionDays: workspaceSettings.trashRetentionDays,
-      maxFileSizeBytes: workspaceSettings.maxFileSizeBytes,
-      uploadChunkSizeBytes: workspaceSettings.uploadChunkSizeBytes,
-      storageQuotaBytes: workspace.storageQuotaBytes,
-      allowedMimeTypes: workspaceSettings.allowedMimeTypes,
-      brandingLogoUrl: workspaceSettings.brandingLogoUrl,
-      brandingName: workspaceSettings.brandingName,
-      r2PublicBaseUrl: workspaceSettings.r2PublicBaseUrl,
-      r2LastSyncAt: workspaceSettings.r2LastSyncAt,
-      r2SyncStatus: workspaceSettings.r2SyncStatus,
-      r2SyncError: workspaceSettings.r2SyncError,
+  const now = new Date().toISOString()
+  await db
+    .update(bucketSettings)
+    .set({
+      brandingLogoKey: key,
+      updatedAt: now,
     })
-    .from(workspaceSettings)
-    .innerJoin(workspace, eq(workspace.id, workspaceSettings.workspaceId))
-    .where(eq(workspaceSettings.workspaceId, workspaceId))
-    .get()
+    .where(eq(bucketSettings.id, settings.id))
+    .run()
+  await db
+    .insert(auditLog)
+    .values({
+      id: crypto.randomUUID(),
+      actorId: actor.id,
+      action: "bucket.branding_logo_updated",
+      resourceType: "bucket",
+      resourceId: settings.bucketId,
+      metadata: JSON.stringify({ key }),
+      createdAt: now,
+    })
+    .run()
 
-  if (!row) {
-    return null
-  }
+  return c.json(DashboardSettingsResponse.parse(toSettingsResponse(await ensureBucketSettings(db))))
+})
 
+function toSettingsResponse(settings: Awaited<ReturnType<typeof ensureBucketSettings>>) {
   return {
-    ...row,
-    allowedMimeTypes: parseAllowedMimeTypes(row.allowedMimeTypes),
-    brandingLogoUrl: row.brandingLogoUrl ?? null,
-    brandingName: row.brandingName ?? null,
-    r2PublicBaseUrl: row.r2PublicBaseUrl ?? null,
-    r2LastSyncAt: row.r2LastSyncAt ?? null,
-    r2SyncStatus: row.r2SyncStatus,
-    r2SyncError: row.r2SyncError ?? null,
+    ...settings,
+    allowedMimeTypes: parseAllowedMimeTypes(settings.allowedMimeTypes),
+    brandingLogoUrl: settings.brandingLogoUrl ?? null,
+    brandingLogoAssetUrl: settings.brandingLogoKey
+      ? `/api/shares/assets/branding-logo?v=${settings.updatedAt}`
+      : null,
+    brandingName: settings.brandingName ?? null,
+    r2PublicBaseUrl: settings.r2PublicBaseUrl ?? null,
+    r2LastSyncAt: settings.r2LastSyncAt ?? null,
+    r2SyncError: settings.r2SyncError ?? null,
   }
 }
 
 function normalizeBaseUrl(value: string | null): string | null {
   const trimmed = value?.trim()
-  if (!trimmed) return null
-  return trimmed.replace(/\/+$/, "")
+  return trimmed ? trimmed.replace(/\/+$/, "") : null
 }
 
 function safeParseMetadata(raw: string) {

@@ -26,7 +26,7 @@ export function AuditPage() {
   if (!workspace) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-text-tertiary text-sm">No workspace found</p>
+        <p className="text-text-tertiary text-sm">No bucket found</p>
       </div>
     )
   }
@@ -58,7 +58,7 @@ export function AuditPage() {
           <option value="file">file</option>
           <option value="folder">folder</option>
           <option value="member">member</option>
-          <option value="workspace">workspace</option>
+          <option value="bucket">bucket</option>
         </select>
       </div>
 

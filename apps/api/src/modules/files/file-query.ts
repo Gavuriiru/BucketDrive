@@ -66,7 +66,6 @@ export function buildFtsQuery(raw: string): string {
 
 export async function hydrateFiles(
   db: DB,
-  workspaceId: string,
   userId: string,
   rows: FileRow[],
 ): Promise<SharedFileObject[]> {
@@ -115,11 +114,7 @@ export async function hydrateFiles(
   const tagIds = Array.from(new Set(tagLinks.map((link) => link.tagId)))
   const tags =
     tagIds.length > 0
-      ? await db
-          .select()
-          .from(fileTag)
-          .where(and(eq(fileTag.workspaceId, workspaceId), inArray(fileTag.id, tagIds)))
-          .all()
+      ? await db.select().from(fileTag).where(inArray(fileTag.id, tagIds)).all()
       : []
 
   const tagById = new Map<string, Tag>(tags.map((tag) => [tag.id, tag]))

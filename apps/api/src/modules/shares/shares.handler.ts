@@ -1,8 +1,9 @@
 import { Hono } from "hono"
 import { authMiddleware } from "../../middleware/auth"
 import { requirePermission } from "../../middleware/rbac"
-import { getDB } from "../../lib/db"
 import { createStorageProvider } from "../../services/storage"
+import { getDB } from "../../lib/db"
+import { ensureBucketSettings } from "../../lib/bucket"
 import {
   CreateShareRequest,
   ListSharesRequest,
@@ -16,7 +17,6 @@ import {
   type WorkspaceRole,
 } from "@bucketdrive/shared"
 import { SharesService, ShareError } from "./shares.service"
-import { getWorkspaceRoleForUser } from "../../lib/workspace-membership"
 
 interface SharesEnv {
   STORAGE: R2Bucket
@@ -28,7 +28,7 @@ interface SharesEnv {
 }
 
 interface SharesVariables {
-  user: { id: string; email: string; name: string }
+  user: { id: string; email: string; name: string; role: WorkspaceRole }
 }
 
 const shares = new Hono<{ Bindings: SharesEnv; Variables: SharesVariables }>()
@@ -36,14 +36,8 @@ const shares = new Hono<{ Bindings: SharesEnv; Variables: SharesVariables }>()
 shares.use("*", authMiddleware)
 
 shares.get("/", requirePermission("shares.read"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400 as never)
-  }
-
   const user = c.get("user")
-  const db = getDB()
-  const role: WorkspaceRole = (await getWorkspaceRoleForUser(db, workspaceId, user.id)) ?? "viewer"
+  const role: WorkspaceRole = user.role
   const request = ListSharesRequest.parse({
     scope:
       c.req.query("scope") ?? (c.req.query("sharedWithMe") === "true" ? "shared_with_me" : "mine"),
@@ -54,7 +48,6 @@ shares.get("/", requirePermission("shares.read"), async (c) => {
 
   const service = new SharesService()
   const result = await service.listShares({
-    workspaceId,
     userId: user.id,
     role,
     page: request.page,
@@ -72,18 +65,12 @@ shares.get("/", requirePermission("shares.read"), async (c) => {
 })
 
 shares.post("/", requirePermission("shares.create"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400 as never)
-  }
-
   const user = c.get("user")
   const body = CreateShareRequest.parse(await c.req.json())
 
   const service = new SharesService()
   try {
     const result = await service.createShare({
-      workspaceId,
       userId: user.id,
       resourceType: body.resourceType,
       resourceId: body.resourceId,
@@ -102,25 +89,19 @@ shares.post("/", requirePermission("shares.create"), async (c) => {
 })
 
 shares.patch("/:shareId", requirePermission("shares.update"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
   const shareId = c.req.param("shareId")
-  if (!workspaceId || !shareId) {
-    return c.json(
-      { code: "VALIDATION_ERROR", message: "workspaceId and shareId are required" },
-      400 as never,
-    )
+  if (!shareId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "shareId is required" }, 400 as never)
   }
 
   const user = c.get("user")
   const body = UpdateShareRequest.parse(await c.req.json())
-  const db = getDB()
-  const role: WorkspaceRole = (await getWorkspaceRoleForUser(db, workspaceId, user.id)) ?? "viewer"
+  const role: WorkspaceRole = user.role
 
   const service = new SharesService()
   try {
     const result = await service.updateShare({
       shareId,
-      workspaceId,
       userId: user.id,
       role,
       password: body.password,
@@ -142,22 +123,17 @@ shares.patch("/:shareId", requirePermission("shares.update"), async (c) => {
 })
 
 shares.delete("/:shareId", requirePermission("shares.revoke"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
   const shareId = c.req.param("shareId")
-  if (!workspaceId || !shareId) {
-    return c.json(
-      { code: "VALIDATION_ERROR", message: "workspaceId and shareId are required" },
-      400 as never,
-    )
+  if (!shareId) {
+    return c.json({ code: "VALIDATION_ERROR", message: "shareId is required" }, 400 as never)
   }
 
   const user = c.get("user")
-  const db = getDB()
-  const role: WorkspaceRole = (await getWorkspaceRoleForUser(db, workspaceId, user.id)) ?? "viewer"
+  const role: WorkspaceRole = user.role
 
   const service = new SharesService()
   try {
-    await service.revokeShare({ shareId, workspaceId, userId: user.id, role })
+    await service.revokeShare({ shareId, userId: user.id, role })
     return c.json({ success: true, shareId })
   } catch (err) {
     if (err instanceof ShareError) {
@@ -173,6 +149,25 @@ shares.delete("/:shareId", requirePermission("shares.revoke"), async (c) => {
 })
 
 const publicShares = new Hono<{ Bindings: SharesEnv }>()
+
+publicShares.get("/assets/branding-logo", async (c) => {
+  const settings = await ensureBucketSettings(getDB())
+  const key = settings.brandingLogoKey
+  if (!key) {
+    return c.json({ code: "NOT_FOUND", message: "Asset not found" }, 404)
+  }
+
+  const object = await createStorageProvider(c.env).getObject(key)
+  if (!object) return c.json({ code: "NOT_FOUND", message: "Asset not found" }, 404)
+
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": object.contentType ?? "application/octet-stream",
+      "Content-Length": String(object.size),
+      "Cache-Control": "public, max-age=300",
+    },
+  })
+})
 
 publicShares.get("/:shareId", async (c) => {
   const shareId = c.req.param("shareId")

@@ -11,6 +11,11 @@ interface D1Database {
 }
 
 interface R2ObjectBody {
+  key: string
+  size: number
+  httpMetadata?: {
+    contentType?: string
+  }
   body: ReadableStream<Uint8Array> | null
   arrayBuffer(): Promise<ArrayBuffer>
   text(): Promise<string>
@@ -57,6 +62,7 @@ interface R2Bucket {
   put(
     key: string,
     value: ReadableStream<Uint8Array> | ArrayBuffer | ArrayBufferView | string | null,
+    options?: { httpMetadata?: { contentType?: string } },
   ): Promise<unknown>
   list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<R2Objects>
   createMultipartUpload(key: string): Promise<R2MultipartUpload>

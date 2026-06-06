@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm"
 import { deleteCookie, getCookie, setCookie } from "hono/cookie"
 import type { Context } from "hono"
-import { bucket, fileObject, user as userSchema } from "@bucketdrive/shared/db/schema"
+import { fileObject, user as userSchema } from "@bucketdrive/shared/db/schema"
 import { getDB } from "./db"
+import { getOrCreateDefaultBucket } from "./bucket"
 
 const E2E_COOKIE = "__bucketdrive_e2e_user"
 
@@ -16,7 +17,7 @@ interface E2EUser {
   name: string
   image?: string | null
   isPlatformAdmin: boolean
-  canCreateWorkspaces: boolean
+  role: string
 }
 
 export function isE2EAuthEnabled(env: E2EAuthEnv): boolean {
@@ -40,7 +41,7 @@ export async function getE2ESession(c: Context): Promise<{
       name: userSchema.name,
       image: userSchema.image,
       isPlatformAdmin: userSchema.isPlatformAdmin,
-      canCreateWorkspaces: userSchema.canCreateWorkspaces,
+      role: userSchema.role,
     })
     .from(userSchema)
     .where(eq(userSchema.id, userId))
@@ -77,7 +78,7 @@ export async function e2eLogin(c: Context): Promise<Response> {
       name: userSchema.name,
       image: userSchema.image,
       isPlatformAdmin: userSchema.isPlatformAdmin,
-      canCreateWorkspaces: userSchema.canCreateWorkspaces,
+      role: userSchema.role,
     })
     .from(userSchema)
     .where(eq(userSchema.email, email))
@@ -135,7 +136,6 @@ export async function e2eCreateFile(c: Context): Promise<Response> {
   }
 
   const body = (await c.req.json().catch(() => ({}))) as {
-    workspaceId?: unknown
     name?: unknown
     mimeType?: unknown
     sizeBytes?: unknown
@@ -143,27 +143,18 @@ export async function e2eCreateFile(c: Context): Promise<Response> {
     deleted?: unknown
   }
 
-  const workspaceId = typeof body.workspaceId === "string" ? body.workspaceId : ""
   const name = typeof body.name === "string" ? body.name : ""
   const mimeType = typeof body.mimeType === "string" ? body.mimeType : "text/plain"
   const sizeBytes = typeof body.sizeBytes === "number" ? body.sizeBytes : 1024
   const folderId = typeof body.folderId === "string" ? body.folderId : null
   const deleted = body.deleted === true
 
-  if (!workspaceId || !name) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId and name are required" }, 400)
+  if (!name) {
+    return c.json({ code: "VALIDATION_ERROR", message: "name is required" }, 400)
   }
 
   const db = getDB()
-  const wsBucket = await db
-    .select({ id: bucket.id })
-    .from(bucket)
-    .where(eq(bucket.workspaceId, workspaceId))
-    .get()
-
-  if (!wsBucket) {
-    return c.json({ code: "NOT_FOUND", message: "Workspace bucket not found" }, 404)
-  }
+  const defaultBucket = await getOrCreateDefaultBucket(db)
 
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -173,11 +164,10 @@ export async function e2eCreateFile(c: Context): Promise<Response> {
     .insert(fileObject)
     .values({
       id,
-      workspaceId,
-      bucketId: wsBucket.id,
+      bucketId: defaultBucket.id,
       folderId,
       ownerId: session.user.id,
-      storageKey: `workspace/${workspaceId}/files/e2e/${id}/${name}`,
+      storageKey: `bucket/files/e2e/${id}/${name}`,
       originalName: name,
       mimeType,
       extension,
@@ -200,40 +190,30 @@ export async function e2eCreateFilesBulk(c: Context): Promise<Response> {
   }
 
   const body = (await c.req.json().catch(() => ({}))) as {
-    workspaceId?: unknown
     count?: unknown
     prefix?: unknown
     mimeType?: unknown
     sizeBytes?: unknown
   }
 
-  const workspaceId = typeof body.workspaceId === "string" ? body.workspaceId : ""
   const count = typeof body.count === "number" ? Math.floor(body.count) : 0
   const prefix =
     typeof body.prefix === "string" && body.prefix.trim() ? body.prefix.trim() : "benchmark"
   const mimeType = typeof body.mimeType === "string" ? body.mimeType : "text/plain"
   const sizeBytes = typeof body.sizeBytes === "number" ? body.sizeBytes : 1024
 
-  if (!workspaceId || count < 1 || count > 10_000) {
+  if (count < 1 || count > 10_000) {
     return c.json(
       {
         code: "VALIDATION_ERROR",
-        message: "workspaceId and count between 1 and 10000 are required",
+        message: "count between 1 and 10000 is required",
       },
       400,
     )
   }
 
   const db = getDB()
-  const wsBucket = await db
-    .select({ id: bucket.id })
-    .from(bucket)
-    .where(eq(bucket.workspaceId, workspaceId))
-    .get()
-
-  if (!wsBucket) {
-    return c.json({ code: "NOT_FOUND", message: "Workspace bucket not found" }, 404)
-  }
+  const defaultBucket = await getOrCreateDefaultBucket(db)
 
   const now = new Date().toISOString()
   const batchSize = 5
@@ -248,11 +228,10 @@ export async function e2eCreateFilesBulk(c: Context): Promise<Response> {
 
       return {
         id,
-        workspaceId,
-        bucketId: wsBucket.id,
+        bucketId: defaultBucket.id,
         folderId: null,
         ownerId: session.user.id,
-        storageKey: `workspace/${workspaceId}/files/e2e/${id}/${name}`,
+        storageKey: `bucket/files/e2e/${id}/${name}`,
         originalName: name,
         mimeType,
         extension: "txt",

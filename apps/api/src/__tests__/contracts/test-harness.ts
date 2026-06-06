@@ -209,10 +209,11 @@ export function createContractTestContext(): TestContext {
     request: async (path, init = {}) => {
       const { userId, ...requestInit } = init
       const headers = new Headers(requestInit.headers)
+      const globalPath = path.replace(/^\/api\/workspaces\/[^/]+(?=\/)/, "/api")
       if (init.userId !== null && !headers.has("x-test-user-id")) {
         headers.set("x-test-user-id", userId ?? ctxBase.owner.id)
       }
-      if (init.body && !headers.has("content-type")) {
+      if (typeof init.body === "string" && !headers.has("content-type")) {
         headers.set("content-type", "application/json")
       }
 
@@ -223,7 +224,7 @@ export function createContractTestContext(): TestContext {
       } satisfies ExecutionContext
 
       return app.fetch(
-        new Request(`http://localhost:8787${path}`, {
+        new Request(`http://localhost:8787${globalPath}`, {
           ...requestInit,
           headers,
         }),
@@ -267,51 +268,27 @@ export function createContractTestContext(): TestContext {
     id: testId(),
     email: "outsider@example.com",
     name: "Outsider",
-    role: null,
+    role: "guest",
   })
 
   sqlite
     .prepare(
-      `insert into workspace
-      (id, name, slug, owner_id, storage_quota_bytes, is_deleted, is_platform_default, created_at, updated_at)
-      values (?, ?, ?, ?, ?, 0, 1, ?, ?)`,
+      "insert into bucket (id, name, provider, visibility, created_at) values (?, ?, 'r2', 'private', ?)",
     )
-    .run(
-      workspaceId,
-      "Test Workspace",
-      "test-workspace",
-      ctxBase.owner.id,
-      10_000_000_000,
-      now,
-      now,
-    )
+    .run(bucketId, "bucketdrive-test", now)
   sqlite
     .prepare(
-      `insert into workspace_settings
-      (id, workspace_id, default_share_expiration_days, enable_public_signup, trash_retention_days,
-       max_file_size_bytes, upload_chunk_size_bytes, r2_public_base_url, r2_last_sync_at, created_at, updated_at)
-      values (?, ?, 30, 1, 30, 5368709120, 5242880, ?, ?, ?, ?)`,
+      `insert into bucket_settings
+      (id, bucket_id, storage_quota_bytes, default_share_expiration_days, enable_public_signup,
+       trash_retention_days, max_file_size_bytes, upload_chunk_size_bytes, r2_public_base_url,
+       r2_last_sync_at, created_at, updated_at)
+      values (?, ?, 10000000000, 30, 1, 30, 5368709120, 5242880, ?, ?, ?, ?)`,
     )
-    .run(testId(), workspaceId, "https://public.example.com", new Date().toISOString(), now, now)
-  sqlite
-    .prepare(
-      "insert into bucket (id, workspace_id, name, provider, visibility, created_at) values (?, ?, ?, 'r2', 'private', ?)",
-    )
-    .run(bucketId, workspaceId, "bucketdrive-test", now)
-  sqlite
-    .prepare(`insert into organization (id, name, slug, created_at) values (?, ?, ?, ?)`)
-    .run(workspaceId, "Test Workspace", "test-workspace", now)
-  sqlite
-    .prepare(
-      `insert into platform_settings
-      (id, default_workspace_id, allow_user_workspace_creation, enable_public_signup, platform_name, created_at, updated_at)
-      values (?, ?, 1, 1, 'BucketDrive', ?, ?)`,
-    )
-    .run(testId(), workspaceId, now, now)
+    .run(testId(), bucketId, "https://public.example.com", new Date().toISOString(), now, now)
 
-  insertMember(sqlite, workspaceId, ctxBase.owner.id, "owner", now)
-  insertMember(sqlite, workspaceId, ctxBase.admin.id, "admin", now)
-  insertMember(sqlite, workspaceId, ctxBase.viewer.id, "viewer", now)
+  updateUserRole(sqlite, ctxBase.owner.id, "owner")
+  updateUserRole(sqlite, ctxBase.admin.id, "admin")
+  updateUserRole(sqlite, ctxBase.viewer.id, "viewer")
 
   return ctxBase
 }
@@ -366,12 +343,23 @@ function createD1Binding(sqlite: Database.Database): D1Database {
 
 function createR2BucketMock(): R2Bucket {
   const objects = new Map<string, Uint8Array>()
+  const contentTypes = new Map<string, string>()
   return {
-    put: vi.fn((key: string, body: ArrayBuffer | Uint8Array | string) => {
-      const bytes = typeof body === "string" ? new TextEncoder().encode(body) : new Uint8Array(body)
-      objects.set(key, bytes)
-      return Promise.resolve(null)
-    }),
+    put: vi.fn(
+      (
+        key: string,
+        body: ArrayBuffer | Uint8Array | string,
+        options?: { httpMetadata?: { contentType?: string } },
+      ) => {
+        const bytes =
+          typeof body === "string" ? new TextEncoder().encode(body) : new Uint8Array(body)
+        objects.set(key, bytes)
+        if (options?.httpMetadata?.contentType) {
+          contentTypes.set(key, options.httpMetadata.contentType)
+        }
+        return Promise.resolve(null)
+      },
+    ),
     get: vi.fn((key: string) => {
       const body = objects.get(key) ?? new TextEncoder().encode("test")
       return Promise.resolve({
@@ -380,6 +368,7 @@ function createR2BucketMock(): R2Bucket {
         etag: "etag-test",
         httpEtag: '"etag-test"',
         uploaded: new Date("2026-06-02T12:00:00.000Z"),
+        httpMetadata: { contentType: contentTypes.get(key) },
         body: new ReadableStream({
           start(controller) {
             controller.enqueue(body)
@@ -432,6 +421,8 @@ function applyMigrations(sqlite: Database.Database) {
     "parched_eternity",
     "public_r2_base_url",
     "r2_sync_state",
+    "single_bucket",
+    "branding_assets",
   ]
 
   for (const [index, name] of migrationNames.entries()) {
@@ -458,7 +449,7 @@ function seedUser(
   sqlite
     .prepare(
       `insert into user
-      (id, name, email, email_verified, image, is_platform_admin, can_create_workspaces, created_at, updated_at)
+      (id, name, email, email_verified, image, is_platform_admin, role, created_at, updated_at)
       values (?, ?, ?, 1, null, ?, ?, ?, ?)`,
     )
     .run(
@@ -466,36 +457,21 @@ function seedUser(
       user.name,
       user.email,
       user.isPlatformAdmin ? 1 : 0,
-      user.canCreateWorkspaces ? 1 : 0,
+      input.role ?? "viewer",
       now,
       now,
     )
   mockedAuthState.users.set(user.id, user)
 
   if (input.role) {
-    insertMember(sqlite, workspaceId, user.id, input.role, now)
+    updateUserRole(sqlite, user.id, input.role)
   }
 
   return user
 }
 
-function insertMember(
-  sqlite: Database.Database,
-  workspaceId: string,
-  userId: string,
-  role: WorkspaceRole,
-  now: string,
-) {
-  sqlite
-    .prepare(
-      "insert into member (id, organization_id, user_id, role, created_at) values (?, ?, ?, ?, ?)",
-    )
-    .run(testId(), workspaceId, userId, role, now)
-  sqlite
-    .prepare(
-      "insert into workspace_member (id, workspace_id, user_id, role, created_at) values (?, ?, ?, ?, ?)",
-    )
-    .run(testId(), workspaceId, userId, role, now)
+function updateUserRole(sqlite: Database.Database, userId: string, role: WorkspaceRole) {
+  sqlite.prepare("update user set role = ? where id = ?").run(role, userId)
 }
 
 function seedFolder(
@@ -519,12 +495,11 @@ function seedFolder(
   sqlite
     .prepare(
       `insert into folder
-      (id, workspace_id, parent_folder_id, name, path, created_by, is_deleted, deleted_at, created_at, updated_at)
-      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, parent_folder_id, name, path, created_by, is_deleted, deleted_at, created_at, updated_at)
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       folder.id,
-      folder.workspaceId,
       folder.parentFolderId,
       folder.name,
       folder.path,
@@ -553,7 +528,7 @@ function seedFile(
     bucketId,
     folderId: input.folderId ?? null,
     ownerId: input.ownerId ?? ownerId,
-    storageKey: input.storageKey ?? `workspace/${workspaceId}/files/${testId()}/${name}`,
+    storageKey: input.storageKey ?? `bucket/files/${testId()}/${name}`,
     originalName: name,
     mimeType: input.mimeType ?? "text/plain",
     extension: input.extension ?? "txt",
@@ -566,13 +541,12 @@ function seedFile(
   sqlite
     .prepare(
       `insert into file_object
-      (id, workspace_id, bucket_id, folder_id, owner_id, storage_key, original_name, mime_type, extension,
+      (id, bucket_id, folder_id, owner_id, storage_key, original_name, mime_type, extension,
        size_bytes, checksum, thumbnail_key, metadata, is_deleted, deleted_at, created_at, updated_at)
-      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null, ?, null, ?, ?, ?, ?)`,
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, null, ?, null, ?, ?, ?, ?)`,
     )
     .run(
       file.id,
-      file.workspaceId,
       file.bucketId,
       file.folderId,
       file.ownerId,
@@ -604,10 +578,8 @@ function seedTag(
     color: input.color ?? "#ff0000",
   }
   sqlite
-    .prepare(
-      "insert into file_tag (id, workspace_id, name, color, created_at) values (?, ?, ?, ?, ?)",
-    )
-    .run(tag.id, tag.workspaceId, tag.name, tag.color, now)
+    .prepare("insert into file_tag (id, name, color, created_at) values (?, ?, ?, ?)")
+    .run(tag.id, tag.name, tag.color, now)
   return tag
 }
 
@@ -632,13 +604,12 @@ function seedShare(
   sqlite
     .prepare(
       `insert into share_link
-      (id, workspace_id, resource_type, resource_id, share_type, created_by, password_hash, expires_at,
+      (id, resource_type, resource_id, share_type, created_by, password_hash, expires_at,
        access_count, download_count, is_active, created_at, updated_at)
-      values (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)`,
+      values (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)`,
     )
     .run(
       share.id,
-      share.workspaceId,
       share.resourceType,
       share.resourceId,
       share.shareType,
@@ -674,13 +645,12 @@ function seedNotification(
   sqlite
     .prepare(
       `insert into notification
-      (id, user_id, workspace_id, type, title, message, data, is_read, created_at)
-      values (?, ?, ?, ?, ?, ?, null, ?, ?)`,
+      (id, user_id, type, title, message, data, is_read, created_at)
+      values (?, ?, ?, ?, ?, null, ?, ?)`,
     )
     .run(
       notification.id,
       notification.userId,
-      notification.workspaceId,
       notification.type,
       notification.title,
       notification.message,
@@ -709,13 +679,12 @@ function seedInvitation(
   } satisfies TestInvitation
   sqlite
     .prepare(
-      `insert into workspace_invitation
-      (id, workspace_id, email, token, role, can_create_workspaces, invited_by, status, expires_at, created_at, updated_at)
-      values (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+      `insert into bucket_invitation
+      (id, email, token, role, invited_by, status, expires_at, created_at, updated_at)
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       invitation.id,
-      invitation.workspaceId,
       invitation.email,
       invitation.token,
       invitation.role,

@@ -1,12 +1,8 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
 import { sql } from "drizzle-orm"
-import { workspace } from "./workspace"
 
 export const shareLink = sqliteTable("share_link", {
   id: text("id").primaryKey(),
-  workspaceId: text("workspace_id")
-    .notNull()
-    .references(() => workspace.id),
   resourceType: text("resource_type").notNull(),
   resourceId: text("resource_id").notNull(),
   shareType: text("share_type").notNull(),

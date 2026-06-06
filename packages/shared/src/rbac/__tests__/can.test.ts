@@ -18,13 +18,9 @@ describe("can() — RBAC permission evaluation", () => {
   describe("admin", () => {
     const adminAllowed = ROLE_PERMISSIONS.admin
 
-    it("has all permissions except workspace.delete and workspace.transfer", () => {
+    it("has all permissions", () => {
       for (const permission of ALL_PERMISSIONS) {
-        if (permission === "workspace.delete" || permission === "workspace.transfer") {
-          expect(can("admin", permission)).toBe(false)
-        } else {
-          expect(can("admin", permission)).toBe(true)
-        }
+        expect(can("admin", permission)).toBe(true)
       }
     })
 
@@ -43,9 +39,7 @@ describe("can() — RBAC permission evaluation", () => {
       "users.invite",
       "users.remove",
       "users.update_roles",
-      "workspace.settings.update",
-      "workspace.delete",
-      "workspace.transfer",
+      "bucket.settings.update",
       "trash.permanent_delete",
     ]
 
@@ -83,15 +77,15 @@ describe("can() — RBAC permission evaluation", () => {
       expect(can("manager", "shares.manage_all")).toBe(true)
     })
 
-    it("can read analytics, audit, users, and workspace settings", () => {
+    it("can read analytics, audit, users, and bucket settings", () => {
       expect(can("manager", "analytics.read")).toBe(true)
       expect(can("manager", "audit.read")).toBe(true)
       expect(can("manager", "audit.export")).toBe(true)
       expect(can("manager", "users.read")).toBe(true)
-      expect(can("manager", "workspace.settings.read")).toBe(true)
+      expect(can("manager", "bucket.settings.read")).toBe(true)
     })
 
-    it("cannot manage billing, invite/remove users, or update workspace settings", () => {
+    it("cannot manage billing, invite/remove users, or update bucket settings", () => {
       for (const permission of managerDenied) {
         expect(can("manager", permission)).toBe(false)
       }
@@ -121,10 +115,8 @@ describe("can() — RBAC permission evaluation", () => {
       "analytics.read",
       "audit.read",
       "audit.export",
-      "workspace.settings.read",
-      "workspace.settings.update",
-      "workspace.delete",
-      "workspace.transfer",
+      "bucket.settings.read",
+      "bucket.settings.update",
     ]
 
     it("can read, upload, rename, move, favorite, tag, share files", () => {
@@ -153,7 +145,7 @@ describe("can() — RBAC permission evaluation", () => {
       expect(can("editor", "shares.revoke")).toBe(true)
     })
 
-    it("cannot delete files/folders, manage users, billing, audit, or workspace", () => {
+    it("cannot delete files/folders, manage users, billing, audit, or bucket", () => {
       for (const permission of editorDenied) {
         expect(can("editor", permission)).toBe(false)
       }
@@ -207,9 +199,7 @@ describe("can() — RBAC permission evaluation", () => {
       expect(can("viewer", "billing.read")).toBe(false)
       expect(can("viewer", "analytics.read")).toBe(false)
       expect(can("viewer", "audit.read")).toBe(false)
-      expect(can("viewer", "workspace.settings.read")).toBe(false)
-      expect(can("viewer", "workspace.delete")).toBe(false)
-      expect(can("viewer", "workspace.transfer")).toBe(false)
+      expect(can("viewer", "bucket.settings.read")).toBe(false)
     })
   })
 
@@ -247,10 +237,8 @@ describe("can() — RBAC permission evaluation", () => {
         "analytics.read",
         "audit.read",
         "audit.export",
-        "workspace.settings.read",
-        "workspace.settings.update",
-        "workspace.delete",
-        "workspace.transfer",
+        "bucket.settings.read",
+        "bucket.settings.update",
       ]
 
       for (const permission of deniedPermissions) {

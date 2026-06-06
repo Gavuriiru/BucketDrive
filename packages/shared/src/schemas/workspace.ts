@@ -1,22 +1,20 @@
 import { z } from "zod"
 import { AuthUserId, WorkspaceRole } from "./common"
 
-export const WorkspaceSchema = z.object({
+export const BucketSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  slug: z.string(),
-  ownerId: AuthUserId,
-  role: WorkspaceRole,
+  role: WorkspaceRole.optional(),
   storageQuotaBytes: z.number().int().positive(),
   createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
 })
 
-export type Workspace = z.infer<typeof WorkspaceSchema>
+export type Bucket = z.infer<typeof BucketSchema>
+export const WorkspaceSchema = BucketSchema
+export type Workspace = Bucket
 
-export const WorkspaceMemberSchema = z.object({
+export const BucketMemberSchema = z.object({
   id: z.string().uuid(),
-  workspaceId: z.string().uuid(),
   userId: AuthUserId,
   role: WorkspaceRole,
   user: z.object({
@@ -28,11 +26,13 @@ export const WorkspaceMemberSchema = z.object({
   joinedAt: z.string().datetime(),
 })
 
-export type WorkspaceMember = z.infer<typeof WorkspaceMemberSchema>
+export type BucketMember = z.infer<typeof BucketMemberSchema>
+export const WorkspaceMemberSchema = BucketMemberSchema
+export type WorkspaceMember = BucketMember
 
-export const WorkspaceSettingsSchema = z.object({
+export const BucketSettingsSchema = z.object({
   id: z.string().uuid(),
-  workspaceId: z.string().uuid(),
+  bucketId: z.string().uuid(),
   defaultShareExpirationDays: z.number().int().min(1).max(365).default(30),
   enablePublicSignup: z.boolean().default(false),
   trashRetentionDays: z.number().int().min(1).max(90).default(30),
@@ -53,6 +53,7 @@ export const WorkspaceSettingsSchema = z.object({
     .default(10 * 1024 * 1024 * 1024),
   allowedMimeTypes: z.array(z.string()).default([]),
   brandingLogoUrl: z.string().url().nullable().default(null),
+  brandingLogoAssetUrl: z.string().url().or(z.string().startsWith("/")).nullable().default(null),
   brandingName: z.string().nullable().default(null),
   r2PublicBaseUrl: z.string().url().nullable().default(null),
   r2LastSyncAt: z.string().datetime().nullable().default(null),
@@ -60,7 +61,9 @@ export const WorkspaceSettingsSchema = z.object({
   r2SyncError: z.string().nullable().default(null),
 })
 
-export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>
+export type BucketSettings = z.infer<typeof BucketSettingsSchema>
+export const WorkspaceSettingsSchema = BucketSettingsSchema
+export type WorkspaceSettings = BucketSettings
 
 export const StorageInfoSchema = z.object({
   totalBytes: z.number(),

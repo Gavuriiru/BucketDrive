@@ -1,12 +1,8 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
 import { sql } from "drizzle-orm"
-import { workspace } from "./workspace"
 
 export const auditLog = sqliteTable("audit_log", {
   id: text("id").primaryKey(),
-  workspaceId: text("workspace_id")
-    .notNull()
-    .references(() => workspace.id),
   actorId: text("actor_id").notNull(),
   action: text("action").notNull(),
   resourceType: text("resource_type").notNull(),
@@ -21,9 +17,6 @@ export const auditLog = sqliteTable("audit_log", {
 
 export const uploadSession = sqliteTable("upload_session", {
   id: text("id").primaryKey(),
-  workspaceId: text("workspace_id")
-    .notNull()
-    .references(() => workspace.id),
   userId: text("user_id").notNull(),
   bucketId: text("bucket_id").notNull(),
   status: text("status").notNull().default("initiated"),
@@ -57,7 +50,6 @@ export const uploadPart = sqliteTable("upload_part", {
 export const notification = sqliteTable("notification", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
-  workspaceId: text("workspace_id").references(() => workspace.id),
   type: text("type").notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),

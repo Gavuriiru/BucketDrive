@@ -43,14 +43,17 @@ function requireId(value: string | null, label: string): string {
 }
 
 function buildWorkspacePath(workspaceId: string | null, suffix: string): string {
-  return `/api/workspaces/${requireId(workspaceId, "workspaceId")}${suffix}`
+  void workspaceId
+  return `/api${suffix}`
 }
 
 class ApiClient {
   private async request<T>(url: string, options?: RequestInit): Promise<T> {
     const headers = new Headers(options?.headers)
 
-    if (options?.body !== undefined && !headers.has("Content-Type")) {
+    const body = options?.body
+    const isFormData = typeof FormData !== "undefined" && body instanceof FormData
+    if (body !== undefined && !isFormData && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json")
     }
 
@@ -113,6 +116,13 @@ class ApiClient {
       method: "POST",
       body: blob,
       headers,
+    })
+  }
+
+  async postForm<T>(url: string, form: FormData): Promise<T> {
+    return this.request<T>(url, {
+      method: "POST",
+      body: form,
     })
   }
 }
@@ -293,7 +303,7 @@ export function upsertCompletedFileInFilesCache(
 ): void {
   const completedFolderId = completedFile.folderId ?? null
   const queries = queryClient.getQueryCache().findAll({
-    queryKey: ["files", completedFile.workspaceId],
+    queryKey: ["files"],
   })
 
   for (const query of queries) {
@@ -351,7 +361,7 @@ export function useFiles(
         `${buildWorkspacePath(workspaceId, "/files")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: workspaceId !== null && options?.enabled !== false,
+    enabled: options?.enabled !== false,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })
@@ -384,7 +394,7 @@ export function useSearchFiles(
         `${buildWorkspacePath(workspaceId, "/search")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: workspaceId !== null && options?.enabled !== false,
+    enabled: options?.enabled !== false,
     staleTime: 30_000,
   })
 }
@@ -406,7 +416,7 @@ export function useFolders(
         `${buildWorkspacePath(workspaceId, "/folders")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: workspaceId !== null && enabled,
+    enabled: enabled,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })
@@ -432,7 +442,7 @@ export function useTrash(
         `${buildWorkspacePath(workspaceId, "/trash")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: workspaceId !== null,
+    enabled: true,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })
@@ -448,7 +458,7 @@ export function useBreadcrumbs(
       api.get<BreadcrumbItem[]>(
         buildWorkspacePath(workspaceId, `/folders/${requireId(folderId, "folderId")}/breadcrumbs`),
       ),
-    enabled: workspaceId !== null && folderId !== null,
+    enabled: folderId !== null,
   })
 }
 
@@ -486,11 +496,13 @@ export function useCompleteUpload(): UseMutationResult<
   return useMutation<FileObject, ApiRequestError, CompleteUploadRequest & { workspaceId: string }>({
     mutationFn: ({ workspaceId, ...body }) =>
       api.post<FileObject>(buildWorkspacePath(workspaceId, "/files/upload/complete"), body),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       upsertCompletedFileInFilesCache(queryClient, data)
-      void queryClient.invalidateQueries({ queryKey: ["files", data.workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: ["search", data.workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: ["dashboard-overview", data.workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["files", variables.workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["search", variables.workspaceId] })
+      void queryClient.invalidateQueries({
+        queryKey: ["dashboard-overview", variables.workspaceId],
+      })
     },
   })
 }
@@ -563,7 +575,7 @@ export function useGetUploadSession(
       api.get<GetUploadSessionResponse>(
         buildWorkspacePath(workspaceId, `/files/uploads/${requireId(sessionId, "sessionId")}`),
       ),
-    enabled: workspaceId !== null && sessionId !== null,
+    enabled: sessionId !== null,
     staleTime: 30_000,
   })
 }
@@ -649,7 +661,7 @@ export function useDownloadUrl(
       api.get<DownloadUrlResponse>(
         buildWorkspacePath(workspaceId, `/files/${requireId(fileId, "fileId")}/download`),
       ),
-    enabled: workspaceId !== null && fileId !== null,
+    enabled: fileId !== null,
   })
 }
 
@@ -663,7 +675,7 @@ export function usePreviewUrl(
       api.get<PreviewUrlResponse>(
         buildWorkspacePath(workspaceId, `/files/${requireId(fileId, "fileId")}/preview`),
       ),
-    enabled: workspaceId !== null && fileId !== null,
+    enabled: fileId !== null,
     staleTime: 60_000,
   })
 }
@@ -678,7 +690,7 @@ export function useThumbnailUrl(
       api.get<ThumbnailUrlResponse>(
         buildWorkspacePath(workspaceId, `/files/${requireId(fileId, "fileId")}/thumbnail`),
       ),
-    enabled: workspaceId !== null && fileId !== null,
+    enabled: fileId !== null,
     staleTime: 60_000,
     retry: (failureCount, error) => error.code === "THUMBNAIL_NOT_FOUND" && failureCount < 5,
     retryDelay: 2_000,
@@ -716,10 +728,33 @@ interface MembersResponse {
   meta: PaginationMeta
 }
 
+const DEFAULT_BUCKET_ID = "00000000-0000-4000-8000-000000000001"
+
 export function useWorkspaces(): UseQueryResult<WorkspacesResponse, ApiRequestError> {
   return useQuery<WorkspacesResponse, ApiRequestError>({
     queryKey: ["workspaces"],
-    queryFn: () => api.get<WorkspacesResponse>("/api/workspaces"),
+    queryFn: async () => {
+      const [me, settings] = await Promise.all([
+        api.get<{ id: string; role: WorkspaceRole }>("/api/platform/me"),
+        api.get<PlatformSettingsData>("/api/platform/settings"),
+      ])
+      const createdAt = new Date(0).toISOString()
+
+      return {
+        data: [
+          {
+            id: DEFAULT_BUCKET_ID,
+            name: settings.platformName,
+            slug: "bucket",
+            ownerId: me.id,
+            role: me.role,
+            storageQuotaBytes: 0,
+            createdAt,
+            updatedAt: createdAt,
+          },
+        ],
+      }
+    },
   })
 }
 
@@ -754,7 +789,7 @@ export function useDashboardOverview(
     queryKey: ["dashboard-overview", workspaceId],
     queryFn: () =>
       api.get<DashboardOverview>(buildWorkspacePath(workspaceId, "/dashboard/overview")),
-    enabled: workspaceId !== null,
+    enabled: true,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })
@@ -790,7 +825,7 @@ export function useDashboardAudit(
         `${buildWorkspacePath(workspaceId, "/dashboard/audit")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: workspaceId !== null,
+    enabled: true,
   })
 }
 
@@ -801,7 +836,7 @@ export function useDashboardSettings(
     queryKey: ["dashboard-settings", workspaceId],
     queryFn: () =>
       api.get<WorkspaceSettings>(buildWorkspacePath(workspaceId, "/dashboard/settings")),
-    enabled: workspaceId !== null,
+    enabled: true,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })
@@ -829,7 +864,7 @@ export function useMembers(
   return useQuery<MembersResponse, ApiRequestError>({
     queryKey: ["members", workspaceId],
     queryFn: () => api.get<MembersResponse>(buildWorkspacePath(workspaceId, "/members")),
-    enabled: workspaceId !== null,
+    enabled: true,
   })
 }
 
@@ -880,7 +915,7 @@ export function useTags(
   return useQuery<ListTagsResponse, ApiRequestError>({
     queryKey: ["tags", workspaceId],
     queryFn: () => api.get<ListTagsResponse>(buildWorkspacePath(workspaceId, "/tags")),
-    enabled: workspaceId !== null,
+    enabled: true,
   })
 }
 
@@ -1300,7 +1335,7 @@ export function useShares(
         `${buildWorkspacePath(workspaceId, "/shares")}${qs ? `?${qs}` : ""}`,
       )
     },
-    enabled: workspaceId !== null && options?.enabled !== false,
+    enabled: options?.enabled !== false,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })
@@ -1440,15 +1475,12 @@ export function useInvitations(
     queryKey: ["invitations", workspaceId],
     queryFn: () =>
       api.get<ListInvitationsResponse>(buildWorkspacePath(workspaceId, "/invitations")),
-    enabled: workspaceId !== null,
+    enabled: true,
   })
 }
 
 interface CreateInvitationResponse {
   id: string
-  workspaceId: string
-  workspaceName: string
-  workspaceSlug: string
   email: string
   role: WorkspaceRole
   invitedByName: string
@@ -1509,9 +1541,6 @@ export function useRevokeInvitation(
 export function useInvitationByToken(token: string | null): UseQueryResult<
   {
     id: string
-    workspaceId: string
-    workspaceName: string
-    workspaceSlug: string
     email: string
     role: WorkspaceRole
     invitedByName: string
@@ -1526,9 +1555,6 @@ export function useInvitationByToken(token: string | null): UseQueryResult<
     queryFn: () =>
       api.get<{
         id: string
-        workspaceId: string
-        workspaceName: string
-        workspaceSlug: string
         email: string
         role: WorkspaceRole
         invitedByName: string
@@ -1541,19 +1567,13 @@ export function useInvitationByToken(token: string | null): UseQueryResult<
 }
 
 export function useAcceptInvitation(): UseMutationResult<
-  { success: true; workspaceId: string; role: WorkspaceRole },
+  { success: true; role: WorkspaceRole },
   ApiRequestError,
   { token: string }
 > {
-  return useMutation<
-    { success: true; workspaceId: string; role: WorkspaceRole },
-    ApiRequestError,
-    { token: string }
-  >({
+  return useMutation<{ success: true; role: WorkspaceRole }, ApiRequestError, { token: string }>({
     mutationFn: ({ token }) =>
-      api.post<{ success: true; workspaceId: string; role: WorkspaceRole }>(
-        `/api/invitations/${token}/accept`,
-      ),
+      api.post<{ success: true; role: WorkspaceRole }>(`/api/invitations/${token}/accept`),
   })
 }
 
@@ -1687,11 +1707,11 @@ export function useMarkAllRead(): UseMutationResult<
 
 // Platform hooks
 
-interface PlatformSettingsData {
+export interface PlatformSettingsData {
   platformName: string
-  defaultWorkspaceId: string | null
-  allowUserWorkspaceCreation: boolean
   enablePublicSignup: boolean
+  platformLogoUrl: string | null
+  faviconUrl: string | null
 }
 
 export function usePlatformMe(): UseQueryResult<
@@ -1700,7 +1720,7 @@ export function usePlatformMe(): UseQueryResult<
     email: string
     name: string
     isPlatformAdmin: boolean
-    canCreateWorkspaces: boolean
+    role: WorkspaceRole
   },
   ApiRequestError
 > {
@@ -1710,7 +1730,7 @@ export function usePlatformMe(): UseQueryResult<
       email: string
       name: string
       isPlatformAdmin: boolean
-      canCreateWorkspaces: boolean
+      role: WorkspaceRole
     },
     ApiRequestError
   >({
@@ -1721,7 +1741,7 @@ export function usePlatformMe(): UseQueryResult<
         email: string
         name: string
         isPlatformAdmin: boolean
-        canCreateWorkspaces: boolean
+        role: WorkspaceRole
       }>("/api/platform/me"),
   })
 }
@@ -1748,15 +1768,55 @@ export function useUpdatePlatformSettings(): UseMutationResult<
   })
 }
 
+export function useUploadPlatformAsset(): UseMutationResult<
+  { success: true; settings: PlatformSettingsData },
+  ApiRequestError,
+  { kind: "logo" | "favicon"; file: File }
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ kind, file }) => {
+      const form = new FormData()
+      form.set("file", file)
+      return api.postForm<{ success: true; settings: PlatformSettingsData }>(
+        `/api/platform/assets/${kind}`,
+        form,
+      )
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["platform-settings"] })
+    },
+  })
+}
+
+export function useUploadBucketBrandingLogo(
+  workspaceId: string | null,
+): UseMutationResult<WorkspaceSettings, ApiRequestError, { file: File }> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file }) => {
+      const form = new FormData()
+      form.set("file", file)
+      return api.postForm<WorkspaceSettings>(
+        buildWorkspacePath(workspaceId, "/dashboard/settings/assets/logo"),
+        form,
+      )
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-settings", workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: ["platform-settings"] })
+    },
+  })
+}
+
 export function useJoinPlatform(): UseMutationResult<
-  { success: true; workspaceId: string; role: string },
+  { success: true; role: string },
   ApiRequestError,
   void
 > {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      api.post<{ success: true; workspaceId: string; role: string }>("/api/platform/join"),
+    mutationFn: () => api.post<{ success: true; role: string }>("/api/platform/join"),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
     },
@@ -1801,7 +1861,6 @@ interface PlatformInvitationData {
   id: string
   email: string
   role: string
-  canCreateWorkspaces: boolean
   status: string
   expiresAt: string
   createdAt: string
@@ -1821,7 +1880,7 @@ export function usePlatformInvitations(): UseQueryResult<
 export function useCreatePlatformInvitation(): UseMutationResult<
   PlatformInvitationData & { inviteLink: string },
   ApiRequestError,
-  { email: string; role: string; canCreateWorkspaces: boolean }
+  { email: string; role: string }
 > {
   const queryClient = useQueryClient()
   return useMutation({
@@ -1834,16 +1893,14 @@ export function useCreatePlatformInvitation(): UseMutationResult<
 }
 
 export function useAcceptPlatformInvitation(): UseMutationResult<
-  { success: true; workspaceId: string; role: string },
+  { success: true; role: string },
   ApiRequestError,
   string
 > {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (token) =>
-      api.post<{ success: true; workspaceId: string; role: string }>(
-        `/api/platform/invitations/${token}/accept`,
-      ),
+      api.post<{ success: true; role: string }>(`/api/platform/invitations/${token}/accept`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
     },

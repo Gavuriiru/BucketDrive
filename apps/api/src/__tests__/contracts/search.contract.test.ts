@@ -14,14 +14,14 @@ describe("search contracts", () => {
     SearchResponse.parse(await ctx.json(response))
   })
 
-  it("returns 403 for non-members and 400 for invalid query params", async () => {
+  it("allows global readers and returns 400 for invalid query params", async () => {
     const ctx = createContractTestContext()
 
-    const denied = await ctx.request(`/api/workspaces/${ctx.workspaceId}/search`, {
+    const allowed = await ctx.request(`/api/workspaces/${ctx.workspaceId}/search`, {
       userId: ctx.outsider.id,
     })
-    expect(denied.status).toBe(403)
-    expectApiError(await ctx.json(denied))
+    expect(allowed.status).toBe(200)
+    SearchResponse.parse(await ctx.json(allowed))
 
     const invalid = await ctx.request(`/api/workspaces/${ctx.workspaceId}/search?limit=500`)
     expect(invalid.status).toBe(400)

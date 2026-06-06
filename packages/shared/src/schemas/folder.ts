@@ -3,7 +3,6 @@ import { AuthUserId } from "./common"
 
 export const FolderSchema = z.object({
   id: z.string().uuid(),
-  workspaceId: z.string().uuid(),
   parentFolderId: z.string().uuid().nullable(),
   name: z.string(),
   path: z.string(),

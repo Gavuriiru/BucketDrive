@@ -5,12 +5,11 @@ import {
   folder,
   uploadSession,
   uploadPart,
-  bucket,
   auditLog,
-  workspace,
-  workspaceSettings,
+  bucketSettings,
 } from "@bucketdrive/shared/db/schema"
 import type { StorageProvider } from "./storage"
+import { ensureBucketSettings, getOrCreateDefaultBucket } from "../lib/bucket"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024
 const MULTIPART_THRESHOLD = 250 * 1024 * 1024
@@ -33,12 +32,8 @@ export function getSafeUploadFileName(fileName: string): string {
   return safeName
 }
 
-export function buildUploadStorageKey(
-  workspaceId: string,
-  uploadId: string,
-  fileName: string,
-): string {
-  return `workspace/${workspaceId}/files/${uploadId}/${getSafeUploadFileName(fileName)}`
+export function buildUploadStorageKey(uploadId: string, fileName: string): string {
+  return `bucket/files/${uploadId}/${getSafeUploadFileName(fileName)}`
 }
 
 export class UploadError extends Error {
@@ -52,7 +47,6 @@ export class UploadError extends Error {
 }
 
 export interface InitiateUploadParams {
-  workspaceId: string
   userId: string
   folderId?: string | null
   fileName: string
@@ -72,7 +66,6 @@ export interface InitiateUploadResult {
 }
 
 export interface CompleteUploadParams {
-  workspaceId: string
   userId: string
   uploadId: string
   fileName: string
@@ -100,7 +93,6 @@ export interface GetPartSignedUrlsResult {
 }
 
 interface UploadSessionAccess {
-  workspaceId: string
   userId: string
 }
 
@@ -116,33 +108,14 @@ export class UploadService {
       throw new UploadError("FILE_TOO_LARGE", `Max file size is ${String(MAX_FILE_SIZE / 1e9)} GB`)
     }
 
-    const ws = await db.select().from(workspace).where(eq(workspace.id, params.workspaceId)).get()
-
-    if (!ws) {
-      throw new UploadError("WORKSPACE_NOT_FOUND", "Workspace not found")
-    }
-
-    const wsBucket = await db
-      .select()
-      .from(bucket)
-      .where(eq(bucket.workspaceId, params.workspaceId))
-      .get()
-
-    if (!wsBucket) {
-      throw new UploadError("NOT_FOUND", "No storage bucket found for workspace")
-    }
+    const defaultBucket = await getOrCreateDefaultBucket(db)
+    const settings = await ensureBucketSettings(db)
 
     if (params.folderId) {
       const targetFolder = await db
         .select({ id: folder.id })
         .from(folder)
-        .where(
-          and(
-            eq(folder.id, params.folderId),
-            eq(folder.workspaceId, params.workspaceId),
-            eq(folder.isDeleted, false),
-          ),
-        )
+        .where(and(eq(folder.id, params.folderId), eq(folder.isDeleted, false)))
         .get()
 
       if (!targetFolder) {
@@ -150,29 +123,25 @@ export class UploadService {
       }
     }
 
-    const allFiles = await db
-      .select()
-      .from(fileObject)
-      .where(and(eq(fileObject.workspaceId, params.workspaceId), eq(fileObject.isDeleted, false)))
-      .all()
+    const allFiles = await db.select().from(fileObject).where(eq(fileObject.isDeleted, false)).all()
 
     const totalUsed = allFiles.reduce((sum, f) => sum + f.sizeBytes, 0)
 
-    if (totalUsed + params.sizeBytes > ws.storageQuotaBytes) {
-      throw new UploadError("QUOTA_EXCEEDED", "Workspace storage quota exceeded")
+    if (totalUsed + params.sizeBytes > settings.storageQuotaBytes) {
+      throw new UploadError("QUOTA_EXCEEDED", "Bucket storage quota exceeded")
     }
 
     const uploadId = crypto.randomUUID()
-    const storeKey = buildUploadStorageKey(params.workspaceId, uploadId, params.fileName)
+    const storeKey = buildUploadStorageKey(uploadId, params.fileName)
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
     const isMultipart = params.sizeBytes > MULTIPART_THRESHOLD
 
     if (isMultipart) {
       const settingsRow = await db
-        .select({ uploadChunkSizeBytes: workspaceSettings.uploadChunkSizeBytes })
-        .from(workspaceSettings)
-        .where(eq(workspaceSettings.workspaceId, params.workspaceId))
+        .select({ uploadChunkSizeBytes: bucketSettings.uploadChunkSizeBytes })
+        .from(bucketSettings)
+        .where(eq(bucketSettings.bucketId, defaultBucket.id))
         .get()
 
       const configuredChunkSize = settingsRow?.uploadChunkSizeBytes ?? MIN_PART_SIZE
@@ -186,9 +155,8 @@ export class UploadService {
         .insert(uploadSession)
         .values({
           id: uploadId,
-          workspaceId: params.workspaceId,
           userId: params.userId,
-          bucketId: wsBucket.id,
+          bucketId: defaultBucket.id,
           status: "initiated",
           uploadType: "multipart",
           totalSize: params.sizeBytes,
@@ -215,9 +183,8 @@ export class UploadService {
       .insert(uploadSession)
       .values({
         id: uploadId,
-        workspaceId: params.workspaceId,
         userId: params.userId,
-        bucketId: wsBucket.id,
+        bucketId: defaultBucket.id,
         status: "initiated",
         uploadType: "single",
         totalSize: params.sizeBytes,
@@ -352,21 +319,11 @@ export class UploadService {
       throw new UploadError("FORBIDDEN", "Cannot complete another user's upload")
     }
 
-    if (session.workspaceId !== params.workspaceId) {
-      throw new UploadError("FORBIDDEN", "Upload session belongs to another workspace")
-    }
-
     if (params.folderId) {
       const targetFolder = await db
         .select({ id: folder.id })
         .from(folder)
-        .where(
-          and(
-            eq(folder.id, params.folderId),
-            eq(folder.workspaceId, params.workspaceId),
-            eq(folder.isDeleted, false),
-          ),
-        )
+        .where(and(eq(folder.id, params.folderId), eq(folder.isDeleted, false)))
         .get()
 
       if (!targetFolder) {
@@ -380,7 +337,7 @@ export class UploadService {
 
     const fileId = crypto.randomUUID()
     const now = new Date().toISOString()
-    const storedKey = session.storageKey ?? `workspace/${params.workspaceId}/files/${fileId}`
+    const storedKey = session.storageKey ?? `bucket/files/${fileId}`
 
     if (params.parts && params.parts.length > 0) {
       const uniquePartNumbers = new Set(params.parts.map((part) => part.partNumber))
@@ -433,7 +390,6 @@ export class UploadService {
       .insert(fileObject)
       .values({
         id: fileId,
-        workspaceId: params.workspaceId,
         bucketId: session.bucketId,
         folderId: params.folderId ?? null,
         ownerId: params.userId,
@@ -462,7 +418,6 @@ export class UploadService {
       .insert(auditLog)
       .values({
         id: crypto.randomUUID(),
-        workspaceId: params.workspaceId,
         actorId: params.userId,
         action: "file.upload",
         resourceType: "file",
@@ -535,13 +490,10 @@ export class UploadService {
     }
   }
 
-  private assertSessionAccess(
-    session: { workspaceId: string; userId: string },
-    access?: UploadSessionAccess,
-  ): void {
+  private assertSessionAccess(session: { userId: string }, access?: UploadSessionAccess): void {
     if (!access) return
 
-    if (session.workspaceId !== access.workspaceId || session.userId !== access.userId) {
+    if (session.userId !== access.userId) {
       throw new UploadError("FORBIDDEN", "Upload session is not accessible")
     }
   }

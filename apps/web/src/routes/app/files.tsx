@@ -36,6 +36,7 @@ import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import { useNavigate, useRouterState } from "@tanstack/react-router"
 import type { WorkspaceRole } from "@bucketdrive/shared"
+import { DEFAULT_BRAND_NAME } from "@/lib/branding"
 
 const typeFilterOptions = [
   { value: "all", label: "All files" },
@@ -129,7 +130,7 @@ export function FilesPage() {
 
   const workspace = workspacesData?.data?.[0] ?? null
   const workspaceId = workspace?.id ?? null
-  const workspaceName = workspace?.name ?? "Workspace"
+  const bucketName = workspace?.name ?? DEFAULT_BRAND_NAME
   const workspaceRole = normalizeWorkspaceRole(workspace?.role)
   const canEditContent =
     workspaceRole === "owner" ||
@@ -270,7 +271,7 @@ export function FilesPage() {
       if (!workspaceId) return
       const fetchUrl = async () => {
         setDownloadError(null)
-        const res = await fetch(`/api/workspaces/${workspaceId}/files/${fileId}/download`, {
+        const res = await fetch(`/api/files/${fileId}/download`, {
           credentials: "include",
         })
         if (!res.ok) {
@@ -615,7 +616,7 @@ export function FilesPage() {
     navigateFiles(id)
   }
 
-  const rootBreadcrumb: BreadcrumbItem[] = [{ id: null, name: workspaceName }]
+  const rootBreadcrumb: BreadcrumbItem[] = [{ id: null, name: bucketName }]
   const displayBreadcrumbs = currentFolderId && breadcrumbsData ? breadcrumbsData : rootBreadcrumb
   const totalSelected = selectedFileIds.length + selectedFolderIds.length
   const canDeleteSelected =
@@ -645,10 +646,8 @@ export function FilesPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="text-center">
-          <p className="text-text-primary text-sm font-medium">No workspace found</p>
-          <p className="text-text-tertiary mt-1 text-xs">
-            Create a workspace to start uploading files.
-          </p>
+          <p className="text-text-primary text-sm font-medium">No bucket found</p>
+          <p className="text-text-tertiary mt-1 text-xs">Sign in to start uploading files.</p>
         </div>
       </div>
     )
@@ -678,7 +677,7 @@ export function FilesPage() {
             </h1>
             <p className="text-text-tertiary text-xs">
               {isSearchActive
-                ? `${totalFiles} results across ${workspaceName}`
+                ? `${totalFiles} results across ${bucketName}`
                 : `${totalFiles} files${foldersData?.data?.length ? ` · ${foldersData.data.length} folders` : ""}`}
             </p>
           </div>

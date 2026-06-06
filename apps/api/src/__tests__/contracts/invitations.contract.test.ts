@@ -11,15 +11,11 @@ import { createContractTestContext, expectApiError } from "./test-harness"
 describe("invitations contracts", () => {
   it("lists, creates, reads, accepts, and revokes invitations", async () => {
     const ctx = createContractTestContext()
-    const invitee = ctx.seedUser({
-      email: "contract-invitee@example.com",
-      name: "Invitee",
-      role: null,
-    })
+    const inviteeEmail = "contract-invitee@example.com"
 
     const create = await ctx.request(`/api/workspaces/${ctx.workspaceId}/invitations`, {
       method: "POST",
-      body: JSON.stringify({ email: invitee.email, role: "viewer" }),
+      body: JSON.stringify({ email: inviteeEmail, role: "viewer" }),
     })
     expect(create.status).toBe(201)
     const created = InvitationDetailResponse.extend({ inviteLink: z.string() }).parse(
@@ -36,6 +32,12 @@ describe("invitations contracts", () => {
     const detail = await ctx.request(`/api/invitations/${String(token)}`, { userId: null })
     expect(detail.status).toBe(200)
     InvitationDetailResponse.parse(await ctx.json(detail))
+
+    const invitee = ctx.seedUser({
+      email: inviteeEmail,
+      name: "Invitee",
+      role: "guest",
+    })
 
     const accept = await ctx.request(`/api/invitations/${String(token)}/accept`, {
       method: "POST",

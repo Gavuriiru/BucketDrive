@@ -34,10 +34,8 @@ export const Permission = z.enum([
   "analytics.read",
   "audit.read",
   "audit.export",
-  "workspace.settings.read",
-  "workspace.settings.update",
-  "workspace.delete",
-  "workspace.transfer",
+  "bucket.settings.read",
+  "bucket.settings.update",
 ])
 
 export type Permission = z.infer<typeof Permission>
@@ -84,7 +82,7 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "folders.restore",
   "analytics.read",
   "users.read",
-  "workspace.settings.read",
+  "bucket.settings.read",
   "audit.read",
   "audit.export",
 ]
@@ -93,7 +91,7 @@ const GUEST_PERMISSIONS: readonly Permission[] = ["files.read", "folders.read"]
 
 export const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
   owner: [...ALL_PERMISSIONS],
-  admin: ALL_PERMISSIONS.filter((p) => p !== "workspace.delete" && p !== "workspace.transfer"),
+  admin: [...ALL_PERMISSIONS],
   manager: [...MANAGER_PERMISSIONS],
   editor: [...EDITOR_FILE_PERMISSIONS, ...EDITOR_FOLDER_PERMISSIONS, ...SHARED_PERMISSIONS],
   viewer: [...VIEWER_PERMISSIONS],

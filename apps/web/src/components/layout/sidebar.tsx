@@ -17,7 +17,7 @@ import { usePlatformMe, useDashboardOverview } from "@/lib/api"
 import { can } from "@bucketdrive/shared"
 
 export function Sidebar() {
-  const { workspace, workspaceId, role, workspaces, setCurrentId } = useCurrentWorkspace()
+  const { workspace, workspaceId, role } = useCurrentWorkspace()
   const { data: me } = usePlatformMe()
   const { data: overview } = useDashboardOverview(workspaceId)
 
@@ -48,7 +48,7 @@ export function Sidebar() {
       to: "/dashboard/settings",
       icon: Settings,
       label: "Settings",
-      visible: can(role ?? "viewer", "workspace.settings.read"),
+      visible: can(role ?? "viewer", "bucket.settings.read"),
     },
     {
       to: "/dashboard/platform",
@@ -61,24 +61,7 @@ export function Sidebar() {
   return (
     <aside className="w-sidebar border-border-muted bg-bg-secondary flex flex-col border-r">
       <div className="flex flex-1 flex-col gap-1 p-3">
-        {workspaces.length > 1 && (
-          <div className="mb-2 px-3">
-            <select
-              value={workspaceId ?? ""}
-              onChange={(e) => {
-                setCurrentId(e.target.value)
-              }}
-              className="border-border-default bg-bg-primary text-text-primary focus:border-accent w-full rounded-lg border px-2 py-1.5 text-sm outline-none"
-            >
-              {workspaces.map((ws) => (
-                <option key={ws.id} value={ws.id}>
-                  {ws.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        {workspaces.length === 1 && workspace && (
+        {workspace && (
           <div className="text-text-primary mb-2 px-3 py-1.5 text-sm font-medium">
             {workspace.name}
           </div>

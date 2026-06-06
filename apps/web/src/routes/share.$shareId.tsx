@@ -19,6 +19,7 @@ import {
   type ShareBrowseResult,
 } from "@/lib/api"
 import { ApiRequestError } from "@/lib/api"
+import { DEFAULT_BRAND_NAME } from "@/lib/branding"
 
 export function ShareAccessPage() {
   const params = useParams({ from: "/share/$shareId" })
@@ -304,7 +305,9 @@ function SharePasswordForm({
       </div>
       <div className="text-center">
         <h1 className="text-text-primary text-xl font-semibold">{resourceName}</h1>
-        <p className="text-text-secondary mt-1 text-sm">{info?.brandingName || "BucketDrive"}</p>
+        <p className="text-text-secondary mt-1 text-sm">
+          {info?.brandingName || DEFAULT_BRAND_NAME}
+        </p>
       </div>
 
       {noPassword ? (
@@ -385,7 +388,7 @@ function ShareExternalDirect({
         <p className="text-text-secondary mt-2 text-sm">
           This file has been shared with you via{" "}
           <span className="text-text-primary font-medium">
-            {info.brandingName || "BucketDrive"}
+            {info.brandingName || DEFAULT_BRAND_NAME}
           </span>
         </p>
       </div>
@@ -408,7 +411,7 @@ function ShareExternalDirect({
       <div className="bg-surface-hover flex h-8 items-center gap-1 rounded-full px-3">
         <FolderOpen className="text-text-tertiary h-3.5 w-3.5" />
         <span className="text-text-tertiary text-xs font-medium">
-          {info.brandingName || "BucketDrive"}
+          {info.brandingName || DEFAULT_BRAND_NAME}
         </span>
       </div>
     </main>

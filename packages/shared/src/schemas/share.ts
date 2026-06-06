@@ -3,7 +3,6 @@ import { AuthUserId, ShareType, WorkspaceRole } from "./common"
 
 export const ShareLinkSchema = z.object({
   id: z.string().uuid(),
-  workspaceId: z.string().uuid(),
   resourceType: z.enum(["file", "folder"]),
   resourceId: z.string().uuid(),
   shareType: ShareType,
@@ -33,7 +32,7 @@ export const ShareDashboardItemSchema = ShareLinkSchema.extend({
 
 export type ShareDashboardItem = z.infer<typeof ShareDashboardItemSchema>
 
-export const SharesListScopeSchema = z.enum(["mine", "workspace", "shared_with_me"])
+export const SharesListScopeSchema = z.enum(["mine", "bucket", "shared_with_me"])
 export type SharesListScope = z.infer<typeof SharesListScopeSchema>
 
 export const SharesListMetaSchema = z.object({

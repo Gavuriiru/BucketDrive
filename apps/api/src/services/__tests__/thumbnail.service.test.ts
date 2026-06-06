@@ -82,17 +82,14 @@ describe("ThumbnailService", () => {
 
     const generated = await service.generate({
       fileId: "file-1",
-      workspaceId: "workspace-1",
-      storageKey: "workspace/workspace-1/files/upload/image.png",
+      storageKey: "bucket/files/upload/image.png",
       mimeType: "image/png",
     })
 
     expect(generated).toBe(true)
-    expect(put).toHaveBeenCalledWith(
-      "workspace/workspace-1/thumbnails/file-1.webp",
-      expect.any(Uint8Array),
-      { httpMetadata: { contentType: "image/webp" } },
-    )
+    expect(put).toHaveBeenCalledWith("bucket/thumbnails/file-1.webp", expect.any(Uint8Array), {
+      httpMetadata: { contentType: "image/webp" },
+    })
     expect(run).toHaveBeenCalled()
   })
 
@@ -104,8 +101,7 @@ describe("ThumbnailService", () => {
 
     const generated = await service.generate({
       fileId: "file-1",
-      workspaceId: "workspace-1",
-      storageKey: "workspace/workspace-1/files/upload/file.pdf",
+      storageKey: "bucket/files/upload/file.pdf",
       mimeType: "application/pdf",
     })
 

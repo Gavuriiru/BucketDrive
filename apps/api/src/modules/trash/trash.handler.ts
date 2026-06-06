@@ -24,16 +24,11 @@ const trash = new Hono<{ Bindings: TrashEnv; Variables: TrashVariables }>()
 trash.use("*", authMiddleware)
 
 trash.get("/", requirePermission("files.read"), async (c) => {
-  const workspaceId = c.req.param("workspaceId")
-  if (!workspaceId) {
-    return c.json({ code: "VALIDATION_ERROR", message: "workspaceId is required" }, 400)
-  }
-
   const query = ListTrashRequest.parse(c.req.query())
   const service = new TrashService(getDB(), createStorageProvider(c.env))
 
   try {
-    const result = await service.listTrash(workspaceId, query)
+    const result = await service.listTrash(query)
     return c.json(result)
   } catch (err) {
     if (err instanceof TrashServiceError) {

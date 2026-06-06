@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import { useAcceptInvitation, useInvitationByToken } from "@/lib/api"
+import { useBranding } from "@/lib/branding"
 
 export function JoinPage() {
   const search = useSearch({ strict: false })
@@ -13,6 +14,7 @@ export function JoinPage() {
 
   const invitationQuery = useInvitationByToken(token)
   const acceptInvitation = useAcceptInvitation()
+  const branding = useBranding()
 
   useEffect(() => {
     async function checkAuth() {
@@ -98,12 +100,12 @@ export function JoinPage() {
         </div>
 
         <h1 className="text-text-primary mt-4 text-center text-xl font-semibold">
-          Workspace Invitation
+          Bucket Invitation
         </h1>
 
         <p className="text-text-secondary mt-2 text-center text-sm">
           You have been invited to join{" "}
-          <span className="text-text-primary font-medium">{invite.workspaceName}</span> as a{" "}
+          <span className="text-text-primary font-medium">{branding.name}</span> as a{" "}
           <span className="text-text-primary font-medium capitalize">{invite.role}</span>.
         </p>
 

@@ -61,7 +61,7 @@ const navigationDefs: NavigationCommandDef[] = [
   {
     id: "nav-members",
     title: "Go to Members",
-    subtitle: "Manage workspace members",
+    subtitle: "Manage bucket members",
     icon: Users,
     to: "/dashboard/members",
     category: "navigation",
@@ -71,7 +71,7 @@ const navigationDefs: NavigationCommandDef[] = [
   {
     id: "nav-settings",
     title: "Go to Settings",
-    subtitle: "Workspace settings",
+    subtitle: "Bucket settings",
     icon: Settings,
     to: "/dashboard/settings",
     category: "navigation",

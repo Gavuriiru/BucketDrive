@@ -127,7 +127,7 @@ export function TagPickerDialog({
             <div>
               <Dialog.Title className="text-text-primary text-lg font-semibold">Tags</Dialog.Title>
               <Dialog.Description className="text-text-tertiary text-sm">
-                {file ? `Manage tags for ${file.originalName}` : "Manage workspace tags"}
+                {file ? `Manage tags for ${file.originalName}` : "Manage bucket tags"}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
