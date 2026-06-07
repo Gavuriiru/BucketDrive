@@ -15,10 +15,13 @@ import {
   PageToolbar,
   SegmentedControl,
 } from "@/components/shared/page-layout"
+import { StyledSelect } from "@/components/shared/styled-select"
 import { can, type WorkspaceRole } from "@bucketdrive/shared"
 
 const editableRoles: WorkspaceRole[] = ["owner", "admin", "manager", "editor", "viewer"]
 const inviteRoles: Array<Exclude<WorkspaceRole, "owner">> = ["admin", "manager", "editor", "viewer"]
+const inviteRoleOptions = inviteRoles.map((entry) => ({ value: entry, label: entry }))
+const editableRoleOptions = editableRoles.map((entry) => ({ value: entry, label: entry }))
 
 type Tab = "members" | "invitations"
 
@@ -101,17 +104,12 @@ export function MembersPage() {
               placeholder="user@company.com"
               className="border-border-default bg-bg-tertiary text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
             />
-            <select
+            <StyledSelect
               value={role}
-              onChange={(event) => setRole(event.target.value as Exclude<WorkspaceRole, "owner">)}
-              className="border-border-default bg-bg-tertiary text-text-primary focus:border-accent focus:ring-accent rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
-            >
-              {inviteRoles.map((entry) => (
-                <option key={entry} value={entry}>
-                  {entry}
-                </option>
-              ))}
-            </select>
+              onValueChange={setRole}
+              options={inviteRoleOptions}
+              triggerClassName="bg-bg-tertiary py-2.5"
+            />
             <ActionButton
               type="submit"
               variant="primary"
@@ -212,23 +210,19 @@ export function MembersPage() {
                     {new Date(entry.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
-                    <select
+                    <StyledSelect
                       value={entry.role}
-                      onChange={(event) =>
+                      onValueChange={(nextRole) =>
                         updateMemberRole.mutate({
                           memberId: entry.id,
-                          role: event.target.value as WorkspaceRole,
+                          role: nextRole,
                         })
                       }
                       disabled={!canManageMembers}
-                      className="border-border-default bg-bg-tertiary text-text-primary focus:border-accent focus:ring-accent rounded-lg border px-3 py-2 text-sm capitalize outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {editableRoles.map((availableRole) => (
-                        <option key={availableRole} value={availableRole}>
-                          {availableRole}
-                        </option>
-                      ))}
-                    </select>
+                      options={editableRoleOptions}
+                      triggerClassName="bg-bg-tertiary capitalize"
+                      contentClassName="capitalize"
+                    />
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">

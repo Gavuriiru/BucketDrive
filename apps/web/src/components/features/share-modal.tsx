@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog"
 import { X, Copy, Check, Share2, Globe, Users, Lock, Download } from "lucide-react"
 import { useState, useCallback } from "react"
 import { useCreateShare, useDashboardSettings } from "@/lib/api"
+import { StyledSelect } from "@/components/shared/styled-select"
 
 type ShareType = "internal" | "external_direct" | "external_explorer"
 
@@ -30,6 +31,14 @@ const shareTypeLabels: Record<ShareType, { label: string; description: string }>
     description: "Browse folder contents via public link",
   },
 }
+
+const expirationOptions = [
+  { value: "", label: "Never" },
+  { value: "1", label: "1 day" },
+  { value: "7", label: "7 days" },
+  { value: "30", label: "30 days" },
+  { value: "90", label: "90 days" },
+]
 
 export function ShareModal({
   open,
@@ -265,18 +274,13 @@ export function ShareModal({
                     >
                       Expiration
                     </label>
-                    <select
+                    <StyledSelect
                       id="share-expiration"
                       value={expiresIn}
-                      onChange={(e) => setExpiresIn(e.target.value)}
-                      className="border-border-default bg-surface-default text-text-primary focus:border-accent focus:ring-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
-                    >
-                      <option value="">Never</option>
-                      <option value="1">1 day</option>
-                      <option value="7">7 days</option>
-                      <option value="30">30 days</option>
-                      <option value="90">90 days</option>
-                    </select>
+                      onValueChange={setExpiresIn}
+                      options={expirationOptions}
+                      triggerClassName="mt-1.5 w-full rounded-lg bg-surface-default"
+                    />
                   </div>
                 </div>
               )}

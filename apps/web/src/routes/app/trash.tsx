@@ -19,9 +19,17 @@ import { useMultiSelect } from "@/hooks/use-multi-select"
 import { useSearchStore } from "@/stores/search-store"
 import { SelectionMarquee } from "@/components/features/selection-marquee"
 import { ActionButton, PageHeader, PageToolbar } from "@/components/shared/page-layout"
+import { StyledSelect } from "@/components/shared/styled-select"
 import { can } from "@bucketdrive/shared"
 
 type TrashSort = "deleted_at" | "name" | "location" | "size"
+
+const trashSortOptions: Array<{ value: TrashSort; label: string }> = [
+  { value: "deleted_at", label: "Deleted date" },
+  { value: "name", label: "Name" },
+  { value: "location", label: "Original location" },
+  { value: "size", label: "Size" },
+]
 
 export function TrashPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -162,17 +170,13 @@ export function TrashPage() {
       />
 
       <PageToolbar>
-        <select
-          aria-label="Sort trash"
+        <StyledSelect
+          ariaLabel="Sort trash"
           value={sort}
-          onChange={(event) => setSort(event.target.value as TrashSort)}
-          className="border-border-default bg-bg-tertiary text-text-primary focus:border-accent focus:ring-accent rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
-        >
-          <option value="deleted_at">Deleted date</option>
-          <option value="name">Name</option>
-          <option value="location">Original location</option>
-          <option value="size">Size</option>
-        </select>
+          onValueChange={setSort}
+          options={trashSortOptions}
+          triggerClassName="rounded-lg bg-bg-tertiary"
+        />
 
         <ActionButton onClick={() => setOrder((current) => (current === "desc" ? "asc" : "desc"))}>
           {orderLabel}

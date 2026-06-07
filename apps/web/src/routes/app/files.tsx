@@ -19,7 +19,7 @@ import { useUndoableMutations } from "@/hooks/use-undoable-mutations"
 import { getTagColorClasses } from "@/lib/tag-colors"
 import { TagPickerDialog } from "@/components/features/tag-picker-dialog"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
-import { useSearchStore } from "@/stores/search-store"
+import { useSearchStore, type SearchSort } from "@/stores/search-store"
 import { useUploadStore } from "@/stores/upload-store"
 import { useExplorerStore } from "@/stores/explorer-store"
 import { UploadDropZone } from "@/components/features/upload-drop-zone"
@@ -41,6 +41,7 @@ import {
   PageToolbar,
   SegmentedControl,
 } from "@/components/shared/page-layout"
+import { StyledSelect } from "@/components/shared/styled-select"
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
@@ -56,6 +57,13 @@ const typeFilterOptions = [
   { value: "audio", label: "Audio" },
   { value: "archives", label: "Archives" },
 ] as const
+
+const defaultDashboardSortOptions: Array<{ value: SearchSort; label: string }> = [
+  { value: "name", label: "Name" },
+  { value: "created_at", label: "Date" },
+  { value: "size", label: "Size" },
+  { value: "type", label: "Type" },
+]
 
 const workspaceRoles: readonly WorkspaceRole[] = [
   "owner",
@@ -703,6 +711,9 @@ export function FilesPage() {
     (selectedFolderIds.length === 0 || canDeleteFolder)
   const totalFiles = isSearchActive ? (searchData?.meta.total ?? 0) : (filesData?.meta?.total ?? 0)
   const selectedTagNames = allTags.filter((tag) => dashboardSearch.selectedTagIds.includes(tag.id))
+  const dashboardSortOptions: Array<{ value: SearchSort; label: string }> = debouncedQuery
+    ? [{ value: "relevance", label: "Relevance" }, ...defaultDashboardSortOptions]
+    : defaultDashboardSortOptions
   const fileForTagDialog = files.find((file) => file.id === tagDialogFileId) ?? null
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -971,19 +982,13 @@ export function FilesPage() {
 
               {isSearchActive && (
                 <>
-                  <select
+                  <StyledSelect
                     value={dashboardSearch.sort}
-                    onChange={(event) =>
-                      setDashboardSort(event.target.value as typeof dashboardSearch.sort)
-                    }
-                    className="border-border-default bg-surface-secondary text-text-primary focus:border-accent rounded-full border px-3 py-1.5 text-xs font-medium outline-none"
-                  >
-                    {debouncedQuery && <option value="relevance">Relevance</option>}
-                    <option value="name">Name</option>
-                    <option value="created_at">Date</option>
-                    <option value="size">Size</option>
-                    <option value="type">Type</option>
-                  </select>
+                    onValueChange={setDashboardSort}
+                    options={dashboardSortOptions}
+                    triggerClassName="bg-surface-secondary rounded-full py-1.5 text-xs"
+                    contentClassName="min-w-[140px]"
+                  />
                   <button
                     type="button"
                     onClick={() =>

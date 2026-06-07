@@ -3,6 +3,15 @@ import { useState } from "react"
 import { useCurrentWorkspace } from "@/hooks/use-current-workspace"
 import { useDashboardAudit } from "@/lib/api"
 import { PageHeader, PageToolbar } from "@/components/shared/page-layout"
+import { StyledSelect } from "@/components/shared/styled-select"
+
+const resourceTypeOptions = [
+  { value: "", label: "All resources" },
+  { value: "file", label: "file" },
+  { value: "folder", label: "folder" },
+  { value: "member", label: "member" },
+  { value: "bucket", label: "bucket" },
+]
 
 export function AuditPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -48,17 +57,12 @@ export function AuditPage() {
           placeholder="Filter by action, e.g. member.removed"
           className="border-border-default bg-bg-tertiary text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
         />
-        <select
+        <StyledSelect
           value={resourceType}
-          onChange={(event) => setResourceType(event.target.value)}
-          className="border-border-default bg-bg-tertiary text-text-primary focus:border-accent focus:ring-accent rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
-        >
-          <option value="">All resources</option>
-          <option value="file">file</option>
-          <option value="folder">folder</option>
-          <option value="member">member</option>
-          <option value="bucket">bucket</option>
-        </select>
+          onValueChange={setResourceType}
+          options={resourceTypeOptions}
+          triggerClassName="bg-bg-tertiary py-2.5"
+        />
       </PageToolbar>
 
       <div className="border-border-default bg-surface-default overflow-hidden rounded-2xl border">

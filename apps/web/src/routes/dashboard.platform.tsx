@@ -9,6 +9,14 @@ import {
 } from "@/lib/api"
 import { Users, Settings, Copy, Check, Upload, Image } from "lucide-react"
 import { ActionButton, PageHeader } from "@/components/shared/page-layout"
+import { StyledSelect } from "@/components/shared/styled-select"
+
+const platformInviteRoleOptions = [
+  { value: "viewer", label: "Viewer" },
+  { value: "editor", label: "Editor" },
+  { value: "manager", label: "Manager" },
+  { value: "admin", label: "Admin" },
+]
 
 export function PlatformAdminPage() {
   const { data: settings, isLoading } = usePlatformSettings()
@@ -131,18 +139,12 @@ export function PlatformAdminPage() {
               className="border-border-default bg-bg-primary text-text-primary focus:border-accent block w-full rounded-xl border px-3 py-2 text-sm outline-none"
             />
             <div className="flex gap-2">
-              <select
+              <StyledSelect
                 value={inviteRole}
-                onChange={(e) => {
-                  setInviteRole(e.target.value)
-                }}
-                className="border-border-default bg-bg-primary text-text-primary focus:border-accent rounded-xl border px-3 py-2 text-sm outline-none"
-              >
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-              </select>
+                onValueChange={setInviteRole}
+                options={platformInviteRoleOptions}
+                triggerClassName="bg-bg-primary"
+              />
             </div>
             {createInvitation.isError && (
               <p className="text-error text-sm">{createInvitation.error?.message ?? "Failed"}</p>
