@@ -15,6 +15,7 @@ import {
   PageToolbar,
   SegmentedControl,
 } from "@/components/shared/page-layout"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { StyledSelect } from "@/components/shared/styled-select"
 import { can, type WorkspaceRole } from "@bucketdrive/shared"
 
@@ -24,6 +25,9 @@ const inviteRoleOptions = inviteRoles.map((entry) => ({ value: entry, label: ent
 const editableRoleOptions = editableRoles.map((entry) => ({ value: entry, label: entry }))
 
 type Tab = "members" | "invitations"
+type MemberConfirmAction =
+  | { type: "member"; id: string; name: string }
+  | { type: "invitation"; id: string; email: string }
 
 export function MembersPage() {
   const { workspace, workspaceId, isLoading: workspacesLoading } = useCurrentWorkspace()
@@ -45,6 +49,7 @@ export function MembersPage() {
     null,
   )
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
+  const [confirmAction, setConfirmAction] = useState<MemberConfirmAction | null>(null)
 
   if (workspacesLoading || membersQuery.isLoading) {
     return (
@@ -64,6 +69,41 @@ export function MembersPage() {
 
   const members = membersQuery.data?.data ?? []
   const invitations = invitationsQuery.data?.data ?? []
+
+  const handleConfirmAction = () => {
+    if (!confirmAction) return
+
+    if (confirmAction.type === "member") {
+      removeMember.mutate(
+        { memberId: confirmAction.id },
+        { onSuccess: () => setConfirmAction(null) },
+      )
+      return
+    }
+
+    revokeInvitation.mutate(
+      { invitationId: confirmAction.id },
+      { onSuccess: () => setConfirmAction(null) },
+    )
+  }
+
+  const confirmCopy = (() => {
+    if (!confirmAction) return null
+    if (confirmAction.type === "member") {
+      return {
+        title: "Remove member?",
+        description: `${confirmAction.name} will lose access to this bucket.`,
+        confirmLabel: "Remove",
+        loadingLabel: "Removing...",
+      }
+    }
+    return {
+      title: "Revoke invitation?",
+      description: `The invitation for ${confirmAction.email} will stop working immediately.`,
+      confirmLabel: "Revoke",
+      loadingLabel: "Revoking...",
+    }
+  })()
 
   return (
     <div className="flex h-full flex-col p-6">
@@ -229,12 +269,7 @@ export function MembersPage() {
                       {can(currentUserRole, "users.remove") && (
                         <button
                           onClick={() => {
-                            const confirmed = window.confirm(
-                              `Remove ${entry.name} from this bucket?`,
-                            )
-                            if (confirmed) {
-                              removeMember.mutate({ memberId: entry.id })
-                            }
+                            setConfirmAction({ type: "member", id: entry.id, name: entry.name })
                           }}
                           className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                         >
@@ -310,10 +345,11 @@ export function MembersPage() {
                       </button>
                       <button
                         onClick={() => {
-                          const confirmed = window.confirm(`Revoke invitation for ${entry.email}?`)
-                          if (confirmed) {
-                            revokeInvitation.mutate({ invitationId: entry.id })
-                          }
+                          setConfirmAction({
+                            type: "invitation",
+                            id: entry.id,
+                            email: entry.email,
+                          })
                         }}
                         className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                       >
@@ -344,6 +380,21 @@ export function MembersPage() {
             removeMember.error?.message ??
             revokeInvitation.error?.message}
         </div>
+      )}
+
+      {confirmCopy && (
+        <ConfirmDialog
+          open={confirmAction !== null}
+          title={confirmCopy.title}
+          description={confirmCopy.description}
+          confirmLabel={confirmCopy.confirmLabel}
+          loadingLabel={confirmCopy.loadingLabel}
+          loading={removeMember.isPending || revokeInvitation.isPending}
+          onConfirm={handleConfirmAction}
+          onOpenChange={(open) => {
+            if (!open) setConfirmAction(null)
+          }}
+        />
       )}
     </div>
   )

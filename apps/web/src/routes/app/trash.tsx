@@ -18,11 +18,16 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useMultiSelect } from "@/hooks/use-multi-select"
 import { useSearchStore } from "@/stores/search-store"
 import { SelectionMarquee } from "@/components/features/selection-marquee"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ActionButton, PageHeader, PageToolbar } from "@/components/shared/page-layout"
 import { StyledSelect } from "@/components/shared/styled-select"
 import { can } from "@bucketdrive/shared"
 
 type TrashSort = "deleted_at" | "name" | "location" | "size"
+type TrashConfirmAction =
+  | { type: "item"; item: TrashItem }
+  | { type: "selected"; count: number; fileIds: string[]; folderIds: string[] }
+  | { type: "empty" }
 
 const trashSortOptions: Array<{ value: TrashSort; label: string }> = [
   { value: "deleted_at", label: "Deleted date" },
@@ -68,6 +73,7 @@ export function TrashPage() {
     [items],
   )
   const [busyItemKey, setBusyItemKey] = useState<string | null>(null)
+  const [confirmAction, setConfirmAction] = useState<TrashConfirmAction | null>(null)
   const selectedFileIds = selection.selectedIdsByType("file")
   const selectedFolderIds = selection.selectedIdsByType("folder")
   const selectedCount = selection.selectedCount
@@ -87,19 +93,7 @@ export function TrashPage() {
   }
 
   const handlePermanentDelete = (item: TrashItem) => {
-    const confirmed = window.confirm(
-      `"${item.name}" will be permanently deleted. This cannot be undone.`,
-    )
-    if (!confirmed) return
-
-    const key = `${item.resourceType}-${item.id}`
-    setBusyItemKey(key)
-    if (item.resourceType === "file") {
-      deleteFileForever.mutate({ fileId: item.id }, { onSettled: () => setBusyItemKey(null) })
-      return
-    }
-
-    deleteFolderForever.mutate({ folderId: item.id }, { onSettled: () => setBusyItemKey(null) })
+    setConfirmAction({ type: "item", item })
   }
 
   const handleRestoreSelected = () => {
@@ -112,14 +106,12 @@ export function TrashPage() {
 
   const handlePermanentDeleteSelected = () => {
     if (selectedCount === 0 || !canPermanentlyDelete) return
-    const confirmed = window.confirm(
-      `Permanently delete ${String(selectedCount)} selected item${selectedCount === 1 ? "" : "s"}? This cannot be undone.`,
-    )
-    if (!confirmed) return
-    batchPermanentDelete.mutate(
-      { files: selectedFileIds, folders: selectedFolderIds },
-      { onSuccess: () => selection.clearSelection() },
-    )
+    setConfirmAction({
+      type: "selected",
+      count: selectedCount,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    })
   }
 
   const handleRestoreAll = () => {
@@ -129,12 +121,83 @@ export function TrashPage() {
 
   const handleEmptyTrash = () => {
     if (globalActionsDisabled || !canPermanentlyDelete) return
-    const confirmed = window.confirm(
-      "Permanently delete everything in trash? This cannot be undone.",
-    )
-    if (!confirmed) return
-    emptyTrash.mutate(undefined, { onSuccess: () => selection.clearSelection() })
+    setConfirmAction({ type: "empty" })
   }
+
+  const handleConfirmPermanentDelete = () => {
+    if (!confirmAction) return
+
+    if (confirmAction.type === "item") {
+      const { item } = confirmAction
+      const key = `${item.resourceType}-${item.id}`
+      setBusyItemKey(key)
+      if (item.resourceType === "file") {
+        deleteFileForever.mutate(
+          { fileId: item.id },
+          {
+            onSuccess: () => setConfirmAction(null),
+            onSettled: () => setBusyItemKey(null),
+          },
+        )
+        return
+      }
+
+      deleteFolderForever.mutate(
+        { folderId: item.id },
+        {
+          onSuccess: () => setConfirmAction(null),
+          onSettled: () => setBusyItemKey(null),
+        },
+      )
+      return
+    }
+
+    if (confirmAction.type === "selected") {
+      batchPermanentDelete.mutate(
+        { files: confirmAction.fileIds, folders: confirmAction.folderIds },
+        {
+          onSuccess: () => {
+            selection.clearSelection()
+            setConfirmAction(null)
+          },
+        },
+      )
+      return
+    }
+
+    emptyTrash.mutate(undefined, {
+      onSuccess: () => {
+        selection.clearSelection()
+        setConfirmAction(null)
+      },
+    })
+  }
+
+  const confirmCopy = (() => {
+    if (!confirmAction) return null
+    if (confirmAction.type === "item") {
+      return {
+        title: "Delete permanently?",
+        description: `"${confirmAction.item.name}" will be permanently deleted. This cannot be undone.`,
+        confirmLabel: "Delete permanently",
+        loadingLabel: "Deleting...",
+      }
+    }
+    if (confirmAction.type === "selected") {
+      return {
+        title: "Delete selected items permanently?",
+        description: `${String(confirmAction.count)} selected item${confirmAction.count === 1 ? "" : "s"} will be permanently deleted. This cannot be undone.`,
+        confirmLabel: "Delete permanently",
+        loadingLabel: "Deleting...",
+      }
+    }
+    return {
+      title: "Empty trash?",
+      description: "Everything in trash will be permanently deleted. This cannot be undone.",
+      confirmLabel: "Empty trash",
+      loadingLabel: "Emptying...",
+    }
+  })()
 
   const orderLabel =
     sort === "deleted_at"
@@ -380,6 +443,26 @@ export function TrashPage() {
             restoreAllTrash.error?.message ??
             emptyTrash.error?.message}
         </div>
+      )}
+
+      {confirmCopy && (
+        <ConfirmDialog
+          open={confirmAction !== null}
+          title={confirmCopy.title}
+          description={confirmCopy.description}
+          confirmLabel={confirmCopy.confirmLabel}
+          loadingLabel={confirmCopy.loadingLabel}
+          loading={
+            deleteFileForever.isPending ||
+            deleteFolderForever.isPending ||
+            batchPermanentDelete.isPending ||
+            emptyTrash.isPending
+          }
+          onConfirm={handleConfirmPermanentDelete}
+          onOpenChange={(open) => {
+            if (!open) setConfirmAction(null)
+          }}
+        />
       )}
     </div>
   )

@@ -30,6 +30,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useMultiSelect } from "@/hooks/use-multi-select"
 import { useSearchStore } from "@/stores/search-store"
 import { SelectionMarquee } from "@/components/features/selection-marquee"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   ActionButton,
   PageHeader,
@@ -61,6 +62,10 @@ export function ShareManagementPage() {
   const [activeTab, setActiveTab] = useState<ShareTab>("mine")
   const [copiedShareId, setCopiedShareId] = useState<string | null>(null)
   const [editingShare, setEditingShare] = useState<ShareDashboardItem | null>(null)
+  const [revokeSelectionConfirm, setRevokeSelectionConfirm] = useState<{
+    count: number
+    shareIds: string[]
+  } | null>(null)
   const [shareBrandingName, setShareBrandingName] = useState("")
   const [shareBrandingLogoUrl, setShareBrandingLogoUrl] = useState("")
 
@@ -123,13 +128,22 @@ export function ShareManagementPage() {
 
   const handleRevokeSelected = () => {
     if (selectedShareIds.length === 0) return
-    const confirmed = window.confirm(
-      `Revoke ${String(selectedShareIds.length)} selected share${selectedShareIds.length === 1 ? "" : "s"}?`,
-    )
-    if (!confirmed) return
+    setRevokeSelectionConfirm({
+      count: selectedShareIds.length,
+      shareIds: selectedShareIds,
+    })
+  }
+
+  const handleConfirmRevokeSelected = () => {
+    if (!revokeSelectionConfirm) return
     batchRevokeShares.mutate(
-      { shareIds: selectedShareIds },
-      { onSuccess: () => selection.clearSelection() },
+      { shareIds: revokeSelectionConfirm.shareIds },
+      {
+        onSuccess: () => {
+          selection.clearSelection()
+          setRevokeSelectionConfirm(null)
+        },
+      },
     )
   }
 
@@ -387,6 +401,23 @@ export function ShareManagementPage() {
           }
         }}
       />
+
+      <ConfirmDialog
+        open={revokeSelectionConfirm !== null}
+        title="Revoke selected shares?"
+        description={
+          revokeSelectionConfirm
+            ? `${String(revokeSelectionConfirm.count)} selected share${revokeSelectionConfirm.count === 1 ? "" : "s"} will stop granting access immediately.`
+            : undefined
+        }
+        confirmLabel="Revoke"
+        loadingLabel="Revoking..."
+        loading={batchRevokeShares.isPending}
+        onConfirm={handleConfirmRevokeSelected}
+        onOpenChange={(open) => {
+          if (!open) setRevokeSelectionConfirm(null)
+        }}
+      />
     </div>
   )
 }
@@ -604,6 +635,7 @@ function ShareSettingsDialog({
   const [expiresAtInput, setExpiresAtInput] = useState("")
   const [password, setPassword] = useState("")
   const [removePassword, setRemovePassword] = useState(false)
+  const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false)
 
   useEffect(() => {
     if (!share) return
@@ -642,13 +674,19 @@ function ShareSettingsDialog({
 
   const handleRevoke = () => {
     if (!share) return
-    const confirmed = window.confirm("This will immediately disable access. Continue?")
-    if (!confirmed) return
+    setRevokeConfirmOpen(true)
+  }
+
+  const handleConfirmRevoke = () => {
+    if (!share) return
 
     revokeShare.mutate(
       { shareId: share.id },
       {
-        onSuccess: () => onOpenChange(false),
+        onSuccess: () => {
+          setRevokeConfirmOpen(false)
+          onOpenChange(false)
+        },
       },
     )
   }
@@ -798,6 +836,16 @@ function ShareSettingsDialog({
           )}
         </Dialog.Content>
       </Dialog.Portal>
+      <ConfirmDialog
+        open={revokeConfirmOpen}
+        title="Revoke share?"
+        description="This share will immediately stop granting access."
+        confirmLabel="Revoke"
+        loadingLabel="Revoking..."
+        loading={revokeShare.isPending}
+        onConfirm={handleConfirmRevoke}
+        onOpenChange={setRevokeConfirmOpen}
+      />
     </Dialog.Root>
   )
 }

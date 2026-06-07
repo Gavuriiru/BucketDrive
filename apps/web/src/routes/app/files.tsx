@@ -30,6 +30,9 @@ import { Breadcrumbs } from "@/components/features/breadcrumbs"
 import { ShareModal } from "@/components/features/share-modal"
 import { FilePreview } from "@/components/features/file-preview"
 import { SelectionMarquee } from "@/components/features/selection-marquee"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { MoveItemsDialog } from "@/components/shared/move-items-dialog"
+import { TextInputDialog } from "@/components/shared/text-input-dialog"
 import { useExplorerShortcuts } from "@/hooks/use-explorer-shortcuts"
 import {
   FILE_COMMAND_EVENT,
@@ -73,6 +76,25 @@ const workspaceRoles: readonly WorkspaceRole[] = [
   "viewer",
   "guest",
 ]
+
+interface DeleteSelectionConfirm {
+  count: number
+  fileIds: string[]
+  folderIds: string[]
+}
+
+type TextAction =
+  | { type: "create-folder"; parentFolderId: string | null }
+  | { type: "rename"; itemId: string; itemType: "file" | "folder"; currentName: string }
+
+type MoveAction =
+  | { type: "selected"; count: number; fileIds: string[]; folderIds: string[] }
+  | {
+      type: "item"
+      itemId: string
+      itemType: "file" | "folder"
+      originalFolderId: string | null
+    }
 
 function normalizeWorkspaceRole(role: unknown): WorkspaceRole {
   const normalized = typeof role === "string" ? role.split(",")[0]?.trim().toLowerCase() : "viewer"
@@ -226,6 +248,10 @@ export function FilesPage() {
   })
   const [tagDialogFileId, setTagDialogFileId] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [deleteSelectionConfirm, setDeleteSelectionConfirm] =
+    useState<DeleteSelectionConfirm | null>(null)
+  const [textAction, setTextAction] = useState<TextAction | null>(null)
+  const [moveAction, setMoveAction] = useState<MoveAction | null>(null)
   const [shareModal, setShareModal] = useState<{
     open: boolean
     resourceId: string
@@ -385,25 +411,28 @@ export function FilesPage() {
     if (totalCount === 0) return
     if ((fileCount > 0 && !canDeleteFile) || (folderCount > 0 && !canDeleteFolder)) return
 
-    const confirmed = window.confirm(
-      totalCount === 1
-        ? "Delete this item? It will be moved to trash."
-        : `Delete ${totalCount} items? They will be moved to trash.`,
+    setDeleteSelectionConfirm({
+      count: totalCount,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    })
+  }, [selectedFileIds, selectedFolderIds, canDeleteFile, canDeleteFolder])
+
+  const handleConfirmDeleteSelected = useCallback(() => {
+    if (!deleteSelectionConfirm) return
+    batchTrash.mutate(
+      {
+        files: deleteSelectionConfirm.fileIds,
+        folders: deleteSelectionConfirm.folderIds,
+      },
+      {
+        onSuccess: () => {
+          clearSelection()
+          setDeleteSelectionConfirm(null)
+        },
+      },
     )
-    if (confirmed) {
-      batchTrash.mutate(
-        { files: selectedFileIds, folders: selectedFolderIds },
-        { onSuccess: () => clearSelection() },
-      )
-    }
-  }, [
-    selectedFileIds,
-    selectedFolderIds,
-    batchTrash,
-    clearSelection,
-    canDeleteFile,
-    canDeleteFolder,
-  ])
+  }, [batchTrash, clearSelection, deleteSelectionConfirm])
 
   const handleMoveSelected = useCallback(() => {
     const totalCount = selectedFileIds.length + selectedFolderIds.length
@@ -415,17 +444,13 @@ export function FilesPage() {
       return
     }
 
-    const destFolderId = window.prompt("Enter destination folder ID (or leave blank for root):")
-    if (destFolderId === null) return
-    batchMove.mutate(
-      {
-        files: selectedFileIds,
-        folders: selectedFolderIds,
-        targetFolderId: destFolderId.trim() || null,
-      },
-      { onSuccess: () => clearSelection() },
-    )
-  }, [selectedFileIds, selectedFolderIds, batchMove, clearSelection, canMoveFile, canMoveFolder])
+    setMoveAction({
+      type: "selected",
+      count: totalCount,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    })
+  }, [selectedFileIds, selectedFolderIds, canMoveFile, canMoveFolder])
 
   const handleNavigateParent = useCallback(() => {
     if (currentFolderId && breadcrumbsData && breadcrumbsData.length > 1) {
@@ -444,16 +469,9 @@ export function FilesPage() {
       const item =
         type === "file" ? files.find((f) => f.id === id) : folders.find((f) => f.id === id)
       const currentName = item ? ("originalName" in item ? item.originalName : item.name) : ""
-      const newName = window.prompt("Rename to:", currentName)
-      if (newName && newName.trim() && newName !== currentName) {
-        if (type === "file") {
-          void undoable.renameFile(id, newName.trim(), currentName)
-        } else {
-          void undoable.renameFolder(id, newName.trim(), currentName)
-        }
-      }
+      setTextAction({ type: "rename", itemId: id, itemType: type, currentName })
     },
-    [files, folders, undoable, canRenameFile, canRenameFolder],
+    [files, folders, canRenameFile, canRenameFolder],
   )
 
   useEffect(() => {
@@ -529,28 +547,100 @@ export function FilesPage() {
 
   const handleCreateFolder = () => {
     if (!canCreateFolder) return
-    const name = window.prompt("Folder name:")
-    if (name && name.trim()) {
-      createFolderMutation.mutate({
-        name: name.trim(),
-        parentFolderId: currentFolderId,
-      })
-    }
+    setTextAction({ type: "create-folder", parentFolderId: currentFolderId })
   }
 
   const handleContextMove = useCallback(
     (id: string, type: "file" | "folder") => {
       if ((type === "file" && !canMoveFile) || (type === "folder" && !canMoveFolder)) return
-      const destFolderId = window.prompt("Enter destination folder ID (or leave blank for root):")
-      if (destFolderId === null) return
-      const targetId = destFolderId.trim() || null
-      if (type === "file") {
-        void undoable.moveFile(id, targetId, currentFolderId)
-      } else {
-        void undoable.moveFolder(id, targetId, currentFolderId)
-      }
+      const item =
+        type === "file"
+          ? files.find((candidate) => candidate.id === id)
+          : folders.find((f) => f.id === id)
+      const originalFolderId =
+        item && type === "file"
+          ? "folderId" in item
+            ? item.folderId
+            : currentFolderId
+          : item && "parentFolderId" in item
+            ? item.parentFolderId
+            : currentFolderId
+      setMoveAction({
+        type: "item",
+        itemId: id,
+        itemType: type,
+        originalFolderId,
+      })
     },
-    [undoable, currentFolderId, canMoveFile, canMoveFolder],
+    [files, folders, currentFolderId, canMoveFile, canMoveFolder],
+  )
+
+  const handleConfirmMove = useCallback(
+    (targetFolderId: string | null) => {
+      if (!moveAction) return
+      if (moveAction.type === "selected") {
+        batchMove.mutate(
+          {
+            files: moveAction.fileIds,
+            folders: moveAction.folderIds,
+            targetFolderId,
+          },
+          {
+            onSuccess: () => {
+              clearSelection()
+              setMoveAction(null)
+            },
+          },
+        )
+        return
+      }
+
+      if (moveAction.itemType === "file") {
+        void undoable.moveFile(moveAction.itemId, targetFolderId, moveAction.originalFolderId)
+      } else {
+        void undoable.moveFolder(moveAction.itemId, targetFolderId, moveAction.originalFolderId)
+      }
+      clearSelection()
+      setMoveAction(null)
+    },
+    [batchMove, clearSelection, moveAction, undoable],
+  )
+
+  const handleSubmitTextAction = useCallback(
+    (value: string) => {
+      if (!textAction) return
+      if (textAction.type === "create-folder") {
+        createFolderMutation.mutate(
+          {
+            name: value,
+            parentFolderId: textAction.parentFolderId,
+          },
+          { onSuccess: () => setTextAction(null) },
+        )
+        return
+      }
+
+      if (value === textAction.currentName) {
+        setTextAction(null)
+        return
+      }
+
+      if (textAction.itemType === "file") {
+        void undoable.renameFile(textAction.itemId, value, textAction.currentName)
+      } else {
+        void undoable.renameFolder(textAction.itemId, value, textAction.currentName)
+      }
+      setTextAction(null)
+    },
+    [createFolderMutation, textAction, undoable],
+  )
+
+  const handleCreateMoveFolder = useCallback(
+    async (name: string, parentFolderId: string | null) => {
+      const folder = await createFolderMutation.mutateAsync({ name, parentFolderId })
+      return { id: folder.id, name: folder.name }
+    },
+    [createFolderMutation],
   )
 
   const handleContextShare = useCallback(
@@ -1297,6 +1387,78 @@ export function FilesPage() {
         workspaceId={workspaceId}
         file={fileForTagDialog}
         canManageTags={canTag}
+      />
+
+      <ConfirmDialog
+        open={deleteSelectionConfirm !== null}
+        title={deleteSelectionConfirm?.count === 1 ? "Delete this item?" : "Delete selected items?"}
+        description={
+          deleteSelectionConfirm
+            ? deleteSelectionConfirm.count === 1
+              ? "This item will be moved to trash."
+              : `${String(deleteSelectionConfirm.count)} items will be moved to trash.`
+            : undefined
+        }
+        confirmLabel="Move to trash"
+        loadingLabel="Moving..."
+        loading={batchTrash.isPending}
+        onConfirm={handleConfirmDeleteSelected}
+        onOpenChange={(open) => {
+          if (!open) setDeleteSelectionConfirm(null)
+        }}
+      />
+
+      <TextInputDialog
+        open={textAction !== null}
+        title={textAction?.type === "create-folder" ? "New folder" : "Rename item"}
+        description={
+          textAction?.type === "create-folder"
+            ? "Create a folder in the current location."
+            : "Enter a new name for this item."
+        }
+        label={textAction?.type === "create-folder" ? "Folder name" : "Name"}
+        initialValue={textAction?.type === "rename" ? textAction.currentName : ""}
+        placeholder={textAction?.type === "create-folder" ? "Folder name" : undefined}
+        confirmLabel={textAction?.type === "create-folder" ? "Create folder" : "Rename"}
+        loadingLabel={textAction?.type === "create-folder" ? "Creating..." : "Renaming..."}
+        loading={textAction?.type === "create-folder" && createFolderMutation.isPending}
+        error={
+          textAction?.type === "create-folder" && createFolderMutation.isError
+            ? createFolderMutation.error.message
+            : undefined
+        }
+        onSubmit={handleSubmitTextAction}
+        onOpenChange={(open) => {
+          if (!open) setTextAction(null)
+        }}
+      />
+
+      <MoveItemsDialog
+        open={moveAction !== null}
+        workspaceId={workspaceId}
+        title="Move items"
+        description={
+          moveAction?.type === "selected"
+            ? `Choose a destination for ${String(moveAction.count)} selected item${moveAction.count === 1 ? "" : "s"}.`
+            : "Choose a destination folder."
+        }
+        initialFolderId={currentFolderId}
+        excludedFolderIds={
+          moveAction?.type === "selected"
+            ? moveAction.folderIds
+            : moveAction?.itemType === "folder"
+              ? [moveAction.itemId]
+              : []
+        }
+        loading={batchMove.isPending}
+        createLoading={createFolderMutation.isPending}
+        error={batchMove.isError ? batchMove.error.message : undefined}
+        createError={createFolderMutation.isError ? createFolderMutation.error.message : undefined}
+        onConfirm={handleConfirmMove}
+        onCreateFolder={handleCreateMoveFolder}
+        onOpenChange={(open) => {
+          if (!open) setMoveAction(null)
+        }}
       />
     </>
   )

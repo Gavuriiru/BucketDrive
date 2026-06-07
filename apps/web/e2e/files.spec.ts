@@ -71,6 +71,40 @@ test("search filters files and clear returns to browse results", async ({ page }
   await expect(page.getByTestId("file-card").getByText(fileName)).toBeVisible()
 })
 
+test("new folder uses the custom text input dialog", async ({ page }) => {
+  await loginAs(page, users.owner)
+  const folderName = uniqueName("e2e-folder", "folder")
+
+  await page.goto("/dashboard/files")
+  await page.getByRole("button", { name: "New Folder" }).click()
+  const dialog = page.getByRole("dialog", { name: "New folder" })
+  await expect(dialog).toBeVisible()
+
+  await dialog.getByLabel("Folder name").fill(folderName)
+  await dialog.getByRole("button", { name: "Create folder" }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText(folderName)).toBeVisible()
+})
+
+test("move action opens a folder picker instead of asking for an ID", async ({ page }) => {
+  await loginAs(page, users.owner)
+  const workspace = await getWorkspace(page.request)
+  const fileName = uniqueName("e2e-move-picker")
+  await createFileFixture(page.request, workspace.id, fileName)
+
+  await page.goto("/dashboard/files")
+  const card = page.getByText(fileName).locator("xpath=ancestor::*[@data-testid='file-card']")
+  await expect(card).toBeVisible()
+  await card.click({ button: "right" })
+  await page.locator('[role="menu"]:visible').getByRole("menuitem", { name: "Move" }).click()
+
+  const dialog = page.getByRole("dialog", { name: "Move items" })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText("Destination: Root")).toBeVisible()
+  await expect(dialog.getByPlaceholder("New folder in Root")).toBeVisible()
+  await expect(dialog.getByRole("button", { name: "Move here" })).toBeVisible()
+})
+
 test("deleted file appears in trash and can be restored", async ({ page }) => {
   await loginAs(page, users.owner)
   const workspace = await getWorkspace(page.request)
@@ -87,4 +121,31 @@ test("deleted file appears in trash and can be restored", async ({ page }) => {
 
   await page.goto("/dashboard/files")
   await expect(page.getByText(fileName)).toBeVisible()
+})
+
+test("permanent trash delete uses the custom confirmation dialog", async ({ page }) => {
+  await loginAs(page, users.owner)
+  const workspace = await getWorkspace(page.request)
+  const fileName = uniqueName("e2e-trash-permanent")
+  await createFileFixture(page.request, workspace.id, fileName, { deleted: true })
+
+  await page.goto("/dashboard/trash")
+  const row = page.getByRole("row", { name: new RegExp(fileName) })
+  await expect(row).toBeVisible()
+
+  await row.getByRole("button", { name: "Delete permanently" }).click()
+  const dialog = page.getByRole("dialog", { name: "Delete permanently?" })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText("This cannot be undone.")
+
+  await dialog.getByRole("button", { name: "Cancel" }).click()
+  await expect(dialog).toBeHidden()
+  await expect(row).toBeVisible()
+
+  await row.getByRole("button", { name: "Delete permanently" }).click()
+  await page
+    .getByRole("dialog", { name: "Delete permanently?" })
+    .getByRole("button", { name: "Delete permanently" })
+    .click()
+  await expect(row).toBeHidden()
 })

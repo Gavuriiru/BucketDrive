@@ -9,6 +9,8 @@ import {
   useDeleteFolder,
 } from "@/lib/api"
 import { useExplorerStore } from "@/stores/explorer-store"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { TextInputDialog } from "@/components/shared/text-input-dialog"
 import { useNavigate } from "@tanstack/react-router"
 import * as ContextMenu from "@radix-ui/react-context-menu"
 import { can, type Folder as FolderType, type WorkspaceRole } from "@bucketdrive/shared"
@@ -24,6 +26,10 @@ const depthPaddingClasses = [
   "pl-[56px]",
   "pl-[68px]",
 ] as const
+
+type TextAction =
+  | { type: "rename"; folderId: string; currentName: string }
+  | { type: "create-subfolder"; parentFolderId: string }
 
 interface TreeNodeProps {
   folder: FolderType
@@ -174,6 +180,10 @@ export function FolderTree() {
   const canCreateFolder = can(workspaceRole, "folders.create")
   const canRenameFolder = can(workspaceRole, "folders.rename")
   const canDeleteFolder = can(workspaceRole, "folders.delete")
+  const [deleteConfirm, setDeleteConfirm] = useState<{ folderId: string; name: string } | null>(
+    null,
+  )
+  const [textAction, setTextAction] = useState<TextAction | null>(null)
 
   const handleNavigate = useCallback(
     (folderId: string | null) => {
@@ -185,34 +195,59 @@ export function FolderTree() {
     [navigate],
   )
 
-  const handleRename = useCallback(
-    (folderId: string, currentName: string) => {
-      const name = window.prompt("Rename to:", currentName)
-      if (name?.trim() && name !== currentName) {
-        updateFolderMutation.mutate({ folderId, name: name.trim() })
-      }
-    },
-    [updateFolderMutation],
-  )
+  const handleRename = useCallback((folderId: string, currentName: string) => {
+    setTextAction({ type: "rename", folderId, currentName })
+  }, [])
 
-  const handleDelete = useCallback(
-    (folderId: string, name: string) => {
-      const confirmed = window.confirm(`Delete folder "${name}"?`)
-      if (confirmed) {
-        deleteFolderMutation.mutate({ folderId })
-      }
-    },
-    [deleteFolderMutation],
-  )
+  const handleDelete = useCallback((folderId: string, name: string) => {
+    setDeleteConfirm({ folderId, name })
+  }, [])
 
-  const handleCreateSubfolder = useCallback(
-    (parentFolderId: string) => {
-      const name = window.prompt("Folder name:")
-      if (name?.trim()) {
-        createFolderMutation.mutate({ name: name.trim(), parentFolderId })
+  const handleConfirmDelete = useCallback(() => {
+    if (!deleteConfirm) return
+    deleteFolderMutation.mutate(
+      { folderId: deleteConfirm.folderId },
+      {
+        onSuccess: () => {
+          setDeleteConfirm(null)
+        },
+      },
+    )
+  }, [deleteFolderMutation, deleteConfirm])
+
+  const handleCreateSubfolder = useCallback((parentFolderId: string) => {
+    setTextAction({ type: "create-subfolder", parentFolderId })
+  }, [])
+
+  const handleSubmitTextAction = useCallback(
+    (value: string) => {
+      if (!textAction) return
+      if (textAction.type === "rename") {
+        if (value === textAction.currentName) {
+          setTextAction(null)
+          return
+        }
+        updateFolderMutation.mutate(
+          { folderId: textAction.folderId, name: value },
+          {
+            onSuccess: () => {
+              setTextAction(null)
+            },
+          },
+        )
+        return
       }
+
+      createFolderMutation.mutate(
+        { name: value, parentFolderId: textAction.parentFolderId },
+        {
+          onSuccess: () => {
+            setTextAction(null)
+          },
+        },
+      )
     },
-    [createFolderMutation],
+    [createFolderMutation, textAction, updateFolderMutation],
   )
 
   if (!workspaceId) return null
@@ -252,6 +287,44 @@ export function FolderTree() {
           canDeleteFolder={canDeleteFolder}
         />
       ))}
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title="Delete folder?"
+        description={deleteConfirm ? `"${deleteConfirm.name}" will be moved to trash.` : undefined}
+        confirmLabel="Move to trash"
+        loadingLabel="Moving..."
+        loading={deleteFolderMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirm(null)
+        }}
+      />
+      <TextInputDialog
+        open={textAction !== null}
+        title={textAction?.type === "rename" ? "Rename folder" : "New subfolder"}
+        description={
+          textAction?.type === "rename"
+            ? "Enter a new name for this folder."
+            : "Create a folder inside the selected folder."
+        }
+        label="Folder name"
+        initialValue={textAction?.type === "rename" ? textAction.currentName : ""}
+        placeholder="Folder name"
+        confirmLabel={textAction?.type === "rename" ? "Rename" : "Create folder"}
+        loadingLabel={textAction?.type === "rename" ? "Renaming..." : "Creating..."}
+        loading={updateFolderMutation.isPending || createFolderMutation.isPending}
+        error={
+          updateFolderMutation.isError
+            ? updateFolderMutation.error.message
+            : createFolderMutation.isError
+              ? createFolderMutation.error.message
+              : undefined
+        }
+        onSubmit={handleSubmitTextAction}
+        onOpenChange={(open) => {
+          if (!open) setTextAction(null)
+        }}
+      />
     </div>
   )
 }
