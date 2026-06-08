@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { unzipSync } from "fflate"
 import { BatchOperationResponse } from "@bucketdrive/shared"
 import { createContractTestContext, expectApiError } from "./test-harness"
 
@@ -68,6 +69,48 @@ describe("batch contracts", () => {
     const movedBody = BatchOperationResponse.parse(await ctx.json(moved))
     expect(movedBody.processed).toHaveLength(2)
     expect(movedBody.failed).toHaveLength(0)
+  })
+
+  it("streams selected files and folder contents as a zip download", async () => {
+    const ctx = createContractTestContext()
+    const folder = ctx.seedFolder({ name: "Reports", path: "/Reports" })
+    const directFile = ctx.seedFile({ originalName: "Root.txt" })
+    const folderFile = ctx.seedFile({
+      folderId: folder.id,
+      originalName: "Report.txt",
+      storageKey: "bucket/files/report.txt",
+    })
+    await ctx.env.STORAGE.put(directFile.storageKey, "root file")
+    await ctx.env.STORAGE.put(folderFile.storageKey, "folder file")
+
+    const downloaded = await ctx.request(`/api/workspaces/${ctx.workspaceId}/batch/download`, {
+      method: "POST",
+      body: JSON.stringify({ files: [directFile.id], folders: [folder.id] }),
+    })
+
+    expect(downloaded.status).toBe(200)
+    expect(downloaded.headers.get("Content-Type")).toContain("application/zip")
+    expect(downloaded.headers.get("Content-Disposition")).toContain(".zip")
+
+    const zip = unzipSync(new Uint8Array(await downloaded.arrayBuffer()))
+    expect(Object.keys(zip).sort()).toEqual(["Reports/Report.txt", "Root.txt"])
+    expect(new TextDecoder().decode(zip["Root.txt"])).toBe("root file")
+    expect(new TextDecoder().decode(zip["Reports/Report.txt"])).toBe("folder file")
+  })
+
+  it("returns a clear error when a selected folder has no downloadable files", async () => {
+    const ctx = createContractTestContext()
+    const folder = ctx.seedFolder({ name: "Empty", path: "/Empty" })
+
+    const downloaded = await ctx.request(`/api/workspaces/${ctx.workspaceId}/batch/download`, {
+      method: "POST",
+      body: JSON.stringify({ files: [], folders: [folder.id] }),
+    })
+
+    expect(downloaded.status).toBe(404)
+    const body = await ctx.json<{ code: string; message: string }>(downloaded)
+    expect(body.code).toBe("NO_DOWNLOADABLE_FILES")
+    expect(body.message).toBe("No downloadable files found")
   })
 
   it("revokes shares in batch and validates empty payloads", async () => {

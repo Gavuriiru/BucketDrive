@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-import { useCallback, useMemo, type PointerEvent } from "react"
+import { useCallback, useMemo, useRef, type PointerEvent } from "react"
 import { Folder, FolderOpen, GripVertical, MoreVertical, Star } from "lucide-react"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import type { FileObject, Folder as FolderType } from "@bucketdrive/shared"
@@ -75,6 +75,17 @@ const dropdownItemClass =
 const rowClass =
   "flex min-h-14 items-center border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover focus:outline-none"
 
+function useMenuAction() {
+  const lastActionAtRef = useRef(0)
+  return useCallback((event: { stopPropagation: () => void }, action: () => void) => {
+    event.stopPropagation()
+    const now = Date.now()
+    if (now - lastActionAtRef.current < 80) return
+    lastActionAtRef.current = now
+    window.setTimeout(action, 0)
+  }, [])
+}
+
 interface FolderListRowProps {
   folder: FolderType
   index: number
@@ -119,6 +130,7 @@ function FolderListRow({
     data: { type: "folder", id: folder.id },
   })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
+  const runMenuAction = useMenuAction()
 
   const setRefs = useCallback(
     (node: HTMLDivElement | null) => {
@@ -212,14 +224,20 @@ function FolderListRow({
               >
                 <DropdownMenu.Item
                   className={dropdownItemClass}
-                  onClick={() => onFolderClick(folder.id)}
+                  onClick={(event) => runMenuAction(event, () => onFolderClick(folder.id))}
+                  onSelect={(event) => runMenuAction(event, () => onFolderClick(folder.id))}
                 >
                   Open
                 </DropdownMenu.Item>
                 {onContextRename && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextRename(folder.id, "folder")}
+                    onClick={(event) =>
+                      runMenuAction(event, () => onContextRename(folder.id, "folder"))
+                    }
+                    onSelect={(event) =>
+                      runMenuAction(event, () => onContextRename(folder.id, "folder"))
+                    }
                   >
                     Rename
                   </DropdownMenu.Item>
@@ -227,7 +245,12 @@ function FolderListRow({
                 {onContextMove && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextMove(folder.id, "folder")}
+                    onClick={(event) =>
+                      runMenuAction(event, () => onContextMove(folder.id, "folder"))
+                    }
+                    onSelect={(event) =>
+                      runMenuAction(event, () => onContextMove(folder.id, "folder"))
+                    }
                   >
                     Move
                   </DropdownMenu.Item>
@@ -238,7 +261,12 @@ function FolderListRow({
                 {onContextShare && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextShare(folder.id, "folder")}
+                    onClick={(event) =>
+                      runMenuAction(event, () => onContextShare(folder.id, "folder"))
+                    }
+                    onSelect={(event) =>
+                      runMenuAction(event, () => onContextShare(folder.id, "folder"))
+                    }
                   >
                     Share
                   </DropdownMenu.Item>
@@ -249,7 +277,12 @@ function FolderListRow({
                 {onContextDelete && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextDelete(folder.id, "folder")}
+                    onClick={(event) =>
+                      runMenuAction(event, () => onContextDelete(folder.id, "folder"))
+                    }
+                    onSelect={(event) =>
+                      runMenuAction(event, () => onContextDelete(folder.id, "folder"))
+                    }
                   >
                     Delete
                   </DropdownMenu.Item>
@@ -312,6 +345,7 @@ function FileListRow({
     data: { type: "file", id: file.id },
   })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
+  const runMenuAction = useMenuAction()
 
   return (
     <FileContextMenu
@@ -440,28 +474,36 @@ function FileListRow({
               >
                 <DropdownMenu.Item
                   className={dropdownItemClass}
-                  onClick={() => onContextOpen?.(file.id, "file")}
+                  onClick={(event) => runMenuAction(event, () => onContextOpen?.(file.id, "file"))}
+                  onSelect={(event) => runMenuAction(event, () => onContextOpen?.(file.id, "file"))}
                 >
                   Open
                 </DropdownMenu.Item>
                 {onContextPreview && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextPreview(file.id)}
+                    onClick={(event) => runMenuAction(event, () => onContextPreview(file.id))}
+                    onSelect={(event) => runMenuAction(event, () => onContextPreview(file.id))}
                   >
                     Preview
                   </DropdownMenu.Item>
                 )}
                 <DropdownMenu.Item
                   className={dropdownItemClass}
-                  onClick={() => onContextDownload?.(file.id)}
+                  onClick={(event) => runMenuAction(event, () => onContextDownload?.(file.id))}
+                  onSelect={(event) => runMenuAction(event, () => onContextDownload?.(file.id))}
                 >
                   Download
                 </DropdownMenu.Item>
                 {onContextRename && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextRename(file.id, "file")}
+                    onClick={(event) =>
+                      runMenuAction(event, () => onContextRename(file.id, "file"))
+                    }
+                    onSelect={(event) =>
+                      runMenuAction(event, () => onContextRename(file.id, "file"))
+                    }
                   >
                     Rename
                   </DropdownMenu.Item>
@@ -469,7 +511,8 @@ function FileListRow({
                 {onContextFavorite && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextFavorite(file.id)}
+                    onClick={(event) => runMenuAction(event, () => onContextFavorite(file.id))}
+                    onSelect={(event) => runMenuAction(event, () => onContextFavorite(file.id))}
                   >
                     {file.isFavorited ? "Remove favorite" : "Add favorite"}
                   </DropdownMenu.Item>
@@ -477,7 +520,8 @@ function FileListRow({
                 {onContextTags && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextTags(file.id)}
+                    onClick={(event) => runMenuAction(event, () => onContextTags(file.id))}
+                    onSelect={(event) => runMenuAction(event, () => onContextTags(file.id))}
                   >
                     Tags
                   </DropdownMenu.Item>
@@ -485,7 +529,8 @@ function FileListRow({
                 {onContextMove && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextMove(file.id, "file")}
+                    onClick={(event) => runMenuAction(event, () => onContextMove(file.id, "file"))}
+                    onSelect={(event) => runMenuAction(event, () => onContextMove(file.id, "file"))}
                   >
                     Move
                   </DropdownMenu.Item>
@@ -496,7 +541,10 @@ function FileListRow({
                 {onContextShare && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextShare(file.id, "file")}
+                    onClick={(event) => runMenuAction(event, () => onContextShare(file.id, "file"))}
+                    onSelect={(event) =>
+                      runMenuAction(event, () => onContextShare(file.id, "file"))
+                    }
                   >
                     Share
                   </DropdownMenu.Item>
@@ -507,7 +555,12 @@ function FileListRow({
                 {onContextDelete && (
                   <DropdownMenu.Item
                     className={dropdownItemClass}
-                    onClick={() => onContextDelete(file.id, "file")}
+                    onClick={(event) =>
+                      runMenuAction(event, () => onContextDelete(file.id, "file"))
+                    }
+                    onSelect={(event) =>
+                      runMenuAction(event, () => onContextDelete(file.id, "file"))
+                    }
                   >
                     Delete
                   </DropdownMenu.Item>

@@ -33,7 +33,7 @@ export interface StorageProvider {
     contentType?: string
   }): Promise<void>
   getObject(key: string): Promise<{
-    body: ReadableStream
+    body: ReadableStream<Uint8Array>
     contentType?: string
     size: number
   } | null>
@@ -173,7 +173,7 @@ export class R2StorageProvider implements StorageProvider {
   }
 
   async getObject(key: string): Promise<{
-    body: ReadableStream
+    body: ReadableStream<Uint8Array>
     contentType?: string
     size: number
   } | null> {
@@ -361,7 +361,7 @@ class R2BindingProvider implements StorageProvider {
   }
 
   async getObject(key: string): Promise<{
-    body: ReadableStream
+    body: ReadableStream<Uint8Array>
     contentType?: string
     size: number
   } | null> {

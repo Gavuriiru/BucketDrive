@@ -105,6 +105,60 @@ test("move action opens a folder picker instead of asking for an ID", async ({ p
   await expect(dialog.getByRole("button", { name: "Move here" })).toBeVisible()
 })
 
+test("context menu actions open dialogs for a file", async ({ page }) => {
+  await loginAs(page, users.owner)
+  const workspace = await getWorkspace(page.request)
+  const fileName = uniqueName("e2e-context-menu")
+  await createFileFixture(page.request, workspace.id, fileName)
+
+  await page.goto("/dashboard/files")
+  const card = page.getByText(fileName).locator("xpath=ancestor::*[@data-testid='file-card']")
+  await expect(card).toBeVisible()
+
+  await card.click({ button: "right" })
+  await page.locator('[role="menu"]:visible').getByRole("menuitem", { name: "Rename" }).click()
+  await expect(page.getByRole("dialog", { name: "Rename item" })).toBeVisible()
+  await page.keyboard.press("Escape")
+
+  await card.click({ button: "right" })
+  await page.locator('[role="menu"]:visible').getByRole("menuitem", { name: "Share" }).click()
+  await expect(page.getByRole("dialog", { name: new RegExp(`Share.*${fileName}`) })).toBeVisible()
+})
+
+test("batch toolbar exposes shared actions for selected files", async ({ page }) => {
+  await loginAs(page, users.owner)
+  const workspace = await getWorkspace(page.request)
+  const firstName = uniqueName("e2e-batch-one")
+  const secondName = uniqueName("e2e-batch-two")
+  await createFileFixture(page.request, workspace.id, firstName)
+  await createFileFixture(page.request, workspace.id, secondName)
+
+  await page.goto("/dashboard/files")
+  const firstCard = page.getByText(firstName).locator("xpath=ancestor::*[@data-testid='file-card']")
+  const secondCard = page
+    .getByText(secondName)
+    .locator("xpath=ancestor::*[@data-testid='file-card']")
+  await expect(firstCard).toBeVisible()
+  await expect(secondCard).toBeVisible()
+
+  await page.keyboard.down("Control")
+  await firstCard.click()
+  await secondCard.click()
+  await page.keyboard.up("Control")
+
+  await expect(page.getByText("2 items selected")).toBeVisible()
+  await page.getByRole("button", { name: "Move selected" }).click()
+  await expect(page.getByRole("dialog", { name: "Move items" })).toBeVisible()
+  await page.keyboard.press("Escape")
+
+  await page.getByRole("button", { name: "Share selected" }).click()
+  await expect(page.getByRole("dialog", { name: "Share selected items" })).toBeVisible()
+  await page.keyboard.press("Escape")
+
+  await page.getByRole("button", { name: "Tags" }).click()
+  await expect(page.getByRole("dialog", { name: "Tags" })).toContainText("Manage tags for 2 files")
+})
+
 test("deleted file appears in trash and can be restored", async ({ page }) => {
   await loginAs(page, users.owner)
   const workspace = await getWorkspace(page.request)

@@ -91,8 +91,14 @@ export class TrashService {
       this.db.select().from(folder).all(),
     ])
     const folderById = new Map(folderRows.map((row) => [row.id, row]))
+    const visibleFiles = files.filter(
+      (row) => !this.hasDeletedFolderAncestor(row.folderId, folderById),
+    )
+    const visibleFolders = folders.filter(
+      (row) => !this.hasDeletedFolderAncestor(row.parentFolderId, folderById),
+    )
     const items: TrashItem[] = [
-      ...files.map((row) => ({
+      ...visibleFiles.map((row) => ({
         resourceType: "file" as const,
         id: row.id,
         name: row.originalName,
@@ -103,7 +109,7 @@ export class TrashService {
         sizeBytes: row.sizeBytes,
         extension: row.extension,
       })),
-      ...folders.map((row) => ({
+      ...visibleFolders.map((row) => ({
         resourceType: "folder" as const,
         id: row.id,
         name: row.name,
@@ -252,8 +258,13 @@ export class TrashService {
     const targetFolder = file.folderId
       ? await this.db.select().from(folder).where(eq(folder.id, file.folderId)).get()
       : null
-    const restoredToRoot = !targetFolder || targetFolder.isDeleted
-    const restoredToFolderId = restoredToRoot ? null : targetFolder.id
+    let restoredToFolderId: string | null = null
+    if (targetFolder?.isDeleted) {
+      restoredToFolderId = await this.restoreDeletedFolderPath(targetFolder)
+    } else if (targetFolder) {
+      restoredToFolderId = targetFolder.id
+    }
+    const restoredToRoot = restoredToFolderId === null
     const restoredName = await this.getUniqueFileName(
       restoredToFolderId,
       file.originalName,
@@ -425,11 +436,11 @@ export class TrashService {
 
   async restoreAllTrash(actorId: string): Promise<TrashBatchResult> {
     const result = this.createBatchResult()
-    const deletedFolders = await this.db
-      .select()
-      .from(folder)
-      .where(eq(folder.isDeleted, true))
-      .all()
+    const allFolders = await this.db.select().from(folder).all()
+    const folderById = new Map(allFolders.map((row) => [row.id, row]))
+    const deletedFolders = allFolders.filter(
+      (row) => row.isDeleted && !this.hasDeletedFolderAncestor(row.parentFolderId, folderById),
+    )
 
     for (const row of deletedFolders.sort((a, b) => a.path.length - b.path.length)) {
       const current = await this.db
@@ -444,11 +455,15 @@ export class TrashService {
       )
     }
 
-    const deletedFiles = await this.db
-      .select({ id: fileObject.id })
-      .from(fileObject)
-      .where(eq(fileObject.isDeleted, true))
-      .all()
+    const activeFolders = await this.db.select().from(folder).all()
+    const activeFolderById = new Map(activeFolders.map((row) => [row.id, row]))
+    const deletedFiles = (
+      await this.db
+        .select({ id: fileObject.id, folderId: fileObject.folderId })
+        .from(fileObject)
+        .where(eq(fileObject.isDeleted, true))
+        .all()
+    ).filter((row) => !this.hasDeletedFolderAncestor(row.folderId, activeFolderById))
 
     for (const row of deletedFiles) {
       await this.captureBatch(result, "file", row.id, () =>
@@ -461,11 +476,11 @@ export class TrashService {
 
   async emptyTrash(actorId: string): Promise<TrashBatchResult> {
     const result = this.createBatchResult()
-    const deletedFolders = await this.db
-      .select()
-      .from(folder)
-      .where(eq(folder.isDeleted, true))
-      .all()
+    const allFolders = await this.db.select().from(folder).all()
+    const folderById = new Map(allFolders.map((row) => [row.id, row]))
+    const deletedFolders = allFolders.filter(
+      (row) => row.isDeleted && !this.hasDeletedFolderAncestor(row.parentFolderId, folderById),
+    )
 
     for (const row of deletedFolders.sort((a, b) => a.path.length - b.path.length)) {
       const current = await this.db
@@ -480,11 +495,15 @@ export class TrashService {
       )
     }
 
-    const deletedFiles = await this.db
-      .select({ id: fileObject.id })
-      .from(fileObject)
-      .where(eq(fileObject.isDeleted, true))
-      .all()
+    const remainingFolders = await this.db.select().from(folder).all()
+    const remainingFolderById = new Map(remainingFolders.map((row) => [row.id, row]))
+    const deletedFiles = (
+      await this.db
+        .select({ id: fileObject.id, folderId: fileObject.folderId })
+        .from(fileObject)
+        .where(eq(fileObject.isDeleted, true))
+        .all()
+    ).filter((row) => !this.hasDeletedFolderAncestor(row.folderId, remainingFolderById))
 
     for (const row of deletedFiles) {
       await this.captureBatch(result, "file", row.id, () =>
@@ -702,6 +721,66 @@ export class TrashService {
       queue.push(...(childrenByParentId.get(current.id) ?? []))
     }
     return result
+  }
+
+  private hasDeletedFolderAncestor(
+    folderId: string | null,
+    folderById: Map<string, Pick<FolderRow, "id" | "parentFolderId" | "isDeleted">>,
+  ) {
+    let currentId = folderId
+    const visited = new Set<string>()
+    while (currentId) {
+      if (visited.has(currentId)) return false
+      visited.add(currentId)
+      const current = folderById.get(currentId)
+      if (!current) return false
+      if (current.isDeleted) return true
+      currentId = current.parentFolderId
+    }
+    return false
+  }
+
+  private async restoreDeletedFolderPath(targetFolder: FolderRow) {
+    const allFolders = await this.db.select().from(folder).all()
+    const folderById = new Map(allFolders.map((row) => [row.id, row]))
+    const deletedChain: FolderRow[] = []
+    let current: FolderRow | undefined = targetFolder
+    const visited = new Set<string>()
+
+    while (current?.isDeleted) {
+      if (visited.has(current.id)) break
+      visited.add(current.id)
+      deletedChain.push(current)
+      current = current.parentFolderId ? folderById.get(current.parentFolderId) : undefined
+    }
+
+    let parentFolderId = current && !current.isDeleted ? current.id : null
+    let parentPath = current && !current.isDeleted ? current.path : null
+    let restoredFolderId: string | null = parentFolderId
+    const now = new Date().toISOString()
+
+    for (const row of deletedChain.reverse()) {
+      const restoredName = await this.getUniqueFolderName(parentFolderId, row.name, row.id)
+      const restoredPath = joinPath(parentPath, restoredName)
+      await this.db
+        .update(folder)
+        .set({
+          isDeleted: false,
+          deletedAt: null,
+          parentFolderId,
+          name: restoredName,
+          path: restoredPath,
+          updatedAt: now,
+        })
+        .where(eq(folder.id, row.id))
+        .run()
+
+      parentFolderId = row.id
+      parentPath = restoredPath
+      restoredFolderId = row.id
+    }
+
+    return restoredFolderId
   }
 
   private createBatchResult() {

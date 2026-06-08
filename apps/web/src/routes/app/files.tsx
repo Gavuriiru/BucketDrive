@@ -1,6 +1,19 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands, @typescript-eslint/restrict-template-expressions */
 import { useRef, useMemo, useCallback, useState, useEffect } from "react"
-import { Upload, LayoutGrid, List, Trash2, FolderPlus, Star, X, ArrowRightLeft } from "lucide-react"
+import {
+  Upload,
+  LayoutGrid,
+  List,
+  Trash2,
+  FolderPlus,
+  Star,
+  X,
+  ArrowRightLeft,
+  Copy,
+  Download,
+  Share2,
+  Tags,
+} from "lucide-react"
 import {
   useFiles,
   useFolders,
@@ -28,6 +41,7 @@ import { FileList } from "@/components/features/file-list"
 import { FileGrid } from "@/components/features/file-grid"
 import { Breadcrumbs } from "@/components/features/breadcrumbs"
 import { ShareModal } from "@/components/features/share-modal"
+import { BatchShareDialog } from "@/components/features/batch-share-dialog"
 import { FilePreview } from "@/components/features/file-preview"
 import { SelectionMarquee } from "@/components/features/selection-marquee"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
@@ -96,11 +110,25 @@ type MoveAction =
       originalFolderId: string | null
     }
 
+type BatchDownloadStatus = "idle" | "preparing" | "downloading" | "zipping" | "failed"
+
 function normalizeWorkspaceRole(role: unknown): WorkspaceRole {
   const normalized = typeof role === "string" ? role.split(",")[0]?.trim().toLowerCase() : "viewer"
   return workspaceRoles.includes(normalized as WorkspaceRole)
     ? (normalized as WorkspaceRole)
     : "viewer"
+}
+
+function getDownloadFilename(contentDisposition: string | null) {
+  if (!contentDisposition) return null
+
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition)
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1])
+  }
+
+  const asciiMatch = /filename="([^"]+)"/i.exec(contentDisposition)
+  return asciiMatch?.[1] ?? null
 }
 
 export function FilesPage() {
@@ -247,6 +275,9 @@ export function FilesPage() {
     folderIds: [],
   })
   const [tagDialogFileId, setTagDialogFileId] = useState<string | null>(null)
+  const [batchTagDialogOpen, setBatchTagDialogOpen] = useState(false)
+  const [batchShareDialogOpen, setBatchShareDialogOpen] = useState(false)
+  const [batchDownloadStatus, setBatchDownloadStatus] = useState<BatchDownloadStatus>("idle")
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [deleteSelectionConfirm, setDeleteSelectionConfirm] =
     useState<DeleteSelectionConfirm | null>(null)
@@ -451,6 +482,113 @@ export function FilesPage() {
       folderIds: selectedFolderIds,
     })
   }, [selectedFileIds, selectedFolderIds, canMoveFile, canMoveFolder])
+
+  const handleCopySelected = useCallback(() => {
+    const totalCount = selectedFileIds.length + selectedFolderIds.length
+    if (totalCount === 0) return
+    useExplorerStore.getState().setClipboard({
+      action: "copy",
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    })
+  }, [selectedFileIds, selectedFolderIds])
+
+  const handleDownloadSelected = useCallback(async () => {
+    const totalCount = selectedFileIds.length + selectedFolderIds.length
+    if (totalCount === 0 || batchDownloadStatus !== "idle") return
+
+    if (selectedFileIds.length === 1 && selectedFolderIds.length === 0) {
+      const fileId = selectedFileIds[0]
+      if (fileId) handleContextDownload(fileId)
+      return
+    }
+
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 10 * 60 * 1000)
+
+    setBatchDownloadStatus("preparing")
+    setDownloadError(null)
+    try {
+      const res = await fetch("/api/batch/download", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: selectedFileIds, folders: selectedFolderIds }),
+        signal: controller.signal,
+      })
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          message?: string
+          failed?: Array<{ code: string; message: string }>
+        } | null
+        const firstFailure = data?.failed?.[0]
+        throw new Error(
+          firstFailure
+            ? `${firstFailure.message} (${firstFailure.code})`
+            : (data?.message ?? "Batch download failed"),
+        )
+      }
+
+      setBatchDownloadStatus("downloading")
+      setBatchDownloadStatus("zipping")
+      const blob = await res.blob()
+      if (blob.size === 0) {
+        throw new Error("Batch download returned an empty ZIP")
+      }
+
+      const filename =
+        getDownloadFilename(res.headers.get("Content-Disposition")) ??
+        `bucketdrive-selection-${new Date().toISOString().slice(0, 10)}.zip`
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = filename
+      document.body.append(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      setBatchDownloadStatus("failed")
+      setDownloadError(
+        error instanceof DOMException && error.name === "AbortError"
+          ? "Batch download timed out"
+          : error instanceof Error
+            ? error.message
+            : "Batch download failed",
+      )
+    } finally {
+      window.clearTimeout(timeoutId)
+      setBatchDownloadStatus("idle")
+    }
+  }, [batchDownloadStatus, handleContextDownload, selectedFileIds, selectedFolderIds])
+
+  const handleShareSelected = useCallback(() => {
+    const totalCount = selectedFileIds.length + selectedFolderIds.length
+    if (totalCount === 0) return
+    if (
+      (selectedFileIds.length > 0 && !canShareFile) ||
+      (selectedFolderIds.length > 0 && !canShareFolder)
+    ) {
+      return
+    }
+    setBatchShareDialogOpen(true)
+  }, [selectedFileIds, selectedFolderIds, canShareFile, canShareFolder])
+
+  const handleFavoriteSelected = useCallback(() => {
+    if (!canFavorite || selectedFileIds.length === 0) return
+    const selectedFiles = files.filter((file) => selectedFileIds.includes(file.id))
+    for (const file of selectedFiles) {
+      if (!file.isFavorited) {
+        toggleFavoriteMutation.mutate({ fileId: file.id })
+      }
+    }
+  }, [canFavorite, files, selectedFileIds, toggleFavoriteMutation])
+
+  const handleTagsSelected = useCallback(() => {
+    if (!canTag || selectedFileIds.length === 0) return
+    setBatchTagDialogOpen(true)
+  }, [canTag, selectedFileIds])
 
   const handleNavigateParent = useCallback(() => {
     if (currentFolderId && breadcrumbsData && breadcrumbsData.length > 1) {
@@ -795,6 +933,7 @@ export function FilesPage() {
   const rootBreadcrumb: BreadcrumbItem[] = [{ id: null, name: bucketName }]
   const displayBreadcrumbs = currentFolderId && breadcrumbsData ? breadcrumbsData : rootBreadcrumb
   const totalSelected = selectedFileIds.length + selectedFolderIds.length
+  const isSingleFileSelection = selectedFileIds.length === 1 && selectedFolderIds.length === 0
   const canDeleteSelected =
     totalSelected > 0 &&
     (selectedFileIds.length === 0 || canDeleteFile) &&
@@ -805,6 +944,24 @@ export function FilesPage() {
     ? [{ value: "relevance", label: "Relevance" }, ...defaultDashboardSortOptions]
     : defaultDashboardSortOptions
   const fileForTagDialog = files.find((file) => file.id === tagDialogFileId) ?? null
+  const selectedFilesForBatch = files.filter((file) => selectedFileIds.includes(file.id))
+  const selectedFoldersForBatch = folders.filter((folder) => selectedFolderIds.includes(folder.id))
+  const selectedItemsForShare = [
+    ...selectedFoldersForBatch.map((folder) => ({
+      id: folder.id,
+      type: "folder" as const,
+      name: folder.name,
+    })),
+    ...selectedFilesForBatch.map((file) => ({
+      id: file.id,
+      type: "file" as const,
+      name: file.originalName,
+    })),
+  ]
+  const canShareSelected =
+    totalSelected > 0 &&
+    (selectedFileIds.length === 0 || canShareFile) &&
+    (selectedFolderIds.length === 0 || canShareFolder)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -1176,6 +1333,65 @@ export function FilesPage() {
               </span>
               <div className="flex-1" />
               <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopySelected}
+                  className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy selected
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleDownloadSelected()
+                  }}
+                  disabled={batchDownloadStatus !== "idle"}
+                  className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {batchDownloadStatus === "preparing"
+                    ? "Preparing..."
+                    : batchDownloadStatus === "downloading"
+                      ? "Downloading..."
+                      : batchDownloadStatus === "zipping"
+                        ? "Zipping..."
+                        : batchDownloadStatus === "failed"
+                          ? "Failed"
+                          : isSingleFileSelection
+                            ? "Download"
+                            : "Download ZIP"}
+                </button>
+                {canShareSelected && (
+                  <button
+                    type="button"
+                    onClick={handleShareSelected}
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    Share selected
+                  </button>
+                )}
+                {canFavorite && selectedFileIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleFavoriteSelected}
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  >
+                    <Star className="h-3.5 w-3.5" />
+                    Favorite files
+                  </button>
+                )}
+                {canTag && selectedFileIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleTagsSelected}
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  >
+                    <Tags className="h-3.5 w-3.5" />
+                    Tags
+                  </button>
+                )}
                 {(canMoveFile || canMoveFolder) && (
                   <button
                     type="button"
@@ -1387,6 +1603,23 @@ export function FilesPage() {
         workspaceId={workspaceId}
         file={fileForTagDialog}
         canManageTags={canTag}
+      />
+
+      <TagPickerDialog
+        open={batchTagDialogOpen}
+        onOpenChange={(open) => {
+          setBatchTagDialogOpen(open)
+        }}
+        workspaceId={workspaceId}
+        files={selectedFilesForBatch}
+        canManageTags={canTag}
+      />
+
+      <BatchShareDialog
+        open={batchShareDialogOpen}
+        onOpenChange={setBatchShareDialogOpen}
+        workspaceId={workspaceId ?? ""}
+        items={selectedItemsForShare}
       />
 
       <ConfirmDialog

@@ -1,7 +1,9 @@
 import { Hono } from "hono"
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
+import { Zip, ZipDeflate } from "fflate"
 import { auditLog, fileObject, folder } from "@bucketdrive/shared/db/schema"
 import {
+  BatchDownloadRequest,
   BatchMoveRequest,
   BatchOperationResponse,
   BatchPermanentDeleteRequest,
@@ -14,7 +16,7 @@ import {
 } from "@bucketdrive/shared"
 import { authMiddleware } from "../../middleware/auth"
 import { getDB } from "../../lib/db"
-import { createStorageProvider } from "../../services/storage"
+import { createStorageProvider, type StorageProvider } from "../../services/storage"
 import { TrashService, TrashServiceError } from "../../services/trash.service"
 import { ShareError, SharesService } from "../shares/shares.service"
 
@@ -33,6 +35,10 @@ interface BatchVariables {
 type ResourceType = "file" | "folder" | "share"
 type ProcessedItem = { resourceType: ResourceType; id: string }
 type FailedItem = ProcessedItem & { code: string; message: string }
+type ZipFile = {
+  file: typeof fileObject.$inferSelect
+  path: string
+}
 
 const batch = new Hono<{ Bindings: BatchEnv; Variables: BatchVariables }>()
 
@@ -181,6 +187,135 @@ batch.post("/move", async (c) => {
   return c.json(BatchOperationResponse.parse(finalize(result)))
 })
 
+batch.post("/download", async (c) => {
+  const body = BatchDownloadRequest.parse(await c.req.json())
+  const user = c.get("user")
+  const db = getDB()
+  const storage = createStorageProvider(c.env)
+  const result = createBatchResult()
+  const zipFiles: ZipFile[] = []
+  const usedNames = new Set<string>()
+
+  for (const fileId of unique(body.files)) {
+    if (!(await canAccessFile(fileId, user, "files.read"))) {
+      result.failed.push(forbidden("file", fileId, "files.read"))
+      continue
+    }
+
+    const file = await db
+      .select()
+      .from(fileObject)
+      .where(and(eq(fileObject.id, fileId), eq(fileObject.isDeleted, false)))
+      .get()
+    if (!file) {
+      result.failed.push({
+        resourceType: "file",
+        id: fileId,
+        code: "NOT_FOUND",
+        message: "File not found",
+      })
+      continue
+    }
+
+    addFileToZipPlan({
+      result,
+      zipFiles,
+      usedNames,
+      file,
+      path: file.originalName,
+    })
+  }
+
+  for (const folderId of unique(body.folders)) {
+    if (!(await canAccessFolder(folderId, user, "folders.read"))) {
+      result.failed.push(forbidden("folder", folderId, "folders.read"))
+      continue
+    }
+
+    const root = await db
+      .select()
+      .from(folder)
+      .where(and(eq(folder.id, folderId), eq(folder.isDeleted, false)))
+      .get()
+    if (!root) {
+      result.failed.push({
+        resourceType: "folder",
+        id: folderId,
+        code: "NOT_FOUND",
+        message: "Folder not found",
+      })
+      continue
+    }
+
+    const activeFolders = await db.select().from(folder).where(eq(folder.isDeleted, false)).all()
+    const folderRows = activeFolders.filter(
+      (candidate) => candidate.path === root.path || candidate.path.startsWith(`${root.path}/`),
+    )
+    const folderIds = folderRows.map((candidate) => candidate.id)
+    const folderById = new Map(folderRows.map((candidate) => [candidate.id, candidate]))
+
+    const files =
+      folderIds.length > 0
+        ? await db
+            .select()
+            .from(fileObject)
+            .where(and(eq(fileObject.isDeleted, false), inArray(fileObject.folderId, folderIds)))
+            .all()
+        : []
+
+    for (const file of files) {
+      if (!(await canAccessFile(file.id, user, "files.read"))) {
+        result.failed.push(forbidden("file", file.id, "files.read"))
+        continue
+      }
+      const parent = file.folderId ? folderById.get(file.folderId) : null
+      const folderPath = parent?.path.replace(/^\/+/, "") ?? root.name
+      addFileToZipPlan({
+        result,
+        zipFiles,
+        usedNames,
+        file,
+        path: `${folderPath}/${file.originalName}`,
+      })
+    }
+
+    result.processed.push({ resourceType: "folder", id: folderId })
+  }
+
+  if (zipFiles.length === 0 && result.failed.length > 0) {
+    const status = getNoDownloadStatus(result.failed)
+    const firstFailure = result.failed[0]
+    return c.json(
+      {
+        code: "NO_DOWNLOADABLE_FILES",
+        message: firstFailure?.message ?? "No downloadable files found",
+        failed: result.failed,
+      },
+      status as never,
+    )
+  }
+
+  if (zipFiles.length === 0) {
+    return c.json(
+      {
+        code: "NO_DOWNLOADABLE_FILES",
+        message: "No downloadable files found",
+        failed: result.failed,
+      },
+      404 as never,
+    )
+  }
+
+  const zipName = `bucketdrive-selection-${new Date().toISOString().slice(0, 10)}.zip`
+
+  return new Response(streamZipFiles(storage, zipFiles), {
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": buildAttachmentDisposition(zipName),
+    },
+  })
+})
+
 batch.post("/shares/revoke", async (c) => {
   const body = BatchRevokeSharesRequest.parse(await c.req.json())
   const user = c.get("user")
@@ -217,6 +352,15 @@ function forbidden(resourceType: ResourceType, id: string, permission: Permissio
   }
 }
 
+function getNoDownloadStatus(failed: FailedItem[]) {
+  if (failed.length === 0) return 404
+  if (failed.every((item) => item.code === "FORBIDDEN")) return 403
+  if (failed.some((item) => item.code === "NOT_FOUND" || item.code === "OBJECT_NOT_FOUND")) {
+    return 404
+  }
+  return 422
+}
+
 async function capture(
   result: ReturnType<typeof createBatchResult>,
   resourceType: ResourceType,
@@ -235,6 +379,102 @@ async function capture(
       message: err instanceof Error ? err.message : "Operation failed",
     })
   }
+}
+
+function addFileToZipPlan(params: {
+  result: ReturnType<typeof createBatchResult>
+  zipFiles: ZipFile[]
+  usedNames: Set<string>
+  file: typeof fileObject.$inferSelect
+  path: string
+}) {
+  params.zipFiles.push({
+    file: params.file,
+    path: uniqueZipPath(params.usedNames, params.path),
+  })
+  params.result.processed.push({ resourceType: "file", id: params.file.id })
+}
+
+function streamZipFiles(storage: StorageProvider, zipFiles: ZipFile[]) {
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const zip = new Zip((error, chunk) => {
+        if (error) {
+          controller.error(error)
+          return
+        }
+        controller.enqueue(chunk)
+      })
+
+      try {
+        for (const zipFile of zipFiles) {
+          const object = await storage.getObject(zipFile.file.storageKey)
+          if (!object) {
+            throw new Error(`Stored object not found for ${zipFile.file.originalName}`)
+          }
+
+          const entry = new ZipDeflate(zipFile.path, { level: 6 })
+          zip.add(entry)
+
+          const reader = object.body.getReader()
+          let pushedAnyChunk = false
+
+          for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            pushedAnyChunk = true
+            entry.push(value, false)
+          }
+
+          if (pushedAnyChunk) {
+            entry.push(new Uint8Array(), true)
+          } else {
+            entry.push(new Uint8Array(), true)
+          }
+        }
+
+        zip.end()
+        controller.close()
+      } catch (error) {
+        zip.terminate()
+        controller.error(error)
+      }
+    },
+  })
+}
+
+function uniqueZipPath(usedNames: Set<string>, path: string) {
+  const cleanPath = path
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join("/")
+  const candidate = cleanPath || "file"
+  if (!usedNames.has(candidate)) {
+    usedNames.add(candidate)
+    return candidate
+  }
+
+  const slash = candidate.lastIndexOf("/")
+  const dir = slash >= 0 ? candidate.slice(0, slash + 1) : ""
+  const filename = slash >= 0 ? candidate.slice(slash + 1) : candidate
+  const dot = filename.lastIndexOf(".")
+  const base = dot > 0 ? filename.slice(0, dot) : filename
+  const ext = dot > 0 ? filename.slice(dot) : ""
+
+  for (let index = 2; ; index += 1) {
+    const next = `${dir}${base} (${String(index)})${ext}`
+    if (!usedNames.has(next)) {
+      usedNames.add(next)
+      return next
+    }
+  }
+}
+
+function buildAttachmentDisposition(filename: string) {
+  const asciiName = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_")
+  const encodedName = encodeURIComponent(filename)
+  return `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}`
 }
 
 async function canAccessFile(fileId: string, user: BatchVariables["user"], permission: Permission) {

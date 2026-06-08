@@ -53,11 +53,14 @@ export function FileContextMenu({
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Content className="border-border-default bg-surface-default z-50 min-w-[180px] overflow-hidden rounded-lg border p-1.5 shadow-lg">
+        <ContextMenu.Content
+          data-selection-ignore
+          className="border-border-default bg-surface-default z-50 min-w-[180px] overflow-hidden rounded-lg border p-1.5 shadow-lg"
+        >
           {onOpen && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => {
+              onSelect={() => {
                 onOpen()
               }}
             >
@@ -70,7 +73,7 @@ export function FileContextMenu({
           {itemType === "file" && onPreview && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => {
+              onSelect={() => {
                 onPreview()
               }}
             >
@@ -83,7 +86,7 @@ export function FileContextMenu({
           {itemType === "file" && onDownload && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => {
+              onSelect={() => {
                 onDownload()
               }}
             >
@@ -100,7 +103,7 @@ export function FileContextMenu({
             <>
               <ContextMenu.Item
                 className={menuItemClass}
-                onClick={() => {
+                onSelect={() => {
                   onFavorite()
                 }}
               >
@@ -110,7 +113,7 @@ export function FileContextMenu({
               {onTags && (
                 <ContextMenu.Item
                   className={menuItemClass}
-                  onClick={() => {
+                  onSelect={() => {
                     onTags()
                   }}
                 >
@@ -125,7 +128,7 @@ export function FileContextMenu({
           {onRename && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => {
+              onSelect={() => {
                 onRename()
               }}
             >
@@ -138,7 +141,7 @@ export function FileContextMenu({
           {onCopy && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => {
+              onSelect={() => {
                 onCopy()
               }}
             >
@@ -151,7 +154,7 @@ export function FileContextMenu({
           {onMove && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => {
+              onSelect={() => {
                 onMove()
               }}
             >
@@ -165,7 +168,7 @@ export function FileContextMenu({
           {onShare && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => {
+              onSelect={() => {
                 onShare()
               }}
             >
@@ -179,7 +182,7 @@ export function FileContextMenu({
           {onDelete && (
             <ContextMenu.Item
               className={menuItemClass}
-              onClick={() => {
+              onSelect={() => {
                 onDelete()
               }}
             >

@@ -15,6 +15,7 @@ const BatchResourceIdsSchema = BatchResourceIdsBaseSchema.refine(
 export const BatchTrashRequest = BatchResourceIdsSchema
 export const BatchRestoreRequest = BatchResourceIdsSchema
 export const BatchPermanentDeleteRequest = BatchResourceIdsSchema
+export const BatchDownloadRequest = BatchResourceIdsSchema
 
 export const BatchMoveRequest = BatchResourceIdsBaseSchema.extend({
   targetFolderId: z.string().uuid().nullable(),
@@ -46,4 +47,19 @@ export const BatchOperationResponse = z.object({
   failed: z.array(BatchFailureSchema),
 })
 
+export const BatchDownloadFileSchema = z.object({
+  id: z.string().uuid(),
+  path: z.string().min(1),
+  fileName: z.string().min(1),
+  sizeBytes: z.number().int().min(0),
+  signedUrl: z.string().url(),
+})
+
+export const BatchDownloadResponse = z.object({
+  success: z.boolean(),
+  files: z.array(BatchDownloadFileSchema),
+  failed: z.array(BatchFailureSchema),
+})
+
 export type BatchOperationResponse = z.infer<typeof BatchOperationResponse>
+export type BatchDownloadResponse = z.infer<typeof BatchDownloadResponse>

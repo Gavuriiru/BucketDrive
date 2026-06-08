@@ -10,7 +10,8 @@ interface TagPickerDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string | null
-  file: FileObject | null
+  file?: FileObject | null
+  files?: FileObject[]
   canManageTags: boolean
 }
 
@@ -18,7 +19,8 @@ export function TagPickerDialog({
   open,
   onOpenChange,
   workspaceId,
-  file,
+  file = null,
+  files,
   canManageTags,
 }: TagPickerDialogProps) {
   const tagsQuery = useTags(workspaceId)
@@ -34,12 +36,25 @@ export function TagPickerDialog({
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
   const [editingColor, setEditingColor] = useState(TAG_COLOR_OPTIONS[0]?.value ?? "#ef4444")
+  const targetFiles = useMemo(() => files ?? (file ? [file] : []), [file, files])
 
   useEffect(() => {
     if (open) {
-      setSelectedTagIds(file?.tags?.map((tag) => tag.id) ?? [])
+      if (targetFiles.length === 0) {
+        setSelectedTagIds([])
+        return
+      }
+
+      const firstTags = targetFiles[0]?.tags?.map((tag) => tag.id) ?? []
+      setSelectedTagIds(
+        firstTags.filter((tagId) =>
+          targetFiles.every((candidate) =>
+            candidate.tags?.some((candidateTag) => candidateTag.id === tagId),
+          ),
+        ),
+      )
     }
-  }, [file, open])
+  }, [targetFiles, open])
 
   useEffect(() => {
     if (!open) {
@@ -60,13 +75,15 @@ export function TagPickerDialog({
     createTag.isPending || updateTag.isPending || deleteTag.isPending || updateFileTags.isPending
 
   const syncFileTags = async (tagIds: string[]) => {
-    if (!file) return
+    if (targetFiles.length === 0) return
 
     setSelectedTagIds(tagIds)
-    await updateFileTags.mutateAsync({
-      fileId: file.id,
-      tagIds,
-    })
+    for (const targetFile of targetFiles) {
+      await updateFileTags.mutateAsync({
+        fileId: targetFile.id,
+        tagIds,
+      })
+    }
   }
 
   const handleToggleTag = (tagId: string) => {
@@ -87,7 +104,7 @@ export function TagPickerDialog({
     })
 
     setNewTagName("")
-    if (file) {
+    if (targetFiles.length > 0) {
       await syncFileTags(Array.from(new Set([...selectedTagIds, created.id])))
     }
   }
@@ -127,7 +144,11 @@ export function TagPickerDialog({
             <div>
               <Dialog.Title className="text-text-primary text-lg font-semibold">Tags</Dialog.Title>
               <Dialog.Description className="text-text-tertiary text-sm">
-                {file ? `Manage tags for ${file.originalName}` : "Manage bucket tags"}
+                {targetFiles.length === 1
+                  ? `Manage tags for ${targetFiles[0]?.originalName ?? "file"}`
+                  : targetFiles.length > 1
+                    ? `Manage tags for ${String(targetFiles.length)} files`
+                    : "Manage bucket tags"}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -196,7 +217,7 @@ export function TagPickerDialog({
                         </div>
                       ) : (
                         <div className="flex items-center gap-3">
-                          {file ? (
+                          {targetFiles.length > 0 ? (
                             <input
                               type="checkbox"
                               checked={selectedTagIds.includes(tag.id)}
