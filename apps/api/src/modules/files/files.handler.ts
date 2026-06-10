@@ -167,6 +167,38 @@ files.post("/upload/complete", requirePermission("files.upload"), async (c) => {
   }
 })
 
+files.post("/upload/direct", requirePermission("files.upload"), async (c) => {
+  const user = c.get("user")
+  const storage = createStorageProvider(c.env)
+  const uploadId = c.req.header("x-upload-id")
+  const storageKey = c.req.header("x-storage-key")
+  const mimeType = c.req.header("content-type") || "application/octet-stream"
+
+  try {
+    if (!uploadId || !storageKey) {
+      return c.json({ code: "INVALID_REQUEST", message: "Missing uploadId or storageKey headers" }, 400 as never)
+    }
+
+    const stream = c.req.raw.body
+    if (!stream) {
+      return c.json({ code: "INVALID_REQUEST", message: "Missing request body" }, 400 as never)
+    }
+
+    await storage.upload({
+      key: storageKey,
+      body: stream,
+      contentType: mimeType,
+    })
+
+    return c.json({ success: true, uploadId, storageKey }, 201)
+  } catch (err) {
+    if (err instanceof UploadError) {
+      return c.json({ code: err.code, message: err.message }, 400 as never)
+    }
+    throw err
+  }
+})
+
 files.post("/batch-upload", requirePermission("files.upload"), async (c) => {
   const user = c.get("user")
   const body = BatchUploadRequest.parse(await c.req.json())

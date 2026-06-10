@@ -165,6 +165,7 @@ interface InitiateUploadResponse {
   uploadId: string
   sessionId?: string
   signedUrl?: string
+  directUpload?: boolean
   expiresAt: string
   storageKey: string
   partSize?: number

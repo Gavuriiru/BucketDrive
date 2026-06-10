@@ -29,7 +29,7 @@ export interface StorageProvider {
   ): Promise<string>
   upload(input: {
     key: string
-    body: ArrayBuffer | Uint8Array | string
+    body: ReadableStream<Uint8Array> | ArrayBuffer | Uint8Array | string
     contentType?: string
   }): Promise<void>
   getObject(key: string): Promise<{
@@ -165,10 +165,10 @@ export class R2StorageProvider implements StorageProvider {
 
   async upload(input: {
     key: string
-    body: ArrayBuffer | Uint8Array | string
+    body: ReadableStream<Uint8Array> | ArrayBuffer | Uint8Array | string
     contentType?: string
   }): Promise<void> {
-    await this.binding.put(input.key, input.body, {
+    await this.binding.put(input.key, input.body as ArrayBuffer, {
       httpMetadata: input.contentType ? { contentType: input.contentType } : undefined,
     })
   }
@@ -378,10 +378,10 @@ class R2BindingProvider implements StorageProvider {
 
   async upload(input: {
     key: string
-    body: ArrayBuffer | Uint8Array | string
+    body: ReadableStream<Uint8Array> | ArrayBuffer | Uint8Array | string
     contentType?: string
   }): Promise<void> {
-    await this.binding.put(input.key, input.body, {
+    await this.binding.put(input.key, input.body as ArrayBuffer, {
       httpMetadata: input.contentType ? { contentType: input.contentType } : undefined,
     })
   }

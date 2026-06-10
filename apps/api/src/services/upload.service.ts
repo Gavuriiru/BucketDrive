@@ -58,6 +58,7 @@ export interface InitiateUploadParams {
 export interface InitiateUploadResult {
   uploadId: string
   signedUrl?: string
+  directUpload?: boolean
   sessionId?: string
   expiresAt: string
   storageKey: string
@@ -177,7 +178,13 @@ export class UploadService {
       }
     }
 
-    const signedUrl = await this.storage.generateSignedUploadUrl(storeKey)
+    let signedUrl: string | undefined
+    try {
+      signedUrl = await this.storage.generateSignedUploadUrl(storeKey)
+    } catch {
+      // Signed URL generation failed (e.g., R2BindingProvider in dev mode)
+      // Fallback to direct upload
+    }
 
     await db
       .insert(uploadSession)
@@ -198,6 +205,7 @@ export class UploadService {
     return {
       uploadId,
       signedUrl,
+      directUpload: signedUrl === undefined,
       expiresAt,
       storageKey: storeKey,
     }

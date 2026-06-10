@@ -338,6 +338,88 @@ export function useUploadProcessor(workspaceId: string) {
     [workspaceId, updateItem, completeMutation],
   )
 
+  const processDirectUpload = useCallback(
+    async (
+      item: UploadItem,
+      initiate: {
+        uploadId: string
+        storageKey: string
+      },
+    ) => {
+      const file = item.file
+      if (!file) {
+        throw new Error("File handle lost")
+      }
+      const abortController = new AbortController()
+
+      try {
+        updateItem(item.id, {
+          uploadId: initiate.uploadId,
+          storageKey: initiate.storageKey,
+          progress: 10,
+        })
+
+        const xhr = new XMLHttpRequest()
+
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            const progress = event.loaded / event.total
+            updateItem(item.id, { progress: 10 + progress * 0.7 })
+          }
+        })
+
+        await new Promise<void>((resolve, reject) => {
+          xhr.addEventListener("load", () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve()
+            } else {
+              reject(new Error(`Direct upload failed with status ${xhr.status}`))
+            }
+          })
+          xhr.addEventListener("error", () => reject(new Error("Direct upload failed")))
+          xhr.addEventListener("abort", () => reject(new Error("Direct upload cancelled")))
+          abortController.signal.addEventListener("abort", () => xhr.abort())
+
+          xhr.open("POST", `/api/workspaces/${workspaceId}/files/upload/direct`)
+          xhr.setRequestHeader("x-upload-id", initiate.uploadId)
+          xhr.setRequestHeader("x-storage-key", initiate.storageKey)
+          xhr.setRequestHeader("Content-Type", item.mimeType || "application/octet-stream")
+          xhr.send(file)
+        })
+
+        updateItem(item.id, { progress: 85 })
+
+        const completedFile = await completeMutation.mutateAsync({
+          workspaceId,
+          uploadId: initiate.uploadId,
+          fileName: item.fileName,
+          mimeType: item.mimeType,
+          folderId: item.targetFolderId ?? null,
+        })
+
+        if (item.mimeType.startsWith("video/") && item.file) {
+          try {
+            const frameBlob = await extractVideoFrame(item.file)
+            if (frameBlob) {
+              await videoThumbnailMutation.mutateAsync({
+                fileId: completedFile.id,
+                blob: frameBlob,
+              })
+            }
+          } catch {
+            // Video thumbnail failures are non-critical
+          }
+        }
+
+        updateItem(item.id, { status: "completed", progress: 100 })
+        return true
+      } finally {
+        abortControllersRef.current.delete(item.id)
+      }
+    },
+    [workspaceId, updateItem, completeMutation],
+  )
+
   const processItem = useCallback(
     async (item: UploadItem) => {
       if (item.status === "paused" || item.status === "cancelled") {
@@ -373,6 +455,13 @@ export function useUploadProcessor(workspaceId: string) {
           })
         }
 
+        if (item.uploadId && item.storageKey) {
+          return await processDirectUpload(item, {
+            uploadId: item.uploadId,
+            storageKey: item.storageKey,
+          })
+        }
+
         const initiate = await initiateMutation.mutateAsync({
           workspaceId,
           fileName: item.fileName,
@@ -399,6 +488,13 @@ export function useUploadProcessor(workspaceId: string) {
           })
         }
 
+        if (initiate.directUpload) {
+          return await processDirectUpload(item, {
+            uploadId: initiate.uploadId,
+            storageKey: initiate.storageKey,
+          })
+        }
+
         throw new Error("Invalid upload initiation response")
       } catch (err) {
         const message = formatUploadNetworkError(
@@ -408,7 +504,7 @@ export function useUploadProcessor(workspaceId: string) {
         return false
       }
     },
-    [workspaceId, updateItem, initiateMutation, processMultipartUpload, processSingleUpload],
+    [workspaceId, updateItem, initiateMutation, processMultipartUpload, processSingleUpload, processDirectUpload],
   )
 
   const cancelItem = useCallback(
