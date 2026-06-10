@@ -2052,6 +2052,7 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 >   - R2: `nekomatadrive` - real bucket via binding
 >   - Upload: via presigned URLs (S3) → goes to real R2
 >   - Batch download: `getObject()` via binding → reads from real R2
+> - **D1 Setup:** Migration 0011 failed due to FOREIGN KEY constraints. Manually applied remaining migrations and created missing tables (`bucket_settings`). Inserted `platform_settings` default record. Login now works.
 > - **Token management:** `CLOUDFLARE_API_TOKEN` (Workers token for `wrangler`), `CLOUDFLARE_API_TOKEN_S3` (S3 token for `aws4fetch`)
 > - **Files changed:** `apps/api/src/modules/batch/batch.handler.ts` (server-side `streamZipFiles()`), `apps/web/src/routes/app/files.tsx` (frontend streaming), `apps/api/src/modules/files/files.handler.ts` (`POST /upload/direct`), `apps/api/src/services/upload.service.ts` (direct upload fallback), `apps/web/src/hooks/use-upload.ts` (direct upload handler), `wrangler.toml` (real database_id), `apps/api/package.json` (`--remote`).
 
