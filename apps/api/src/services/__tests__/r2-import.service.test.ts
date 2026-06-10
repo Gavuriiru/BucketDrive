@@ -112,6 +112,7 @@ function createStorage(
     generateSignedDownloadUrl: vi.fn().mockResolvedValue(""),
     upload: vi.fn().mockResolvedValue(undefined),
     getObject: vi.fn().mockResolvedValue(null),
+    headObject: vi.fn().mockResolvedValue(null),
     delete: vi.fn().mockResolvedValue(undefined),
     copy: vi.fn().mockResolvedValue(undefined),
     createMultipartUpload: vi.fn().mockResolvedValue({ uploadId: "upload-1" }),

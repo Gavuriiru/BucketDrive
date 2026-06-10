@@ -2042,6 +2042,14 @@ git commit -m "chore: staging deploy, performance audit, and final docs sync"
 > - Restored `/api/workspaces` and `/api/workspaces/:workspaceId/...` compatibility routing over the single-bucket API so E2E and legacy clients keep working.
 > - Set Wrangler dev scripts to run non-interactively under Wrangler 4.99, avoiding the new AI skills installation prompt during `pnpm dev`.
 
+## Implementation Notes - Batch Download Fix
+
+> - **Problem:** Client-side ZIP generation (`client-zip`, `fflate.zipSync`) crashed browser with SIGILL at ~350MB due to buffering entire archive in memory.
+> - **Solution:** Reverted to server-side streaming via `POST /api/batch/download` with `fflate`'s `Zip()` async streaming. Backend reads each file from R2 via `getObject()` (binding) or `fetch()` (signed URL fallback), pushes chunks into `ZipDeflate`, and streams output back to client.
+> - **Frontend:** Chrome/Edge use `showSaveFilePicker()` + `Response.body.pipeTo(writable)` for true streaming to disk without buffering. Safari/Firefox fall back to `res.blob()` (memory-limited but standard).
+> - **Dev mode:** Removed `--remote` from `apps/api` dev script because `wrangler dev --remote` requires Cloudflare Workers API token permissions (not just S3). Dev local R2 binding is empty (files uploaded via presigned URLs to real R2), so `batch/download` in dev will skip files and include `_errors.txt`. Production behavior is unchanged and fully functional.
+> - **Files changed:** `apps/api/package.json` (removed `--remote`), `apps/api/src/modules/batch/batch.handler.ts` (server-side `streamZipFiles()`), `apps/web/src/routes/app/files.tsx` (frontend streaming with `pipeTo`/`blob` fallback).
+
 ---
 
 # Quick Reference

@@ -113,6 +113,32 @@ describe("batch contracts", () => {
     expect(body.message).toBe("No downloadable files found")
   })
 
+  it("returns signed download URLs for batch download", async () => {
+    const ctx = createContractTestContext()
+    const folder = ctx.seedFolder({ name: "Reports", path: "/Reports" })
+    const directFile = ctx.seedFile({ originalName: "Root.txt" })
+    const folderFile = ctx.seedFile({
+      folderId: folder.id,
+      originalName: "Report.txt",
+      storageKey: "bucket/files/report.txt",
+    })
+    await ctx.env.STORAGE.put(directFile.storageKey, "root file")
+    await ctx.env.STORAGE.put(folderFile.storageKey, "folder file")
+
+    const res = await ctx.request(`/api/workspaces/${ctx.workspaceId}/batch/download-urls`, {
+      method: "POST",
+      body: JSON.stringify({ files: [directFile.id], folders: [folder.id] }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await ctx.json<{ files: Array<{ path: string; url: string; name: string }> }>(res)
+    expect(body.files).toHaveLength(2)
+    const paths = body.files.map((f) => f.path).sort()
+    expect(paths).toEqual(["Reports/Report.txt", "Root.txt"])
+    expect(body.files[0]?.url).toBeTruthy()
+    expect(body.files[1]?.url).toBeTruthy()
+  })
+
   it("revokes shares in batch and validates empty payloads", async () => {
     const ctx = createContractTestContext()
     const file = ctx.seedFile()

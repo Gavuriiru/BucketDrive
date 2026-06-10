@@ -193,7 +193,7 @@ batch.post("/download", async (c) => {
   const db = getDB()
   const storage = createStorageProvider(c.env)
   const result = createBatchResult()
-  const zipFiles: ZipFile[] = []
+  let zipFiles: ZipFile[] = []
   const usedNames = new Set<string>()
 
   for (const fileId of unique(body.files)) {
@@ -282,20 +282,7 @@ batch.post("/download", async (c) => {
     result.processed.push({ resourceType: "folder", id: folderId })
   }
 
-  if (zipFiles.length === 0 && result.failed.length > 0) {
-    const status = getNoDownloadStatus(result.failed)
-    const firstFailure = result.failed[0]
-    return c.json(
-      {
-        code: "NO_DOWNLOADABLE_FILES",
-        message: firstFailure?.message ?? "No downloadable files found",
-        failed: result.failed,
-      },
-      status as never,
-    )
-  }
-
-  if (zipFiles.length === 0) {
+  if (zipFiles.length === 0 && result.failed.length === 0) {
     return c.json(
       {
         code: "NO_DOWNLOADABLE_FILES",
@@ -308,11 +295,143 @@ batch.post("/download", async (c) => {
 
   const zipName = `bucketdrive-selection-${new Date().toISOString().slice(0, 10)}.zip`
 
-  return new Response(streamZipFiles(storage, zipFiles), {
-    headers: {
-      "Content-Type": "application/zip",
-      "Content-Disposition": buildAttachmentDisposition(zipName),
+  return new Response(
+    streamZipFiles(storage, zipFiles, result.failed),
+    {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": buildAttachmentDisposition(zipName),
+      },
     },
+  )
+})
+
+batch.post("/download-urls", async (c) => {
+  const body = BatchDownloadRequest.parse(await c.req.json())
+  const user = c.get("user")
+  const db = getDB()
+  const storage = createStorageProvider(c.env)
+  const result = createBatchResult()
+  let zipFiles: ZipFile[] = []
+  const usedNames = new Set<string>()
+
+  for (const fileId of unique(body.files)) {
+    if (!(await canAccessFile(fileId, user, "files.read"))) {
+      result.failed.push(forbidden("file", fileId, "files.read"))
+      continue
+    }
+
+    const file = await db
+      .select()
+      .from(fileObject)
+      .where(and(eq(fileObject.id, fileId), eq(fileObject.isDeleted, false)))
+      .get()
+    if (!file) {
+      result.failed.push({
+        resourceType: "file",
+        id: fileId,
+        code: "NOT_FOUND",
+        message: "File not found",
+      })
+      continue
+    }
+
+    addFileToZipPlan({
+      result,
+      zipFiles,
+      usedNames,
+      file,
+      path: file.originalName,
+    })
+  }
+
+  for (const folderId of unique(body.folders)) {
+    if (!(await canAccessFolder(folderId, user, "folders.read"))) {
+      result.failed.push(forbidden("folder", folderId, "folders.read"))
+      continue
+    }
+
+    const root = await db
+      .select()
+      .from(folder)
+      .where(and(eq(folder.id, folderId), eq(folder.isDeleted, false)))
+      .get()
+    if (!root) {
+      result.failed.push({
+        resourceType: "folder",
+        id: folderId,
+        code: "NOT_FOUND",
+        message: "Folder not found",
+      })
+      continue
+    }
+
+    const activeFolders = await db.select().from(folder).where(eq(folder.isDeleted, false)).all()
+    const folderRows = activeFolders.filter(
+      (candidate) => candidate.path === root.path || candidate.path.startsWith(`${root.path}/`),
+    )
+    const folderIds = folderRows.map((candidate) => candidate.id)
+    const folderById = new Map(folderRows.map((candidate) => [candidate.id, candidate]))
+
+    const files =
+      folderIds.length > 0
+        ? await db
+            .select()
+            .from(fileObject)
+            .where(and(eq(fileObject.isDeleted, false), inArray(fileObject.folderId, folderIds)))
+            .all()
+        : []
+
+    for (const file of files) {
+      if (!(await canAccessFile(file.id, user, "files.read"))) {
+        result.failed.push(forbidden("file", file.id, "files.read"))
+        continue
+      }
+      const parent = file.folderId ? folderById.get(file.folderId) : null
+      const folderPath = parent?.path.replace(/^\/+/, "") ?? root.name
+      addFileToZipPlan({
+        result,
+        zipFiles,
+        usedNames,
+        file,
+        path: `${folderPath}/${file.originalName}`,
+      })
+    }
+
+    result.processed.push({ resourceType: "folder", id: folderId })
+  }
+
+  if (zipFiles.length === 0 && result.failed.length === 0) {
+    return c.json(
+      {
+        code: "NO_DOWNLOADABLE_FILES",
+        message: "No downloadable files found",
+        failed: result.failed,
+      },
+      404 as never,
+    )
+  }
+
+  const filesWithUrls = await Promise.all(
+    zipFiles.map(async (zipFile) => {
+      const url = await storage.generateSignedDownloadUrl(
+        zipFile.file.storageKey,
+        900,
+        { filename: zipFile.file.originalName },
+      )
+      return {
+        id: zipFile.file.id,
+        name: zipFile.file.originalName,
+        path: zipFile.path,
+        url,
+      }
+    }),
+  )
+
+  return c.json({
+    files: filesWithUrls,
+    failed: result.failed,
+    processed: result.processed,
   })
 })
 
@@ -395,7 +514,11 @@ function addFileToZipPlan(params: {
   params.result.processed.push({ resourceType: "file", id: params.file.id })
 }
 
-function streamZipFiles(storage: StorageProvider, zipFiles: ZipFile[]) {
+function streamZipFiles(
+  storage: StorageProvider,
+  zipFiles: ZipFile[],
+  failed: FailedItem[],
+) {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       const zip = new Zip((error, chunk) => {
@@ -406,31 +529,57 @@ function streamZipFiles(storage: StorageProvider, zipFiles: ZipFile[]) {
         controller.enqueue(chunk)
       })
 
+      const missingFiles: ZipFile[] = []
+
       try {
         for (const zipFile of zipFiles) {
-          const object = await storage.getObject(zipFile.file.storageKey)
-          if (!object) {
-            throw new Error(`Stored object not found for ${zipFile.file.originalName}`)
+          let source: ReadableStream<Uint8Array> | null = null
+
+          try {
+            const object = await storage.getObject(zipFile.file.storageKey)
+            if (object) {
+              source = object.body
+            }
+          } catch {
+            console.warn(
+              `Batch download: failed to read ${zipFile.file.originalName}`,
+            )
+          }
+
+          if (!source) {
+            console.warn(
+              `Batch download: skipping ${zipFile.file.originalName} (not found in storage)`,
+            )
+            missingFiles.push(zipFile)
+            continue
           }
 
           const entry = new ZipDeflate(zipFile.path, { level: 6 })
           zip.add(entry)
 
-          const reader = object.body.getReader()
-          let pushedAnyChunk = false
+          const reader = source.getReader()
 
           for (;;) {
             const { done, value } = await reader.read()
             if (done) break
-            pushedAnyChunk = true
             entry.push(value, false)
           }
 
-          if (pushedAnyChunk) {
-            entry.push(new Uint8Array(), true)
-          } else {
-            entry.push(new Uint8Array(), true)
-          }
+          entry.push(new Uint8Array(), true)
+        }
+
+        if (missingFiles.length > 0) {
+          const errorText = [
+            "Some files were not found in storage and could not be included:",
+            "",
+            ...missingFiles.map((f) => `  - ${f.file.originalName}`),
+            "",
+            "If you need these files, please try downloading them individually.",
+          ].join("\n")
+
+          const entry = new ZipDeflate("_errors.txt", { level: 6 })
+          zip.add(entry)
+          entry.push(new TextEncoder().encode(errorText), true)
         }
 
         zip.end()

@@ -37,6 +37,7 @@ export interface StorageProvider {
     contentType?: string
     size: number
   } | null>
+  headObject(key: string): Promise<{ size: number; contentType?: string } | null>
   delete(key: string): Promise<void>
   copy(fromKey: string, toKey: string): Promise<void>
   createMultipartUpload(key: string): Promise<{ uploadId: string }>
@@ -178,12 +179,20 @@ export class R2StorageProvider implements StorageProvider {
     size: number
   } | null> {
     const object = await this.binding.get(key)
-    if (!object) return null
-    if (!object.body) return null
+    if (!object || !object.body) return null
     return {
       body: object.body,
       contentType: object.httpMetadata?.contentType,
       size: object.size,
+    }
+  }
+
+  async headObject(key: string): Promise<{ size: number; contentType?: string } | null> {
+    const object = await this.binding.head(key)
+    if (!object) return null
+    return {
+      size: object.size,
+      contentType: object.httpMetadata?.contentType,
     }
   }
 
@@ -273,6 +282,23 @@ function decodeXml(value: string): string {
     .replaceAll("&quot;", '"')
     .replaceAll("&apos;", "'")
     .replaceAll("&amp;", "&")
+}
+
+function isLocalEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint)
+    const hostname = url.hostname
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname.startsWith("127.") ||
+      hostname.startsWith("[::1]") ||
+      hostname.endsWith(".local")
+    )
+  } catch {
+    return false
+  }
 }
 
 export function createStorageProvider(env: {
@@ -372,6 +398,15 @@ class R2BindingProvider implements StorageProvider {
       body: object.body,
       contentType: object.httpMetadata?.contentType,
       size: object.size,
+    }
+  }
+
+  async headObject(key: string): Promise<{ size: number; contentType?: string } | null> {
+    const object = await this.binding.head(key)
+    if (!object) return null
+    return {
+      size: object.size,
+      contentType: object.httpMetadata?.contentType,
     }
   }
 

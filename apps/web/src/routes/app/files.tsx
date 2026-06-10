@@ -1,4 +1,14 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands, @typescript-eslint/restrict-template-expressions */
+
+interface WindowWithFilePicker extends Window {
+  showSaveFilePicker?: (options?: {
+    suggestedName?: string
+    types?: Array<{ description?: string; accept: Record<string, string[]> }>
+  }) => Promise<{
+    createWritable: () => Promise<WritableStream>
+  }>
+}
+
 import { useRef, useMemo, useCallback, useState, useEffect } from "react"
 import {
   Upload,
@@ -530,24 +540,34 @@ export function FilesPage() {
         )
       }
 
-      setBatchDownloadStatus("downloading")
-      setBatchDownloadStatus("zipping")
-      const blob = await res.blob()
-      if (blob.size === 0) {
-        throw new Error("Batch download returned an empty ZIP")
-      }
-
       const filename =
         getDownloadFilename(res.headers.get("Content-Disposition")) ??
         `bucketdrive-selection-${new Date().toISOString().slice(0, 10)}.zip`
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = filename
-      document.body.append(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+
+      const win = window as unknown as WindowWithFilePicker
+      if (win.showSaveFilePicker && res.body) {
+        const handle = await win.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: "ZIP archive", accept: { "application/zip": [".zip"] } }],
+        })
+        const writable = await handle.createWritable()
+        await res.body.pipeTo(writable)
+      } else {
+        setBatchDownloadStatus("downloading")
+        const blob = await res.blob()
+        if (blob.size === 0) {
+          throw new Error("Batch download returned an empty ZIP")
+        }
+
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = filename
+        document.body.append(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+      }
     } catch (error) {
       setBatchDownloadStatus("failed")
       setDownloadError(
