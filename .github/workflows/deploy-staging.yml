@@ -137,6 +137,15 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy apps/web/dist --project-name=${{ vars.PAGES_PROJECT_NAME }} --branch=${{ vars.PAGES_BRANCH }}
 
+      - name: Setup custom domain
+        run: |
+          if [ -n "${{ vars.CUSTOM_DOMAIN }}" ]; then
+            echo "🌐 Setting up custom domain ${{ vars.CUSTOM_DOMAIN }}..."
+            CUSTOM_DOMAIN=${{ vars.CUSTOM_DOMAIN }} PAGES_PROJECT_NAME=${{ vars.PAGES_PROJECT_NAME }} pnpm tsx scripts/setup-custom-domain.ts
+          else
+            echo "ℹ️ No CUSTOM_DOMAIN configured, skipping custom domain setup"
+          fi
+
       - name: Push runtime secrets
         run: pnpm env:push:staging
 
