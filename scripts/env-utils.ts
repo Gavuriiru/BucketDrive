@@ -28,9 +28,12 @@ export const OAUTH_KEY_PAIRS = [
   ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
 ] as const
 
-export const API_RUNTIME_KEYS = [
-  "APP_URL",
-  "API_URL",
+// ── Vars (declared in wrangler.toml [env.*.vars], managed by env:prepare) ──
+export const API_VAR_KEYS = ["APP_URL", "API_URL"] as const
+export const WORKERS_VAR_KEYS = ["APP_URL", "API_URL"] as const
+
+// ── Secrets (managed by wrangler secret put, via env:push) ──
+export const API_SECRET_KEYS = [
   "BETTER_AUTH_SECRET",
   "BETTER_AUTH_URL",
   "GITHUB_CLIENT_ID",
@@ -44,15 +47,17 @@ export const API_RUNTIME_KEYS = [
   "PLATFORM_OWNER_EMAIL",
 ]
 
-export const WORKERS_RUNTIME_KEYS = [
-  "APP_URL",
-  "API_URL",
+export const WORKERS_SECRET_KEYS = [
   "R2_ACCESS_KEY_ID",
   "R2_SECRET_ACCESS_KEY",
   "R2_BUCKET_NAME",
   "R2_ENDPOINT",
   "PLATFORM_OWNER_EMAIL",
 ]
+
+// ── Combined (used for validation) ──
+export const API_RUNTIME_KEYS = [...API_VAR_KEYS, ...API_SECRET_KEYS]
+export const WORKERS_RUNTIME_KEYS = [...WORKERS_VAR_KEYS, ...WORKERS_SECRET_KEYS]
 
 export const DEPLOY_ONLY_KEYS = [
   "CLOUDFLARE_ACCOUNT_ID",

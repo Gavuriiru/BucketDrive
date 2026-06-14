@@ -111,9 +111,30 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env production --config wrangler.toml
 
+      - name: Validate Workers cron trigger permissions
+        run: |
+          echo "🔍 Validating Cloudflare API token permissions for cron triggers..."
+          TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          ACCOUNT="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+
+          # Try to list workers to verify the token has Workers Scripts:Edit
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/workers/scripts" \
+            -H "Authorization: Bearer ${TOKEN}")
+
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ The CLOUDFLARE_API_TOKEN cannot list Workers scripts (HTTP $STATUS)."
+            echo "   To deploy cron triggers, the token needs:"
+            echo "   - Account: Workers Scripts: Edit"
+            echo "   - Zone: None required for this check"
+            echo "   Create/update your token at: https://dash.cloudflare.com/profile/api-tokens"
+            exit 1
+          fi
+
+          echo "✅ Token has Workers Scripts access."
+
       - name: Deploy background Workers
         uses: cloudflare/wrangler-action@v3
-        continue-on-error: true
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -131,7 +152,6 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
-        continue-on-error: true
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

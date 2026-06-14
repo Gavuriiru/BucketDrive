@@ -13,11 +13,13 @@ import { dirname, relative, resolve } from "path"
 import { spawnSync } from "child_process"
 import {
   API_RUNTIME_KEYS,
+  API_SECRET_KEYS,
   LOCAL_ENV_LINKS,
   LOCAL_RUNTIME_KEYS,
   OAUTH_KEY_PAIRS,
   ROOT_ENV_FILE,
   WORKERS_RUNTIME_KEYS,
+  WORKERS_SECRET_KEYS,
   getDeployEnvFile,
   loadEnvFiles,
   loadEnvWithProcess,
@@ -30,6 +32,7 @@ type WranglerTarget = {
   configPath: string
   packageName: string
   runtimeKeys: string[]
+  secretKeys: string[]
 }
 
 const ROOT_DIR = resolve(__dirname, "..")
@@ -41,11 +44,13 @@ const WRANGLER_TARGETS: WranglerTarget[] = [
     configPath: API_WRANGLER,
     packageName: "@bucketdrive/api",
     runtimeKeys: API_RUNTIME_KEYS,
+    secretKeys: API_SECRET_KEYS,
   },
   {
     configPath: WORKERS_WRANGLER,
     packageName: "@bucketdrive/workers",
     runtimeKeys: WORKERS_RUNTIME_KEYS,
+    secretKeys: WORKERS_SECRET_KEYS,
   },
 ]
 
@@ -282,15 +287,15 @@ function pushDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
   const vars = parseEnvFile(envFile)
 
   for (const target of WRANGLER_TARGETS) {
-    const keys = target.runtimeKeys.filter((key) => vars[key]?.trim())
+    const keys = target.secretKeys.filter((key) => vars[key]?.trim())
 
     if (keys.length === 0) {
-      console.log(`No runtime keys found for ${target.packageName}; skipping ${environment}.`)
+      console.log(`No secrets to push for ${target.packageName}; skipping ${environment}.`)
       continue
     }
 
     console.log(
-      `Pushing ${String(keys.length)} runtime vars from ${relative(
+      `Pushing ${String(keys.length)} secrets from ${relative(
         process.cwd(),
         envFile,
       )} to ${target.packageName} ${environment}.`,
@@ -313,18 +318,12 @@ function pushDeployEnv(environment: DeployEnvironment, explicitFile?: string) {
         {
           cwd: ROOT_DIR,
           input: vars[key],
-          stdio: ["pipe", "inherit", "pipe"],
-          encoding: "utf8",
+          stdio: ["pipe", "inherit", "inherit"],
           shell: process.platform === "win32",
         },
       )
 
       if (result.status !== 0) {
-        const errorOutput = result.stderr || ""
-        if (errorOutput.includes("already in use") || errorOutput.includes("10053")) {
-          console.log(`Skipping ${key} - already exists as a var or secret.`)
-          continue
-        }
         throw new Error(`Failed to push ${key} to ${target.packageName} ${environment}.`)
       }
     }

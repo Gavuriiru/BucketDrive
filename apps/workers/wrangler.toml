@@ -3,9 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-[[triggers.crons]]
-cron = "0 3 * * *"
-
 [[d1_databases]]
 binding = "DB"
 database_name = "bucketdrive-db"
@@ -48,3 +45,7 @@ API_URL = "https://staging-api.bucketdrive.dev"
 [env.production.vars]
 APP_URL = "https://drive.nekomata.moe"
 API_URL = "https://drive.nekomata.moe/api"
+
+# Cron triggers only on production — staging workers run via manual fetch
+[[env.production.triggers.crons]]
+cron = "0 3 * * *"
