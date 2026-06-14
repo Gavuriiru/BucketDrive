@@ -34,6 +34,17 @@ function getD1DatabaseIdFromOutput(output: string): string | null {
   return match ? match[1] : null
 }
 
+function findD1DatabaseId(dbName: string): string | null {
+  try {
+    const listOutput = runWranglerIgnoreError(["d1", "list", "--json"])
+    const databases = JSON.parse(listOutput) as Array<{ name: string; uuid: string }>
+    const db = databases.find((d) => d.name === dbName)
+    return db?.uuid ?? null
+  } catch {
+    return null
+  }
+}
+
 function getBucketNameFromWrangler(environment: string): string {
   const wranglerPath = existsSync("wrangler.toml") ? "wrangler.toml" : "../../wrangler.toml"
   const wrangler = readFileSync(wranglerPath, "utf8")
@@ -58,24 +69,19 @@ function main() {
 
   // --- D1 Database ---
   console.log(`\n🔍 Checking D1 database "${dbName}"...`)
-  const d1Info = runWranglerIgnoreError(["d1", "info", dbName])
+  let d1Id = findD1DatabaseId(dbName)
 
-  let d1Id: string
-  const existingId = getD1DatabaseIdFromOutput(d1Info)
-  if (existingId) {
-    d1Id = existingId
+  if (d1Id) {
     console.log(`✅ D1 database "${dbName}" already exists (UUID: ${d1Id})`)
   } else {
     console.log(`🆕 Creating D1 database "${dbName}"...`)
     runWrangler(["d1", "create", dbName])
 
-    const d1InfoAfter = runWranglerIgnoreError(["d1", "info", dbName])
-    const newId = getD1DatabaseIdFromOutput(d1InfoAfter)
-    if (!newId) {
-      console.error("❌ Could not parse UUID after creation")
+    d1Id = findD1DatabaseId(dbName)
+    if (!d1Id) {
+      console.error("❌ Could not find D1 database after creation")
       process.exit(1)
     }
-    d1Id = newId
     console.log(`✅ Created D1 database "${dbName}" (UUID: ${d1Id})`)
   }
 
