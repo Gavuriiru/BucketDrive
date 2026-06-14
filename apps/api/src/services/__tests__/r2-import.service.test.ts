@@ -101,6 +101,16 @@ CREATE TABLE audit_log (
   metadata text,
   created_at text DEFAULT (current_timestamp) NOT NULL
 );
+
+CREATE TABLE platform_settings (
+  id text PRIMARY KEY NOT NULL,
+  platform_name text DEFAULT 'BucketDrive' NOT NULL,
+  enable_public_signup integer DEFAULT 1 NOT NULL,
+  logo_key text,
+  favicon_key text,
+  created_at text DEFAULT (current_timestamp) NOT NULL,
+  updated_at text DEFAULT (current_timestamp) NOT NULL
+);
 `
 
 function createStorage(
@@ -136,6 +146,9 @@ describe("R2ImportService sync", () => {
       .values({ id: "bucket-1", name: "test-bucket", provider: "r2", visibility: "private" })
       .run()
     db.insert(bucketSettings).values({ id: "settings-1", bucketId: "bucket-1" }).run()
+    db.insert(schema.platformSettings)
+      .values({ id: "default", platformName: "BucketDrive" })
+      .run()
   })
 
   afterEach(() => {
