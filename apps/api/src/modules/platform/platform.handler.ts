@@ -17,6 +17,7 @@ import { authMiddleware } from "../../middleware/auth"
 import { requirePlatformAdmin } from "../../middleware/platform-admin"
 import { createStorageProvider } from "../../services/storage"
 import { readUploadedBrandingImage, sanitizeAssetName } from "../../lib/branding-assets"
+import { syncDefaultBucketName } from "../../lib/bucket"
 
 interface PlatformEnv {
   DB: D1Database
@@ -81,16 +82,20 @@ platform.get("/assets/:kind", async (c) => {
 platform.patch("/settings", authMiddleware, requirePlatformAdmin, async (c) => {
   const body = UpdatePlatformSettingsRequest.parse(await c.req.json())
   const settings = await ensurePlatformSettings()
+  const nextPlatformName = body.platformName ?? settings.platformName
   const now = new Date().toISOString()
   await getDB()
     .update(platformSettings)
     .set({
-      platformName: body.platformName ?? settings.platformName,
+      platformName: nextPlatformName,
       enablePublicSignup: body.enablePublicSignup ?? settings.enablePublicSignup,
       updatedAt: now,
     })
     .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
     .run()
+  if (nextPlatformName !== settings.platformName) {
+    await syncDefaultBucketName(getDB(), nextPlatformName)
+  }
 
   return c.json(
     UpdatePlatformSettingsResponse.parse({

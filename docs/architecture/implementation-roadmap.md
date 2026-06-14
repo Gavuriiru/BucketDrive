@@ -9,6 +9,12 @@ verifiable result.
 
 ## Status Overview
 
+> **Platform name root sync pass — 2026-06-14:**
+>
+> - Synced the generated root bucket name with the platform service name when platform settings change.
+> - Kept R2 object keys stable while making `/api/workspaces` return the renamed root.
+> - Added contract coverage for platform rename propagation to workspace metadata.
+
 > **Shared-with-me removal pass — 2026-06-13:**
 >
 > - Removed the dedicated `/shared` frontend route, sidebar entry, command palette command, and route-specific search state.

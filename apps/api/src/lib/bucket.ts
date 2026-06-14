@@ -1,17 +1,26 @@
 import { eq } from "drizzle-orm"
-import { bucket, bucketSettings } from "@bucketdrive/shared/db/schema"
+import { bucket, bucketSettings, platformSettings } from "@bucketdrive/shared/db/schema"
 import type { getDB } from "./db"
 
 type DB = ReturnType<typeof getDB>
 
+const FALLBACK_BUCKET_NAME = "BucketDrive"
+const PLATFORM_SETTINGS_ID = "default"
+
 export async function getOrCreateDefaultBucket(db: DB) {
+  const bucketName = await getDefaultBucketName(db)
   const existing = await db.select().from(bucket).get()
-  if (existing) return existing
+  if (existing) {
+    if (existing.name === bucketName) return existing
+
+    await db.update(bucket).set({ name: bucketName }).where(eq(bucket.id, existing.id)).run()
+    return { ...existing, name: bucketName }
+  }
 
   const now = new Date().toISOString()
   const created = {
     id: crypto.randomUUID(),
-    name: "BucketDrive",
+    name: bucketName,
     provider: "r2",
     region: null,
     visibility: "private",
@@ -20,6 +29,14 @@ export async function getOrCreateDefaultBucket(db: DB) {
 
   await db.insert(bucket).values(created).run()
   return created
+}
+
+export async function syncDefaultBucketName(db: DB, name: string) {
+  const existing = await db.select().from(bucket).get()
+  if (!existing || existing.name === name) return existing
+
+  await db.update(bucket).set({ name }).where(eq(bucket.id, existing.id)).run()
+  return { ...existing, name }
 }
 
 export async function ensureBucketSettings(db: DB) {
@@ -56,4 +73,14 @@ export async function ensureBucketSettings(db: DB) {
 
   await db.insert(bucketSettings).values(created).run()
   return created
+}
+
+async function getDefaultBucketName(db: DB) {
+  const settings = await db
+    .select({ name: platformSettings.platformName })
+    .from(platformSettings)
+    .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
+    .get()
+
+  return settings?.name ?? FALLBACK_BUCKET_NAME
 }

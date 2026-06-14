@@ -31,6 +31,19 @@ describe("platform contracts", () => {
       "BucketDrive Test",
     )
 
+    const workspaces = await ctx.request("/api/workspaces")
+    expect(workspaces.status).toBe(200)
+    const workspaceBody = await ctx.json<{ data: Array<{ id: string; name: string }> }>(workspaces)
+    expect(workspaceBody.data).toContainEqual(
+      expect.objectContaining({ id: ctx.bucketId, name: "BucketDrive Test" }),
+    )
+    expect(
+      ctx.sqlite.prepare("select name from bucket where id = ?").get(ctx.bucketId),
+    ).toMatchObject({ name: "BucketDrive Test" })
+    expect(ctx.sqlite.prepare("select count(*) as count from bucket").get()).toMatchObject({
+      count: 1,
+    })
+
     const join = await ctx.request("/api/platform/join", {
       method: "POST",
       userId: ctx.outsider.id,
