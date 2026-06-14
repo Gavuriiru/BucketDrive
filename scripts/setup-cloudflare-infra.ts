@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs"
 type Environment = "staging" | "production"
 
 function runWrangler(args: string[]): string {
-  const result = spawnSync("pnpm", ["exec", "wrangler", ...args], {
+  const result = spawnSync("pnpm", ["--filter", "@bucketdrive/api", "exec", "wrangler", ...args], {
     encoding: "utf8",
     shell: true,
     env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
@@ -21,7 +21,7 @@ function runWrangler(args: string[]): string {
 }
 
 function runWranglerIgnoreError(args: string[]): string {
-  const result = spawnSync("pnpm", ["exec", "wrangler", ...args], {
+  const result = spawnSync("pnpm", ["--filter", "@bucketdrive/api", "exec", "wrangler", ...args], {
     encoding: "utf8",
     shell: true,
     env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
