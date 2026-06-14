@@ -257,28 +257,33 @@ For staging and production, create `.env.staging` and `.env.production` at the r
 
 **Variable reference (all files follow the same `.env.example` format):**
 
-| Variable                    | Required for               | Where to get it                                       | Sensitive? |
-| --------------------------- | -------------------------- | ----------------------------------------------------- | ---------- |
-| `APP_URL`                   | local, staging, production | Your public frontend URL                              | No         |
-| `API_URL`                   | local, staging, production | Your public API/worker URL                            | No         |
-| `BETTER_AUTH_SECRET`        | local, staging, production | Run `openssl rand -base64 64`                         | **Yes**    |
-| `BETTER_AUTH_URL`           | local, staging, production | Same as `API_URL`                                     | No         |
-| `GITHUB_CLIENT_ID`          | local, staging, production | GitHub OAuth App settings                             | **Yes**    |
-| `GITHUB_CLIENT_SECRET`      | local, staging, production | GitHub OAuth App settings                             | **Yes**    |
-| `GOOGLE_CLIENT_ID`          | local, staging, production | Google Cloud Console                                  | **Yes**    |
-| `GOOGLE_CLIENT_SECRET`      | local, staging, production | Google Cloud Console                                  | **Yes**    |
-| `CLOUDFLARE_ACCOUNT_ID`     | local, staging, production | Cloudflare Dashboard sidebar                          | **Yes**    |
-| `CLOUDFLARE_API_TOKEN`      | local, staging, production | Cloudflare Dashboard → API Tokens                     | **Yes**    |
-| `STAGING_D1_DATABASE_ID`    | staging                    | Output of `wrangler d1 create bucketdrive-db-staging` | No         |
-| `PRODUCTION_D1_DATABASE_ID` | production                 | Output of `wrangler d1 create bucketdrive-db`         | No         |
-| `R2_ACCESS_KEY_ID`          | local, staging, production | R2 Dashboard → Manage R2 API Tokens                   | **Yes**    |
-| `R2_SECRET_ACCESS_KEY`      | local, staging, production | R2 Dashboard → Manage R2 API Tokens                   | **Yes**    |
-| `R2_BUCKET_NAME`            | local, staging, production | Your bucket name (e.g., `bucketdrive-staging`)        | No         |
-| `R2_ENDPOINT`               | local, staging, production | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`       | No         |
-| `PLAYWRIGHT_BASE_URL`       | staging                    | Same as `APP_URL`                                     | No         |
-| `PAGES_PROJECT_NAME`        | staging, production        | Cloudflare Pages project name (e.g., `bucketdrive`)   | No         |
-| `PAGES_BRANCH`              | staging, production        | Pages branch name (e.g., `staging`)                   | No         |
-| `PLATFORM_OWNER_EMAIL`      | local, staging, production | Your admin email                                      | No         |
+| Variable               | Required for               | Where to get it               | Sensitive? |
+| ---------------------- | -------------------------- | ----------------------------- | ---------- |
+| `APP_URL`              | local, staging, production | Your public frontend URL      | No         |
+| `API_URL`              | local, staging, production | Your public API/worker URL    | No         |
+| `BETTER_AUTH_SECRET`   | local, staging, production | Run `openssl rand -base64 64` | **Yes**    |
+| `BETTER_AUTH_URL`      | local, staging, production | Same as `API_URL`             | No         |
+| `GITHUB_CLIENT_ID`     | local, staging, production | GitHub OAuth App settings     | **Yes**    |
+| `GITHUB_CLIENT_SECRET` | local, staging, production | GitHub OAuth App settings     | **Yes**    |
+
+> **Note**: In GitHub Actions, these secrets must be named `GH_CLIENT_ID` and `GH_CLIENT_SECRET`
+> because the `GITHUB_` prefix is reserved. The `.env` variable names remain `GITHUB_CLIENT_ID` and
+> `GITHUB_CLIENT_SECRET` (the app expects these). The workflow maps `secrets.GH_CLIENT_ID` →
+> `GITHUB_CLIENT_ID` when creating the `.env.staging` / `.env.production` files.
+> | `GOOGLE_CLIENT_ID` | local, staging, production | Google Cloud Console | **Yes** |
+> | `GOOGLE_CLIENT_SECRET` | local, staging, production | Google Cloud Console | **Yes** |
+> | `CLOUDFLARE_ACCOUNT_ID` | local, staging, production | Cloudflare Dashboard sidebar | **Yes** |
+> | `CLOUDFLARE_API_TOKEN` | local, staging, production | Cloudflare Dashboard → API Tokens | **Yes** |
+> | `STAGING_D1_DATABASE_ID` | staging | Output of `wrangler d1 create bucketdrive-db-staging` | No |
+> | `PRODUCTION_D1_DATABASE_ID` | production | Output of `wrangler d1 create bucketdrive-db` | No |
+> | `R2_ACCESS_KEY_ID` | local, staging, production | R2 Dashboard → Manage R2 API Tokens | **Yes** |
+> | `R2_SECRET_ACCESS_KEY` | local, staging, production | R2 Dashboard → Manage R2 API Tokens | **Yes** |
+> | `R2_BUCKET_NAME` | local, staging, production | Your bucket name (e.g., `bucketdrive-staging`) | No |
+> | `R2_ENDPOINT` | local, staging, production | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` | No |
+> | `PLAYWRIGHT_BASE_URL` | staging | Same as `APP_URL` | No |
+> | `PAGES_PROJECT_NAME` | staging, production | Cloudflare Pages project name (e.g., `bucketdrive`) | No |
+> | `PAGES_BRANCH` | staging, production | Pages branch name (e.g., `staging`) | No |
+> | `PLATFORM_OWNER_EMAIL` | local, staging, production | Your admin email | No |
 
 > **Important**: `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI credentials** — they authenticate the Wrangler CLI. They are **never** pushed to the Workers as secrets. The `pnpm env:push:*` command explicitly skips these keys.
 
@@ -350,19 +355,19 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **New repos
 
 **Staging Environment Secrets** (go to Environment → `staging` → **Add secret**):
 
-| Secret                 | Value                                           |
-| ---------------------- | ----------------------------------------------- |
-| `BETTER_AUTH_SECRET`   | Random 64-char string                           |
-| `BETTER_AUTH_URL`      | `https://staging-api.bucketdrive.dev`           |
-| `GITHUB_CLIENT_ID`     | GitHub OAuth Client ID                          |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth Client Secret                      |
-| `GOOGLE_CLIENT_ID`     | Google OAuth Client ID                          |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret                      |
-| `R2_ACCESS_KEY_ID`     | R2 API Token ID                                 |
-| `R2_SECRET_ACCESS_KEY` | R2 API Token Secret                             |
-| `R2_BUCKET_NAME`       | `bucketdrive-staging`                           |
-| `R2_ENDPOINT`          | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
-| `PLATFORM_OWNER_EMAIL` | `admin@example.com`                             |
+| Secret                 | Value                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `BETTER_AUTH_SECRET`   | Random 64-char string                                                                            |
+| `BETTER_AUTH_URL`      | `https://staging-api.bucketdrive.dev`                                                            |
+| `GH_CLIENT_ID`         | GitHub OAuth Client ID (save as `GH_CLIENT_ID` in GitHub — `GITHUB_` prefix is reserved)         |
+| `GH_CLIENT_SECRET`     | GitHub OAuth Client Secret (save as `GH_CLIENT_SECRET` in GitHub — `GITHUB_` prefix is reserved) |
+| `GOOGLE_CLIENT_ID`     | Google OAuth Client ID                                                                           |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret                                                                       |
+| `R2_ACCESS_KEY_ID`     | R2 API Token ID                                                                                  |
+| `R2_SECRET_ACCESS_KEY` | R2 API Token Secret                                                                              |
+| `R2_BUCKET_NAME`       | `bucketdrive-staging`                                                                            |
+| `R2_ENDPOINT`          | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`                                                  |
+| `PLATFORM_OWNER_EMAIL` | `admin@example.com`                                                                              |
 
 **Staging Environment Variables** (go to Environment → `staging` → **Add variable**):
 
