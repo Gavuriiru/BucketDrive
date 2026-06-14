@@ -126,7 +126,12 @@ test("public share browse sends password in a POST body instead of query string"
   assert.match(api, /api\.post<ShareBrowseResult>/)
   assert.doesNotMatch(api, /new URLSearchParams\(\{\s*password/)
   assert.doesNotMatch(api, /\/browse\?\$\{params\.toString\(\)\}/)
-  assert.match(shareRoute, /password:\s*browsePassword\s*\|\|\s*undefined/)
+  assert.match(api, /useShareBrowseQuery/)
+  assert.match(api, /placeholderData:\s*\(previous\)\s*=>\s*previous/)
+  assert.match(shareRoute, /browsePassword\s*\|\|\s*undefined/)
+  assert.match(shareRoute, /previewShareFile/)
+  assert.match(shareRoute, /downloadShareFile/)
+  assert.doesNotMatch(shareRoute, /\/api\/shares\/\$\{[^}]+}\/batch/)
 })
 
 test("markdown preview does not inject generated HTML", async () => {

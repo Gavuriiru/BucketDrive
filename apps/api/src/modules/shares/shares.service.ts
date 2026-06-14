@@ -396,7 +396,11 @@ export class SharesService {
     await this.assertShareAccessible(share, options)
     if (share.resourceType !== "folder")
       throw new ShareError("INVALID_RESOURCE", "Only folder shares can be browsed")
-    const root = await db.select().from(folder).where(eq(folder.id, share.resourceId)).get()
+    const root = await db
+      .select()
+      .from(folder)
+      .where(and(eq(folder.id, share.resourceId), eq(folder.isDeleted, false)))
+      .get()
     if (!root) throw new ShareError("NOT_FOUND", "Shared folder not found")
     const currentFolderId = folderId ?? root.id
     const current = await db.select().from(folder).where(eq(folder.id, currentFolderId)).get()
@@ -429,6 +433,47 @@ export class SharesService {
       })),
       folders: folders.map((entry) => ({ id: entry.id, name: entry.name })),
       ...(await this.getBucketBranding()),
+    }
+  }
+
+  async previewSharedFolderFile(
+    shareId: string,
+    fileId: string,
+    storage: StorageProvider,
+    options?: { password?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const { file } = await this.getSharedFolderFileOrThrow(shareId, fileId, options)
+    const signedUrl = await storage.generateSignedDownloadUrl(file.storageKey, 300)
+    return {
+      signedUrl,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      fileName: file.originalName,
+      mimeType: file.mimeType,
+    }
+  }
+
+  async downloadSharedFolderFile(
+    shareId: string,
+    fileId: string,
+    storage: StorageProvider,
+    options?: { password?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const db = getDB()
+    const { share, file } = await this.getSharedFolderFileOrThrow(shareId, fileId, options)
+    const signedUrl = await storage.generateSignedDownloadUrl(file.storageKey, 900, {
+      filename: file.originalName,
+    })
+    const settings = await db
+      .select({ r2PublicBaseUrl: bucketSettings.r2PublicBaseUrl })
+      .from(bucketSettings)
+      .get()
+    await this.markAccess(share.id, options, true, true)
+    return {
+      signedUrl,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      fileName: file.originalName,
+      publicUrl:
+        buildPublicObjectUrl(settings?.r2PublicBaseUrl ?? null, file.storageKey) ?? undefined,
     }
   }
 
@@ -486,6 +531,41 @@ export class SharesService {
     const share = await getDB().select().from(shareLink).where(eq(shareLink.id, shareId)).get()
     if (!share) throw new ShareError("SHARE_NOT_FOUND", "Share link not found")
     return share
+  }
+
+  private async getSharedFolderFileOrThrow(
+    shareId: string,
+    fileId: string,
+    options?: { password?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const db = getDB()
+    const share = await this.getShareOrThrow(shareId)
+    await this.assertShareAccessible(share, options)
+    if (share.resourceType !== "folder")
+      throw new ShareError("INVALID_RESOURCE", "Only folder shares expose file actions")
+
+    const [root, file] = await Promise.all([
+      db
+        .select()
+        .from(folder)
+        .where(and(eq(folder.id, share.resourceId), eq(folder.isDeleted, false)))
+        .get(),
+      db
+        .select()
+        .from(fileObject)
+        .where(and(eq(fileObject.id, fileId), eq(fileObject.isDeleted, false)))
+        .get(),
+    ])
+    if (!root || !file) throw new ShareError("NOT_FOUND", "Shared file not found")
+    if (file.folderId === root.id) return { share, root, file }
+    if (!file.folderId) throw new ShareError("NOT_FOUND", "Shared file not found")
+
+    const fileFolder = await db.select().from(folder).where(eq(folder.id, file.folderId)).get()
+    if (!fileFolder || fileFolder.isDeleted || !this.isWithinFolder(root, fileFolder)) {
+      throw new ShareError("NOT_FOUND", "Shared file not found")
+    }
+
+    return { share, root, file }
   }
 
   private async findResource(resourceType: "file" | "folder", resourceId: string) {

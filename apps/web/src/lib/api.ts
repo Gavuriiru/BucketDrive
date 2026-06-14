@@ -1576,6 +1576,20 @@ interface ShareBrowseResult {
   brandingName: string | null
 }
 
+interface ShareFilePreviewResult {
+  signedUrl: string
+  expiresAt: string
+  fileName: string
+  mimeType: string
+}
+
+interface ShareFileDownloadResult {
+  signedUrl: string
+  expiresAt: string
+  fileName: string
+  publicUrl?: string
+}
+
 export function useShareInfo(
   shareId: string | null,
 ): UseQueryResult<ShareInfoData, ApiRequestError> {
@@ -1619,6 +1633,91 @@ export function useBrowseShare(
       void queryClient.invalidateQueries({ queryKey: ["shareBrowse", shareId] })
     },
   })
+}
+
+export function useShareBrowseQuery(
+  shareId: string | null,
+  folderId: string | null,
+  password: string | null,
+  enabled: boolean,
+): UseQueryResult<ShareBrowseResult, ApiRequestError> {
+  return useQuery<ShareBrowseResult, ApiRequestError>({
+    queryKey: ["shareBrowse", shareId, folderId ?? "root"],
+    queryFn: () =>
+      api.post<ShareBrowseResult>(`/api/shares/${requireId(shareId, "shareId")}/browse`, {
+        folderId: folderId ?? undefined,
+        password: password || undefined,
+      }),
+    enabled: shareId !== null && enabled,
+    placeholderData: (previous) => previous,
+    staleTime: 60_000,
+    retry: (failureCount, error) => {
+      if ([401, 403, 404, 410, 423].includes(error.status)) return false
+      return failureCount < 3
+    },
+  })
+}
+
+export function useShareFilePreview(
+  shareId: string | null,
+): UseMutationResult<
+  ShareFilePreviewResult,
+  ApiRequestError,
+  { fileId: string; password?: string }
+> {
+  return useMutation<
+    ShareFilePreviewResult,
+    ApiRequestError,
+    { fileId: string; password?: string }
+  >({
+    mutationFn: ({ fileId, password }) =>
+      api.post<ShareFilePreviewResult>(
+        `/api/shares/${requireId(shareId, "shareId")}/files/${fileId}/preview`,
+        { password },
+      ),
+  })
+}
+
+export function useShareFileDownload(
+  shareId: string | null,
+): UseMutationResult<
+  ShareFileDownloadResult,
+  ApiRequestError,
+  { fileId: string; password?: string }
+> {
+  return useMutation<
+    ShareFileDownloadResult,
+    ApiRequestError,
+    { fileId: string; password?: string }
+  >({
+    mutationFn: ({ fileId, password }) =>
+      api.post<ShareFileDownloadResult>(
+        `/api/shares/${requireId(shareId, "shareId")}/files/${fileId}/download`,
+        { password },
+      ),
+  })
+}
+
+export function previewShareFile(
+  shareId: string | null,
+  fileId: string,
+  password?: string,
+): Promise<ShareFilePreviewResult> {
+  return api.post<ShareFilePreviewResult>(
+    `/api/shares/${requireId(shareId, "shareId")}/files/${fileId}/preview`,
+    { password },
+  )
+}
+
+export function downloadShareFile(
+  shareId: string | null,
+  fileId: string,
+  password?: string,
+): Promise<ShareFileDownloadResult> {
+  return api.post<ShareFileDownloadResult>(
+    `/api/shares/${requireId(shareId, "shareId")}/files/${fileId}/download`,
+    { password },
+  )
 }
 
 interface ListInvitationsResponse {
@@ -2085,6 +2184,8 @@ export type {
   ListSharesResponse,
   ShareAccessResult,
   ShareBrowseResult,
+  ShareFileDownloadResult,
+  ShareFilePreviewResult,
   ShareInfoData,
   ShareLink,
   TrashItem,

@@ -14,6 +14,9 @@ import {
   ShareInfoResponse,
   ShareBrowseRequest,
   ShareBrowseResponse,
+  ShareFileAccessRequest,
+  ShareFileDownloadResponse,
+  ShareFilePreviewResponse,
   type WorkspaceRole,
 } from "@bucketdrive/shared"
 import { SharesService, ShareError } from "./shares.service"
@@ -330,6 +333,100 @@ publicShares.post("/:shareId/browse", async (c) => {
       userAgent,
     })
     return c.json(ShareBrowseResponse.parse(result))
+  } catch (err) {
+    if (err instanceof ShareError) {
+      const statusMap: Record<string, number> = {
+        SHARE_NOT_FOUND: 404,
+        SHARE_REVOKED: 410,
+        SHARE_EXPIRED: 410,
+        PASSWORD_REQUIRED: 401,
+        INVALID_PASSWORD: 403,
+        SHARE_LOCKED: 423,
+        SHARE_PASSWORD_RATE_LIMITED: 429,
+        NOT_FOUND: 404,
+        INVALID_RESOURCE: 400,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
+    }
+    throw err
+  }
+})
+
+publicShares.post("/:shareId/files/:fileId/preview", async (c) => {
+  const shareId = c.req.param("shareId")
+  const fileId = c.req.param("fileId")
+  if (!shareId || !fileId) {
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "shareId and fileId are required" },
+      400 as never,
+    )
+  }
+
+  const body = ShareFileAccessRequest.parse(await c.req.json())
+  const ipAddress = c.req.header("CF-Connecting-IP") ?? c.req.header("X-Forwarded-For") ?? "unknown"
+  const userAgent = c.req.header("User-Agent") ?? undefined
+  const service = new SharesService()
+
+  try {
+    const result = await service.previewSharedFolderFile(
+      shareId,
+      fileId,
+      createStorageProvider(c.env),
+      {
+        password: body.password,
+        ipAddress,
+        userAgent,
+      },
+    )
+    return c.json(ShareFilePreviewResponse.parse(result))
+  } catch (err) {
+    if (err instanceof ShareError) {
+      const statusMap: Record<string, number> = {
+        SHARE_NOT_FOUND: 404,
+        SHARE_REVOKED: 410,
+        SHARE_EXPIRED: 410,
+        PASSWORD_REQUIRED: 401,
+        INVALID_PASSWORD: 403,
+        SHARE_LOCKED: 423,
+        SHARE_PASSWORD_RATE_LIMITED: 429,
+        NOT_FOUND: 404,
+        INVALID_RESOURCE: 400,
+      }
+      const status = statusMap[err.code] ?? 400
+      return c.json({ code: err.code, message: err.message }, status as never)
+    }
+    throw err
+  }
+})
+
+publicShares.post("/:shareId/files/:fileId/download", async (c) => {
+  const shareId = c.req.param("shareId")
+  const fileId = c.req.param("fileId")
+  if (!shareId || !fileId) {
+    return c.json(
+      { code: "VALIDATION_ERROR", message: "shareId and fileId are required" },
+      400 as never,
+    )
+  }
+
+  const body = ShareFileAccessRequest.parse(await c.req.json())
+  const ipAddress = c.req.header("CF-Connecting-IP") ?? c.req.header("X-Forwarded-For") ?? "unknown"
+  const userAgent = c.req.header("User-Agent") ?? undefined
+  const service = new SharesService()
+
+  try {
+    const result = await service.downloadSharedFolderFile(
+      shareId,
+      fileId,
+      createStorageProvider(c.env),
+      {
+        password: body.password,
+        ipAddress,
+        userAgent,
+      },
+    )
+    return c.json(ShareFileDownloadResponse.parse(result))
   } catch (err) {
     if (err instanceof ShareError) {
       const statusMap: Record<string, number> = {

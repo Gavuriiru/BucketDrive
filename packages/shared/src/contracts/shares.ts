@@ -82,6 +82,24 @@ export const ShareBrowseRequest = z.object({
   password: z.string().optional(),
 })
 
+export const ShareFileAccessRequest = z.object({
+  password: z.string().optional(),
+})
+
+export const ShareFilePreviewResponse = z.object({
+  signedUrl: z.url(),
+  expiresAt: z.iso.datetime(),
+  fileName: z.string(),
+  mimeType: z.string(),
+})
+
+export const ShareFileDownloadResponse = z.object({
+  signedUrl: z.url(),
+  expiresAt: z.iso.datetime(),
+  fileName: z.string(),
+  publicUrl: z.url().optional(),
+})
+
 export const ShareBrowseResponse = z.object({
   resourceName: z.string(),
   currentFolderId: z.uuid().nullable(),
