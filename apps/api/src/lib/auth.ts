@@ -16,15 +16,56 @@ interface AuthEnv {
   DB: D1Database
 }
 
+function extractHost(url?: string): string | null {
+  if (!url) return null
+  try {
+    return new URL(url).hostname
+  } catch {
+    return null
+  }
+}
+
+function getAllowedHosts(env: AuthEnv): string[] {
+  const hosts = new Set<string>()
+  const appHost = extractHost(env.APP_URL)
+  const apiHost = extractHost(env.API_URL)
+  const authHost = extractHost(env.BETTER_AUTH_URL)
+
+  if (appHost) hosts.add(appHost)
+  if (apiHost) hosts.add(apiHost)
+  if (authHost) hosts.add(authHost)
+
+  // If API_URL points to a Cloudflare Workers domain, allow the Workers wildcard pattern
+  const apiUrl = env.API_URL ?? env.BETTER_AUTH_URL
+  if (apiUrl && apiUrl.includes(".workers.dev")) {
+    const workerDomain = apiUrl.match(/https:\/\/([^/]+\.workers\.dev)/)?.[1]
+    if (workerDomain) {
+      // Extract the account-level wildcard pattern: *.account-id.workers.dev
+      const parts = workerDomain.split(".")
+      if (parts.length >= 3 && parts[parts.length - 1] === "dev" && parts[parts.length - 2] === "workers") {
+        const accountId = parts[parts.length - 3]
+        hosts.add(`*.${accountId}.workers.dev`)
+      }
+    }
+  }
+
+  return Array.from(hosts)
+}
+
 export function createAuth(env: AuthEnv, requestOrigin?: string) {
   const baseURL = env.BETTER_AUTH_URL ?? env.API_URL
   const configuredOrigins = getAllowedOrigins({ ...env, BETTER_AUTH_URL: baseURL })
   const trustedRequestOrigin =
     requestOrigin && configuredOrigins.includes(requestOrigin) ? requestOrigin : undefined
   const callbackOrigin = trustedRequestOrigin ?? env.APP_URL ?? baseURL
+  const allowedHosts = getAllowedHosts(env)
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
-    baseURL,
+    baseURL: {
+      allowedHosts,
+      protocol: "https",
+      fallback: callbackOrigin,
+    },
     database: drizzleAdapter(createD1DB(env.DB), {
       provider: "sqlite",
       schema,

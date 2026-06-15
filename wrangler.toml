@@ -3,6 +3,11 @@ main = "apps/api/src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Observability
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 # D1 Database
 [[d1_databases]]
 binding = "DB"
