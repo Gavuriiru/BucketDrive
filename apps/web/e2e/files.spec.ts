@@ -83,7 +83,17 @@ test("new folder uses the custom text input dialog", async ({ page }) => {
   await dialog.getByLabel("Folder name").fill(folderName)
   await dialog.getByRole("button", { name: "Create folder" }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.locator("button").filter({ hasText: folderName })).toBeVisible()
+  const folderItem = page.locator('[data-item-type="folder"]').filter({ hasText: folderName })
+  await expect(folderItem).toBeVisible()
+
+  await page.keyboard.down("Control")
+  await folderItem.click()
+  await page.keyboard.up("Control")
+
+  await expect(page.getByText("1 item selected")).toBeVisible()
+  const filesPage = page.getByTestId("files-page")
+  await expect(filesPage.getByRole("button", { name: /^Open$/ })).toBeVisible()
+  await expect(filesPage.getByRole("button", { name: /^Rename$/ })).toBeVisible()
 })
 
 test("move action opens a folder picker instead of asking for an ID", async ({ page }) => {
@@ -143,13 +153,28 @@ test("batch toolbar exposes shared actions for selected files", async ({ page })
 
   await page.keyboard.down("Control")
   await firstCard.click()
+  await page.keyboard.up("Control")
+
+  await expect(page.getByText("1 item selected")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Preview" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Rename" })).toBeVisible()
+
+  await page.keyboard.down("Control")
   await secondCard.click()
   await page.keyboard.up("Control")
 
   await expect(page.getByText("2 items selected")).toBeVisible()
   await expect(page.getByRole("button", { name: "Share selected" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Tags" })).toBeVisible()
-  await page.getByRole("button", { name: "Move selected" }).click()
+
+  await firstCard.click({ button: "right" })
+  const visibleMenu = page.locator('[role="menu"]:visible')
+  await expect(visibleMenu.getByRole("menuitem", { name: "Copy selected" })).toBeVisible()
+  await expect(visibleMenu.getByRole("menuitem", { name: "Download ZIP" })).toBeVisible()
+  await expect(visibleMenu.getByRole("menuitem", { name: "Share selected" })).toBeVisible()
+  await expect(visibleMenu.getByRole("menuitem", { name: "Move selected" })).toBeVisible()
+  await expect(visibleMenu.getByRole("menuitem", { name: "Delete selected" })).toBeVisible()
+  await visibleMenu.getByRole("menuitem", { name: "Move selected" }).click()
   await expect(page.getByRole("dialog", { name: "Move items" })).toBeVisible()
 })
 

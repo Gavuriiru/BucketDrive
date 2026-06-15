@@ -14,6 +14,9 @@ import {
   Download,
   Share2,
   Tags,
+  Eye,
+  Pencil,
+  FolderOpen,
 } from "lucide-react"
 import {
   useFiles,
@@ -969,10 +972,20 @@ export function FilesPage() {
   const displayBreadcrumbs = currentFolderId && breadcrumbsData ? breadcrumbsData : rootBreadcrumb
   const totalSelected = selectedFileIds.length + selectedFolderIds.length
   const isSingleFileSelection = selectedFileIds.length === 1 && selectedFolderIds.length === 0
+  const isSingleFolderSelection = selectedFolderIds.length === 1 && selectedFileIds.length === 0
+  const singleSelectedFileId = isSingleFileSelection ? (selectedFileIds[0] ?? null) : null
+  const singleSelectedFolderId = isSingleFolderSelection ? (selectedFolderIds[0] ?? null) : null
   const canDeleteSelected =
     totalSelected > 0 &&
     (selectedFileIds.length === 0 || canDeleteFile) &&
     (selectedFolderIds.length === 0 || canDeleteFolder)
+  const canMoveSelected =
+    totalSelected > 0 &&
+    (selectedFileIds.length === 0 || canMoveFile) &&
+    (selectedFolderIds.length === 0 || canMoveFolder)
+  const canRenameSelected =
+    totalSelected === 1 &&
+    ((isSingleFileSelection && canRenameFile) || (isSingleFolderSelection && canRenameFolder))
   const totalFiles = isSearchActive ? (searchData?.meta.total ?? 0) : (filesData?.meta?.total ?? 0)
   const selectedTagNames = allTags.filter((tag) => dashboardSearch.selectedTagIds.includes(tag.id))
   const dashboardSortOptions: Array<{ value: SearchSort; label: string }> = debouncedQuery
@@ -997,6 +1010,18 @@ export function FilesPage() {
     totalSelected > 0 &&
     (selectedFileIds.length === 0 || canShareFile) &&
     (selectedFolderIds.length === 0 || canShareFolder)
+  const selectionContextActions = {
+    downloadLabel: isSingleFileSelection ? "Download" : "Download ZIP",
+    onCopy: handleCopySelected,
+    onDownload: () => {
+      void handleDownloadSelected()
+    },
+    ...(canShareSelected ? { onShare: handleShareSelected } : {}),
+    ...(canFavorite && selectedFileIds.length > 0 ? { onFavorite: handleFavoriteSelected } : {}),
+    ...(canTag && selectedFileIds.length > 0 ? { onTags: handleTagsSelected } : {}),
+    ...(canMoveSelected ? { onMove: handleMoveSelected } : {}),
+    ...(canDeleteSelected ? { onDelete: handleDeleteSelected } : {}),
+  }
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -1355,6 +1380,46 @@ export function FilesPage() {
               </span>
               <div className="hidden flex-1 sm:block" />
               <div className="flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto sm:flex-wrap sm:justify-end [&::-webkit-scrollbar]:hidden">
+                {singleSelectedFolderId && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenItem(singleSelectedFolderId, "folder")}
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  >
+                    <FolderOpen className="h-3.5 w-3.5" />
+                    Open
+                  </button>
+                )}
+                {singleSelectedFileId && (
+                  <button
+                    type="button"
+                    onClick={() => handlePreviewItem(singleSelectedFileId)}
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Preview
+                  </button>
+                )}
+                {canRenameSelected && singleSelectedFileId && (
+                  <button
+                    type="button"
+                    onClick={() => handleRenameItem(singleSelectedFileId, "file")}
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Rename
+                  </button>
+                )}
+                {canRenameSelected && singleSelectedFolderId && (
+                  <button
+                    type="button"
+                    onClick={() => handleRenameItem(singleSelectedFolderId, "folder")}
+                    className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Rename
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleCopySelected}
@@ -1414,7 +1479,7 @@ export function FilesPage() {
                     Tags
                   </button>
                 )}
-                {(canMoveFile || canMoveFolder) && (
+                {canMoveSelected && (
                   <button
                     type="button"
                     onClick={handleMoveSelected}
@@ -1462,7 +1527,6 @@ export function FilesPage() {
                 isLoading={isLoading}
                 onFolderClick={handleFolderClick}
                 onItemClick={handleItemClick}
-                onContextOpen={handleOpenItem}
                 onContextPreview={handlePreviewItem}
                 onContextDownload={handleContextDownload}
                 onContextRename={
@@ -1503,6 +1567,7 @@ export function FilesPage() {
                 }
                 onContextMove={canMoveFile || canMoveFolder ? handleContextMove : undefined}
                 onContextShare={canShareFile || canShareFolder ? handleContextShare : undefined}
+                selectionContextActions={selectionContextActions}
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
                 onSelectionPointerDown={handleSelectionPointerDown}
                 onSelectionPointerMove={handleSelectionPointerMove}
@@ -1517,7 +1582,6 @@ export function FilesPage() {
                 isLoading={isLoading}
                 onFolderClick={handleFolderClick}
                 onItemClick={handleItemClick}
-                onContextOpen={handleOpenItem}
                 onContextPreview={handlePreviewItem}
                 onContextDownload={handleContextDownload}
                 onContextRename={
@@ -1558,6 +1622,7 @@ export function FilesPage() {
                 }
                 onContextMove={canMoveFile || canMoveFolder ? handleContextMove : undefined}
                 onContextShare={canShareFile || canShareFolder ? handleContextShare : undefined}
+                selectionContextActions={selectionContextActions}
                 onItemDrop={!isSearchActive ? handleItemDrop : undefined}
                 onSelectionPointerDown={handleSelectionPointerDown}
                 onSelectionPointerMove={handleSelectionPointerMove}

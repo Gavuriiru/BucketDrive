@@ -89,6 +89,17 @@ function getGridCardStateClass({
   return "border-border-muted hover:border-border-default hover:bg-surface-hover"
 }
 
+interface SelectionContextActions {
+  downloadLabel: string
+  onCopy?: () => void
+  onDownload?: () => void
+  onShare?: () => void
+  onFavorite?: () => void
+  onTags?: () => void
+  onMove?: () => void
+  onDelete?: () => void
+}
+
 interface FolderGridCardProps {
   folder: FolderType
   index: number
@@ -101,11 +112,12 @@ interface FolderGridCardProps {
     index: number,
     event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   ) => void
-  onContextOpen?: (_id: string, _type: "file" | "folder") => void
   onContextRename?: (id: string, type: "file" | "folder") => void
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
+  selectedCount: number
+  selectionContextActions?: SelectionContextActions
   dndEnabled: boolean
 }
 
@@ -116,11 +128,12 @@ function FolderGridCard({
   isFocused,
   onFolderClick,
   onItemClick,
-  onContextOpen: _onContextOpen,
   onContextRename,
   onContextDelete,
   onContextMove,
   onContextShare,
+  selectedCount,
+  selectionContextActions,
   dndEnabled,
 }: FolderGridCardProps) {
   const dragId = `folder-${folder.id}`
@@ -146,24 +159,61 @@ function FolderGridCard({
 
   const isDragging = draggable.isDragging
   const isOver = droppable.isOver
+  const useSelectionActions = isSelected && selectedCount > 1
 
   return (
     <FileContextMenu
       key={folder.id}
       itemId={folder.id}
       itemType="folder"
-      onOpen={() => onFolderClick(folder.id)}
-      onRename={onContextRename ? () => onContextRename(folder.id, "folder") : undefined}
-      onDelete={onContextDelete ? () => onContextDelete(folder.id, "folder") : undefined}
-      onMove={onContextMove ? () => onContextMove(folder.id, "folder") : undefined}
-      onShare={onContextShare ? () => onContextShare(folder.id, "folder") : undefined}
-      onCopy={() => {
-        setClipboard({
-          action: "copy",
-          fileIds: [],
-          folderIds: [folder.id],
-        })
-      }}
+      scope={useSelectionActions ? "selection" : "item"}
+      downloadLabel={useSelectionActions ? selectionContextActions?.downloadLabel : undefined}
+      copyLabel={useSelectionActions ? "Copy selected" : undefined}
+      moveLabel={useSelectionActions ? "Move selected" : undefined}
+      shareLabel={useSelectionActions ? "Share selected" : undefined}
+      deleteLabel={useSelectionActions ? "Delete selected" : undefined}
+      favoriteLabel={useSelectionActions ? "Favorite files" : undefined}
+      onOpen={useSelectionActions ? undefined : () => onFolderClick(folder.id)}
+      onRename={
+        !useSelectionActions && onContextRename
+          ? () => onContextRename(folder.id, "folder")
+          : undefined
+      }
+      onDelete={
+        useSelectionActions
+          ? selectionContextActions?.onDelete
+          : onContextDelete
+            ? () => onContextDelete(folder.id, "folder")
+            : undefined
+      }
+      onMove={
+        useSelectionActions
+          ? selectionContextActions?.onMove
+          : onContextMove
+            ? () => onContextMove(folder.id, "folder")
+            : undefined
+      }
+      onShare={
+        useSelectionActions
+          ? selectionContextActions?.onShare
+          : onContextShare
+            ? () => onContextShare(folder.id, "folder")
+            : undefined
+      }
+      onFavorite={useSelectionActions ? selectionContextActions?.onFavorite : undefined}
+      onTags={useSelectionActions ? selectionContextActions?.onTags : undefined}
+      onDownload={useSelectionActions ? selectionContextActions?.onDownload : undefined}
+      onCopy={
+        useSelectionActions
+          ? selectionContextActions?.onCopy
+          : () => {
+              setClipboard({
+                action: "copy",
+                fileIds: [],
+                folderIds: [folder.id],
+              })
+            }
+      }
     >
       <div
         ref={setRefs}
@@ -222,7 +272,6 @@ interface FileGridCardProps {
     index: number,
     event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   ) => void
-  onContextOpen?: (id: string, type: "file" | "folder") => void
   onContextPreview?: (id: string) => void
   onContextDownload?: (id: string) => void
   onContextRename?: (id: string, type: "file" | "folder") => void
@@ -231,6 +280,8 @@ interface FileGridCardProps {
   onContextTags?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
+  selectedCount: number
+  selectionContextActions?: SelectionContextActions
   dndEnabled: boolean
 }
 
@@ -241,7 +292,6 @@ function FileGridCard({
   isSelected,
   isFocused,
   onItemClick,
-  onContextOpen,
   onContextPreview,
   onContextDownload,
   onContextRename,
@@ -250,6 +300,8 @@ function FileGridCard({
   onContextTags,
   onContextMove,
   onContextShare,
+  selectedCount,
+  selectionContextActions,
   dndEnabled,
 }: FileGridCardProps) {
   const dragId = `file-${file.id}`
@@ -259,29 +311,85 @@ function FileGridCard({
     data: { type: "file", id: file.id },
   })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
+  const useSelectionActions = isSelected && selectedCount > 1
 
   return (
     <FileContextMenu
       key={file.id}
       itemId={file.id}
       itemType="file"
-      onOpen={() => onContextOpen?.(file.id, "file")}
-      onPreview={onContextPreview ? () => onContextPreview(file.id) : undefined}
-      onDownload={onContextDownload ? () => onContextDownload(file.id) : undefined}
-      onRename={onContextRename ? () => onContextRename(file.id, "file") : undefined}
-      onDelete={onContextDelete ? () => onContextDelete(file.id, "file") : undefined}
-      onFavorite={onContextFavorite ? () => onContextFavorite(file.id) : undefined}
-      favoriteLabel={file.isFavorited ? "Remove favorite" : "Add favorite"}
-      onTags={onContextTags ? () => onContextTags(file.id) : undefined}
-      onMove={onContextMove ? () => onContextMove(file.id, "file") : undefined}
-      onShare={onContextShare ? () => onContextShare(file.id, "file") : undefined}
-      onCopy={() => {
-        setClipboard({
-          action: "copy",
-          fileIds: [file.id],
-          folderIds: [],
-        })
-      }}
+      scope={useSelectionActions ? "selection" : "item"}
+      downloadLabel={useSelectionActions ? selectionContextActions?.downloadLabel : undefined}
+      copyLabel={useSelectionActions ? "Copy selected" : undefined}
+      moveLabel={useSelectionActions ? "Move selected" : undefined}
+      shareLabel={useSelectionActions ? "Share selected" : undefined}
+      deleteLabel={useSelectionActions ? "Delete selected" : undefined}
+      favoriteLabel={
+        useSelectionActions
+          ? "Favorite files"
+          : file.isFavorited
+            ? "Remove favorite"
+            : "Add favorite"
+      }
+      onPreview={
+        !useSelectionActions && onContextPreview ? () => onContextPreview(file.id) : undefined
+      }
+      onDownload={
+        useSelectionActions
+          ? selectionContextActions?.onDownload
+          : onContextDownload
+            ? () => onContextDownload(file.id)
+            : undefined
+      }
+      onRename={
+        !useSelectionActions && onContextRename ? () => onContextRename(file.id, "file") : undefined
+      }
+      onDelete={
+        useSelectionActions
+          ? selectionContextActions?.onDelete
+          : onContextDelete
+            ? () => onContextDelete(file.id, "file")
+            : undefined
+      }
+      onFavorite={
+        useSelectionActions
+          ? selectionContextActions?.onFavorite
+          : onContextFavorite
+            ? () => onContextFavorite(file.id)
+            : undefined
+      }
+      onTags={
+        useSelectionActions
+          ? selectionContextActions?.onTags
+          : onContextTags
+            ? () => onContextTags(file.id)
+            : undefined
+      }
+      onMove={
+        useSelectionActions
+          ? selectionContextActions?.onMove
+          : onContextMove
+            ? () => onContextMove(file.id, "file")
+            : undefined
+      }
+      onShare={
+        useSelectionActions
+          ? selectionContextActions?.onShare
+          : onContextShare
+            ? () => onContextShare(file.id, "file")
+            : undefined
+      }
+      onCopy={
+        useSelectionActions
+          ? selectionContextActions?.onCopy
+          : () => {
+              setClipboard({
+                action: "copy",
+                fileIds: [file.id],
+                folderIds: [],
+              })
+            }
+      }
     >
       <div
         ref={setNodeRef}
@@ -353,7 +461,6 @@ interface FileGridProps {
     index: number,
     event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   ) => void
-  onContextOpen?: (id: string, type: "file" | "folder") => void
   onContextPreview?: (id: string) => void
   onContextDownload?: (id: string) => void
   onContextRename?: (id: string, type: "file" | "folder") => void
@@ -362,6 +469,7 @@ interface FileGridProps {
   onContextTags?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
+  selectionContextActions?: SelectionContextActions
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
   onSelectionPointerDown?: (event: PointerEvent<HTMLDivElement>) => void
   onSelectionPointerMove?: (event: PointerEvent<HTMLDivElement>) => void
@@ -376,7 +484,6 @@ export function FileGrid({
   isLoading,
   onFolderClick,
   onItemClick,
-  onContextOpen,
   onContextPreview,
   onContextDownload,
   onContextRename,
@@ -385,6 +492,7 @@ export function FileGrid({
   onContextTags,
   onContextMove,
   onContextShare,
+  selectionContextActions,
   onItemDrop,
   onSelectionPointerDown,
   onSelectionPointerMove,
@@ -395,6 +503,7 @@ export function FileGrid({
   const selectedFolderIds = useExplorerStore((s) => s.selectedFolderIds)
   const focusedItemId = useExplorerStore((s) => s.focusedItemId)
   const dndEnabled = !!onItemDrop
+  const selectedCount = Number(selectedFileIds.length) + Number(selectedFolderIds.length)
 
   const allItems = useMemo(
     () => [
@@ -451,11 +560,12 @@ export function FileGrid({
                 isFocused={focusedItemId === folder.id}
                 onFolderClick={onFolderClick}
                 onItemClick={onItemClick}
-                onContextOpen={onContextOpen}
                 onContextRename={onContextRename}
                 onContextDelete={onContextDelete}
                 onContextMove={onContextMove}
                 onContextShare={onContextShare}
+                selectedCount={selectedCount}
+                selectionContextActions={selectionContextActions}
                 dndEnabled={dndEnabled}
               />
             )
@@ -471,7 +581,6 @@ export function FileGrid({
               isSelected={selectedFileIds.includes(file.id)}
               isFocused={focusedItemId === file.id}
               onItemClick={onItemClick}
-              onContextOpen={onContextOpen}
               onContextPreview={onContextPreview}
               onContextDownload={onContextDownload}
               onContextRename={onContextRename}
@@ -480,6 +589,8 @@ export function FileGrid({
               onContextTags={onContextTags}
               onContextMove={onContextMove}
               onContextShare={onContextShare}
+              selectedCount={selectedCount}
+              selectionContextActions={selectionContextActions}
               dndEnabled={dndEnabled}
             />
           )

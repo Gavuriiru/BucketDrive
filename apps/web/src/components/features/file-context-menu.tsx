@@ -15,7 +15,14 @@ import {
 interface FileContextMenuProps {
   itemId: string
   itemType: "file" | "folder"
+  scope?: "item" | "selection"
   children: React.ReactNode
+  downloadLabel?: string
+  copyLabel?: string
+  moveLabel?: string
+  shareLabel?: string
+  deleteLabel?: string
+  tagsLabel?: string
   onOpen?: () => void
   onPreview?: () => void
   onDownload?: () => void
@@ -36,7 +43,14 @@ const separatorClass = "mx-2 my-1 h-px bg-border-muted"
 export function FileContextMenu({
   itemId: _itemId,
   itemType,
+  scope = "item",
   children,
+  downloadLabel = "Download",
+  copyLabel = "Copy",
+  moveLabel = "Move",
+  shareLabel = "Share",
+  deleteLabel = "Delete",
+  tagsLabel = "Tags",
   onOpen,
   onPreview,
   onDownload,
@@ -49,6 +63,8 @@ export function FileContextMenu({
   onCopy,
   onMove,
 }: FileContextMenuProps) {
+  const supportsFileActions = itemType === "file" || scope === "selection"
+
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
@@ -70,7 +86,7 @@ export function FileContextMenu({
             </ContextMenu.Item>
           )}
 
-          {itemType === "file" && onPreview && (
+          {itemType === "file" && scope === "item" && onPreview && (
             <ContextMenu.Item
               className={menuItemClass}
               onSelect={() => {
@@ -83,7 +99,7 @@ export function FileContextMenu({
             </ContextMenu.Item>
           )}
 
-          {itemType === "file" && onDownload && (
+          {supportsFileActions && onDownload && (
             <ContextMenu.Item
               className={menuItemClass}
               onSelect={() => {
@@ -91,15 +107,15 @@ export function FileContextMenu({
               }}
             >
               <Download className="text-text-tertiary h-4 w-4" />
-              Download
+              {downloadLabel}
             </ContextMenu.Item>
           )}
 
-          {itemType === "file" && (onPreview || onDownload) && (
+          {supportsFileActions && (onPreview || onDownload) && (
             <ContextMenu.Separator className={separatorClass} />
           )}
 
-          {itemType === "file" && onFavorite && (
+          {supportsFileActions && onFavorite && (
             <>
               <ContextMenu.Item
                 className={menuItemClass}
@@ -118,7 +134,7 @@ export function FileContextMenu({
                   }}
                 >
                   <Tags className="text-text-tertiary h-4 w-4" />
-                  Tags
+                  {tagsLabel}
                 </ContextMenu.Item>
               )}
               <ContextMenu.Separator className={separatorClass} />
@@ -146,7 +162,7 @@ export function FileContextMenu({
               }}
             >
               <Copy className="text-text-tertiary h-4 w-4" />
-              Copy
+              {copyLabel}
               <span className="text-text-tertiary ml-auto text-xs">Ctrl+C</span>
             </ContextMenu.Item>
           )}
@@ -159,7 +175,7 @@ export function FileContextMenu({
               }}
             >
               <ArrowRightLeft className="text-text-tertiary h-4 w-4" />
-              Move
+              {moveLabel}
             </ContextMenu.Item>
           )}
 
@@ -173,7 +189,7 @@ export function FileContextMenu({
               }}
             >
               <Share2 className="text-text-tertiary h-4 w-4" />
-              Share
+              {shareLabel}
             </ContextMenu.Item>
           )}
 
@@ -187,7 +203,7 @@ export function FileContextMenu({
               }}
             >
               <Trash2 className="text-text-tertiary h-4 w-4" />
-              Delete
+              {deleteLabel}
               <span className="text-text-tertiary ml-auto text-xs">Del</span>
             </ContextMenu.Item>
           )}

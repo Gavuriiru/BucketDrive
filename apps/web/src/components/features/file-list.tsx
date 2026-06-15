@@ -75,6 +75,17 @@ const dropdownItemClass =
 const rowClass =
   "flex min-h-14 items-center border-b border-border-muted transition-colors last:border-b-0 hover:bg-surface-hover focus:outline-none"
 
+interface SelectionContextActions {
+  downloadLabel: string
+  onCopy?: () => void
+  onDownload?: () => void
+  onShare?: () => void
+  onFavorite?: () => void
+  onTags?: () => void
+  onMove?: () => void
+  onDelete?: () => void
+}
+
 function useMenuAction() {
   const lastActionAtRef = useRef(0)
   return useCallback((event: { stopPropagation: () => void }, action: () => void) => {
@@ -84,6 +95,92 @@ function useMenuAction() {
     lastActionAtRef.current = now
     window.setTimeout(action, 0)
   }, [])
+}
+
+function renderSelectionDropdownItems(
+  selectionContextActions: SelectionContextActions | undefined,
+  runMenuAction: (event: { stopPropagation: () => void }, action: () => void) => void,
+) {
+  const onCopy = selectionContextActions?.onCopy
+  const onDownload = selectionContextActions?.onDownload
+  const onFavorite = selectionContextActions?.onFavorite
+  const onTags = selectionContextActions?.onTags
+  const onMove = selectionContextActions?.onMove
+  const onShare = selectionContextActions?.onShare
+  const onDelete = selectionContextActions?.onDelete
+
+  return (
+    <>
+      {onCopy && (
+        <DropdownMenu.Item
+          className={dropdownItemClass}
+          onClick={(event) => runMenuAction(event, onCopy)}
+          onSelect={(event) => runMenuAction(event, onCopy)}
+        >
+          Copy selected
+        </DropdownMenu.Item>
+      )}
+      {onDownload && (
+        <DropdownMenu.Item
+          className={dropdownItemClass}
+          onClick={(event) => runMenuAction(event, onDownload)}
+          onSelect={(event) => runMenuAction(event, onDownload)}
+        >
+          {selectionContextActions.downloadLabel}
+        </DropdownMenu.Item>
+      )}
+      {(onFavorite || onTags) && (
+        <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
+      )}
+      {onFavorite && (
+        <DropdownMenu.Item
+          className={dropdownItemClass}
+          onClick={(event) => runMenuAction(event, onFavorite)}
+          onSelect={(event) => runMenuAction(event, onFavorite)}
+        >
+          Favorite files
+        </DropdownMenu.Item>
+      )}
+      {onTags && (
+        <DropdownMenu.Item
+          className={dropdownItemClass}
+          onClick={(event) => runMenuAction(event, onTags)}
+          onSelect={(event) => runMenuAction(event, onTags)}
+        >
+          Tags
+        </DropdownMenu.Item>
+      )}
+      {(onMove || onShare) && <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />}
+      {onMove && (
+        <DropdownMenu.Item
+          className={dropdownItemClass}
+          onClick={(event) => runMenuAction(event, onMove)}
+          onSelect={(event) => runMenuAction(event, onMove)}
+        >
+          Move selected
+        </DropdownMenu.Item>
+      )}
+      {onShare && (
+        <DropdownMenu.Item
+          className={dropdownItemClass}
+          onClick={(event) => runMenuAction(event, onShare)}
+          onSelect={(event) => runMenuAction(event, onShare)}
+        >
+          Share selected
+        </DropdownMenu.Item>
+      )}
+      {onDelete && <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />}
+      {onDelete && (
+        <DropdownMenu.Item
+          className={dropdownItemClass}
+          onClick={(event) => runMenuAction(event, onDelete)}
+          onSelect={(event) => runMenuAction(event, onDelete)}
+        >
+          Delete selected
+        </DropdownMenu.Item>
+      )}
+    </>
+  )
 }
 
 interface FolderListRowProps {
@@ -102,6 +199,8 @@ interface FolderListRowProps {
   onContextDelete?: (id: string, type: "file" | "folder") => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
+  selectedCount: number
+  selectionContextActions?: SelectionContextActions
   dndEnabled: boolean
 }
 
@@ -116,6 +215,8 @@ function FolderListRow({
   onContextDelete,
   onContextMove,
   onContextShare,
+  selectedCount,
+  selectionContextActions,
   dndEnabled,
 }: FolderListRowProps) {
   const dragId = `folder-${folder.id}`
@@ -131,6 +232,7 @@ function FolderListRow({
   })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
   const runMenuAction = useMenuAction()
+  const useSelectionActions = isSelected && selectedCount > 1
 
   const setRefs = useCallback(
     (node: HTMLDivElement | null) => {
@@ -145,18 +247,54 @@ function FolderListRow({
       key={folder.id}
       itemId={folder.id}
       itemType="folder"
-      onOpen={() => onFolderClick(folder.id)}
-      onRename={onContextRename ? () => onContextRename(folder.id, "folder") : undefined}
-      onDelete={onContextDelete ? () => onContextDelete(folder.id, "folder") : undefined}
-      onMove={onContextMove ? () => onContextMove(folder.id, "folder") : undefined}
-      onShare={onContextShare ? () => onContextShare(folder.id, "folder") : undefined}
-      onCopy={() => {
-        setClipboard({
-          action: "copy",
-          fileIds: [],
-          folderIds: [folder.id],
-        })
-      }}
+      scope={useSelectionActions ? "selection" : "item"}
+      downloadLabel={useSelectionActions ? selectionContextActions?.downloadLabel : undefined}
+      copyLabel={useSelectionActions ? "Copy selected" : undefined}
+      moveLabel={useSelectionActions ? "Move selected" : undefined}
+      shareLabel={useSelectionActions ? "Share selected" : undefined}
+      deleteLabel={useSelectionActions ? "Delete selected" : undefined}
+      favoriteLabel={useSelectionActions ? "Favorite files" : undefined}
+      onOpen={useSelectionActions ? undefined : () => onFolderClick(folder.id)}
+      onRename={
+        !useSelectionActions && onContextRename
+          ? () => onContextRename(folder.id, "folder")
+          : undefined
+      }
+      onDelete={
+        useSelectionActions
+          ? selectionContextActions?.onDelete
+          : onContextDelete
+            ? () => onContextDelete(folder.id, "folder")
+            : undefined
+      }
+      onMove={
+        useSelectionActions
+          ? selectionContextActions?.onMove
+          : onContextMove
+            ? () => onContextMove(folder.id, "folder")
+            : undefined
+      }
+      onShare={
+        useSelectionActions
+          ? selectionContextActions?.onShare
+          : onContextShare
+            ? () => onContextShare(folder.id, "folder")
+            : undefined
+      }
+      onFavorite={useSelectionActions ? selectionContextActions?.onFavorite : undefined}
+      onTags={useSelectionActions ? selectionContextActions?.onTags : undefined}
+      onDownload={useSelectionActions ? selectionContextActions?.onDownload : undefined}
+      onCopy={
+        useSelectionActions
+          ? selectionContextActions?.onCopy
+          : () => {
+              setClipboard({
+                action: "copy",
+                fileIds: [],
+                folderIds: [folder.id],
+              })
+            }
+      }
     >
       <div
         ref={setRefs}
@@ -222,70 +360,76 @@ function FolderListRow({
                 side="bottom"
                 align="end"
               >
-                <DropdownMenu.Item
-                  className={dropdownItemClass}
-                  onClick={(event) => runMenuAction(event, () => onFolderClick(folder.id))}
-                  onSelect={(event) => runMenuAction(event, () => onFolderClick(folder.id))}
-                >
-                  Open
-                </DropdownMenu.Item>
-                {onContextRename && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) =>
-                      runMenuAction(event, () => onContextRename(folder.id, "folder"))
-                    }
-                    onSelect={(event) =>
-                      runMenuAction(event, () => onContextRename(folder.id, "folder"))
-                    }
-                  >
-                    Rename
-                  </DropdownMenu.Item>
-                )}
-                {onContextMove && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) =>
-                      runMenuAction(event, () => onContextMove(folder.id, "folder"))
-                    }
-                    onSelect={(event) =>
-                      runMenuAction(event, () => onContextMove(folder.id, "folder"))
-                    }
-                  >
-                    Move
-                  </DropdownMenu.Item>
-                )}
-                {onContextShare && (
-                  <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
-                )}
-                {onContextShare && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) =>
-                      runMenuAction(event, () => onContextShare(folder.id, "folder"))
-                    }
-                    onSelect={(event) =>
-                      runMenuAction(event, () => onContextShare(folder.id, "folder"))
-                    }
-                  >
-                    Share
-                  </DropdownMenu.Item>
-                )}
-                {onContextDelete && (
-                  <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
-                )}
-                {onContextDelete && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) =>
-                      runMenuAction(event, () => onContextDelete(folder.id, "folder"))
-                    }
-                    onSelect={(event) =>
-                      runMenuAction(event, () => onContextDelete(folder.id, "folder"))
-                    }
-                  >
-                    Delete
-                  </DropdownMenu.Item>
+                {useSelectionActions ? (
+                  renderSelectionDropdownItems(selectionContextActions, runMenuAction)
+                ) : (
+                  <>
+                    <DropdownMenu.Item
+                      className={dropdownItemClass}
+                      onClick={(event) => runMenuAction(event, () => onFolderClick(folder.id))}
+                      onSelect={(event) => runMenuAction(event, () => onFolderClick(folder.id))}
+                    >
+                      Open
+                    </DropdownMenu.Item>
+                    {onContextRename && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) =>
+                          runMenuAction(event, () => onContextRename(folder.id, "folder"))
+                        }
+                        onSelect={(event) =>
+                          runMenuAction(event, () => onContextRename(folder.id, "folder"))
+                        }
+                      >
+                        Rename
+                      </DropdownMenu.Item>
+                    )}
+                    {onContextMove && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) =>
+                          runMenuAction(event, () => onContextMove(folder.id, "folder"))
+                        }
+                        onSelect={(event) =>
+                          runMenuAction(event, () => onContextMove(folder.id, "folder"))
+                        }
+                      >
+                        Move
+                      </DropdownMenu.Item>
+                    )}
+                    {onContextShare && (
+                      <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
+                    )}
+                    {onContextShare && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) =>
+                          runMenuAction(event, () => onContextShare(folder.id, "folder"))
+                        }
+                        onSelect={(event) =>
+                          runMenuAction(event, () => onContextShare(folder.id, "folder"))
+                        }
+                      >
+                        Share
+                      </DropdownMenu.Item>
+                    )}
+                    {onContextDelete && (
+                      <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
+                    )}
+                    {onContextDelete && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) =>
+                          runMenuAction(event, () => onContextDelete(folder.id, "folder"))
+                        }
+                        onSelect={(event) =>
+                          runMenuAction(event, () => onContextDelete(folder.id, "folder"))
+                        }
+                      >
+                        Delete
+                      </DropdownMenu.Item>
+                    )}
+                  </>
                 )}
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
@@ -308,7 +452,6 @@ interface FileListRowProps {
     index: number,
     event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   ) => void
-  onContextOpen?: (id: string, type: "file" | "folder") => void
   onContextPreview?: (id: string) => void
   onContextDownload?: (id: string) => void
   onContextRename?: (id: string, type: "file" | "folder") => void
@@ -317,6 +460,8 @@ interface FileListRowProps {
   onContextTags?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
+  selectedCount: number
+  selectionContextActions?: SelectionContextActions
   dndEnabled: boolean
 }
 
@@ -327,7 +472,6 @@ function FileListRow({
   isSelected,
   isFocused,
   onItemClick,
-  onContextOpen,
   onContextPreview,
   onContextDownload,
   onContextRename,
@@ -336,6 +480,8 @@ function FileListRow({
   onContextTags,
   onContextMove,
   onContextShare,
+  selectedCount,
+  selectionContextActions,
   dndEnabled,
 }: FileListRowProps) {
   const dragId = `file-${file.id}`
@@ -346,29 +492,85 @@ function FileListRow({
   })
   const setClipboard = useExplorerStore((state) => state.setClipboard)
   const runMenuAction = useMenuAction()
+  const useSelectionActions = isSelected && selectedCount > 1
 
   return (
     <FileContextMenu
       key={file.id}
       itemId={file.id}
       itemType="file"
-      onOpen={() => onContextOpen?.(file.id, "file")}
-      onPreview={onContextPreview ? () => onContextPreview(file.id) : undefined}
-      onDownload={onContextDownload ? () => onContextDownload(file.id) : undefined}
-      onRename={onContextRename ? () => onContextRename(file.id, "file") : undefined}
-      onDelete={onContextDelete ? () => onContextDelete(file.id, "file") : undefined}
-      onFavorite={onContextFavorite ? () => onContextFavorite(file.id) : undefined}
-      favoriteLabel={file.isFavorited ? "Remove favorite" : "Add favorite"}
-      onTags={onContextTags ? () => onContextTags(file.id) : undefined}
-      onMove={onContextMove ? () => onContextMove(file.id, "file") : undefined}
-      onShare={onContextShare ? () => onContextShare(file.id, "file") : undefined}
-      onCopy={() => {
-        setClipboard({
-          action: "copy",
-          fileIds: [file.id],
-          folderIds: [],
-        })
-      }}
+      scope={useSelectionActions ? "selection" : "item"}
+      downloadLabel={useSelectionActions ? selectionContextActions?.downloadLabel : undefined}
+      copyLabel={useSelectionActions ? "Copy selected" : undefined}
+      moveLabel={useSelectionActions ? "Move selected" : undefined}
+      shareLabel={useSelectionActions ? "Share selected" : undefined}
+      deleteLabel={useSelectionActions ? "Delete selected" : undefined}
+      favoriteLabel={
+        useSelectionActions
+          ? "Favorite files"
+          : file.isFavorited
+            ? "Remove favorite"
+            : "Add favorite"
+      }
+      onPreview={
+        !useSelectionActions && onContextPreview ? () => onContextPreview(file.id) : undefined
+      }
+      onDownload={
+        useSelectionActions
+          ? selectionContextActions?.onDownload
+          : onContextDownload
+            ? () => onContextDownload(file.id)
+            : undefined
+      }
+      onRename={
+        !useSelectionActions && onContextRename ? () => onContextRename(file.id, "file") : undefined
+      }
+      onDelete={
+        useSelectionActions
+          ? selectionContextActions?.onDelete
+          : onContextDelete
+            ? () => onContextDelete(file.id, "file")
+            : undefined
+      }
+      onFavorite={
+        useSelectionActions
+          ? selectionContextActions?.onFavorite
+          : onContextFavorite
+            ? () => onContextFavorite(file.id)
+            : undefined
+      }
+      onTags={
+        useSelectionActions
+          ? selectionContextActions?.onTags
+          : onContextTags
+            ? () => onContextTags(file.id)
+            : undefined
+      }
+      onMove={
+        useSelectionActions
+          ? selectionContextActions?.onMove
+          : onContextMove
+            ? () => onContextMove(file.id, "file")
+            : undefined
+      }
+      onShare={
+        useSelectionActions
+          ? selectionContextActions?.onShare
+          : onContextShare
+            ? () => onContextShare(file.id, "file")
+            : undefined
+      }
+      onCopy={
+        useSelectionActions
+          ? selectionContextActions?.onCopy
+          : () => {
+              setClipboard({
+                action: "copy",
+                fileIds: [file.id],
+                folderIds: [],
+              })
+            }
+      }
     >
       <div
         ref={setNodeRef}
@@ -472,98 +674,103 @@ function FileListRow({
                 side="bottom"
                 align="end"
               >
-                <DropdownMenu.Item
-                  className={dropdownItemClass}
-                  onClick={(event) => runMenuAction(event, () => onContextOpen?.(file.id, "file"))}
-                  onSelect={(event) => runMenuAction(event, () => onContextOpen?.(file.id, "file"))}
-                >
-                  Open
-                </DropdownMenu.Item>
-                {onContextPreview && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) => runMenuAction(event, () => onContextPreview(file.id))}
-                    onSelect={(event) => runMenuAction(event, () => onContextPreview(file.id))}
-                  >
-                    Preview
-                  </DropdownMenu.Item>
-                )}
-                <DropdownMenu.Item
-                  className={dropdownItemClass}
-                  onClick={(event) => runMenuAction(event, () => onContextDownload?.(file.id))}
-                  onSelect={(event) => runMenuAction(event, () => onContextDownload?.(file.id))}
-                >
-                  Download
-                </DropdownMenu.Item>
-                {onContextRename && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) =>
-                      runMenuAction(event, () => onContextRename(file.id, "file"))
-                    }
-                    onSelect={(event) =>
-                      runMenuAction(event, () => onContextRename(file.id, "file"))
-                    }
-                  >
-                    Rename
-                  </DropdownMenu.Item>
-                )}
-                {onContextFavorite && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) => runMenuAction(event, () => onContextFavorite(file.id))}
-                    onSelect={(event) => runMenuAction(event, () => onContextFavorite(file.id))}
-                  >
-                    {file.isFavorited ? "Remove favorite" : "Add favorite"}
-                  </DropdownMenu.Item>
-                )}
-                {onContextTags && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) => runMenuAction(event, () => onContextTags(file.id))}
-                    onSelect={(event) => runMenuAction(event, () => onContextTags(file.id))}
-                  >
-                    Tags
-                  </DropdownMenu.Item>
-                )}
-                {onContextMove && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) => runMenuAction(event, () => onContextMove(file.id, "file"))}
-                    onSelect={(event) => runMenuAction(event, () => onContextMove(file.id, "file"))}
-                  >
-                    Move
-                  </DropdownMenu.Item>
-                )}
-                {onContextShare && (
-                  <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
-                )}
-                {onContextShare && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) => runMenuAction(event, () => onContextShare(file.id, "file"))}
-                    onSelect={(event) =>
-                      runMenuAction(event, () => onContextShare(file.id, "file"))
-                    }
-                  >
-                    Share
-                  </DropdownMenu.Item>
-                )}
-                {onContextDelete && (
-                  <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
-                )}
-                {onContextDelete && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    onClick={(event) =>
-                      runMenuAction(event, () => onContextDelete(file.id, "file"))
-                    }
-                    onSelect={(event) =>
-                      runMenuAction(event, () => onContextDelete(file.id, "file"))
-                    }
-                  >
-                    Delete
-                  </DropdownMenu.Item>
+                {useSelectionActions ? (
+                  renderSelectionDropdownItems(selectionContextActions, runMenuAction)
+                ) : (
+                  <>
+                    {onContextPreview && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) => runMenuAction(event, () => onContextPreview(file.id))}
+                        onSelect={(event) => runMenuAction(event, () => onContextPreview(file.id))}
+                      >
+                        Preview
+                      </DropdownMenu.Item>
+                    )}
+                    <DropdownMenu.Item
+                      className={dropdownItemClass}
+                      onClick={(event) => runMenuAction(event, () => onContextDownload?.(file.id))}
+                      onSelect={(event) => runMenuAction(event, () => onContextDownload?.(file.id))}
+                    >
+                      Download
+                    </DropdownMenu.Item>
+                    {onContextRename && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) =>
+                          runMenuAction(event, () => onContextRename(file.id, "file"))
+                        }
+                        onSelect={(event) =>
+                          runMenuAction(event, () => onContextRename(file.id, "file"))
+                        }
+                      >
+                        Rename
+                      </DropdownMenu.Item>
+                    )}
+                    {onContextFavorite && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) => runMenuAction(event, () => onContextFavorite(file.id))}
+                        onSelect={(event) => runMenuAction(event, () => onContextFavorite(file.id))}
+                      >
+                        {file.isFavorited ? "Remove favorite" : "Add favorite"}
+                      </DropdownMenu.Item>
+                    )}
+                    {onContextTags && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) => runMenuAction(event, () => onContextTags(file.id))}
+                        onSelect={(event) => runMenuAction(event, () => onContextTags(file.id))}
+                      >
+                        Tags
+                      </DropdownMenu.Item>
+                    )}
+                    {onContextMove && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) =>
+                          runMenuAction(event, () => onContextMove(file.id, "file"))
+                        }
+                        onSelect={(event) =>
+                          runMenuAction(event, () => onContextMove(file.id, "file"))
+                        }
+                      >
+                        Move
+                      </DropdownMenu.Item>
+                    )}
+                    {onContextShare && (
+                      <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
+                    )}
+                    {onContextShare && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) =>
+                          runMenuAction(event, () => onContextShare(file.id, "file"))
+                        }
+                        onSelect={(event) =>
+                          runMenuAction(event, () => onContextShare(file.id, "file"))
+                        }
+                      >
+                        Share
+                      </DropdownMenu.Item>
+                    )}
+                    {onContextDelete && (
+                      <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />
+                    )}
+                    {onContextDelete && (
+                      <DropdownMenu.Item
+                        className={dropdownItemClass}
+                        onClick={(event) =>
+                          runMenuAction(event, () => onContextDelete(file.id, "file"))
+                        }
+                        onSelect={(event) =>
+                          runMenuAction(event, () => onContextDelete(file.id, "file"))
+                        }
+                      >
+                        Delete
+                      </DropdownMenu.Item>
+                    )}
+                  </>
                 )}
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
@@ -586,7 +793,6 @@ interface FileListProps {
     index: number,
     event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   ) => void
-  onContextOpen?: (id: string, type: "file" | "folder") => void
   onContextPreview?: (id: string) => void
   onContextDownload?: (id: string) => void
   onContextRename?: (id: string, type: "file" | "folder") => void
@@ -595,6 +801,7 @@ interface FileListProps {
   onContextTags?: (id: string) => void
   onContextMove?: (id: string, type: "file" | "folder") => void
   onContextShare?: (id: string, type: "file" | "folder") => void
+  selectionContextActions?: SelectionContextActions
   onItemDrop?: (sourceId: string, sourceType: "file" | "folder", targetFolderId: string) => void
   onSelectionPointerDown?: (event: PointerEvent<HTMLDivElement>) => void
   onSelectionPointerMove?: (event: PointerEvent<HTMLDivElement>) => void
@@ -609,7 +816,6 @@ export function FileList({
   isLoading,
   onFolderClick,
   onItemClick,
-  onContextOpen,
   onContextPreview,
   onContextDownload,
   onContextRename,
@@ -618,6 +824,7 @@ export function FileList({
   onContextTags,
   onContextMove,
   onContextShare,
+  selectionContextActions,
   onItemDrop,
   onSelectionPointerDown,
   onSelectionPointerMove,
@@ -628,6 +835,7 @@ export function FileList({
   const selectedFolderIds = useExplorerStore((s) => s.selectedFolderIds)
   const focusedItemId = useExplorerStore((s) => s.focusedItemId)
   const dndEnabled = !!onItemDrop
+  const selectedCount = Number(selectedFileIds.length) + Number(selectedFolderIds.length)
 
   const allItems = useMemo(
     () => [
@@ -706,6 +914,8 @@ export function FileList({
                 onContextDelete={onContextDelete}
                 onContextMove={onContextMove}
                 onContextShare={onContextShare}
+                selectedCount={selectedCount}
+                selectionContextActions={selectionContextActions}
                 dndEnabled={dndEnabled}
               />
             )
@@ -721,7 +931,6 @@ export function FileList({
               isSelected={selectedFileIds.includes(file.id)}
               isFocused={focusedItemId === file.id}
               onItemClick={onItemClick}
-              onContextOpen={onContextOpen}
               onContextPreview={onContextPreview}
               onContextDownload={onContextDownload}
               onContextRename={onContextRename}
@@ -730,6 +939,8 @@ export function FileList({
               onContextTags={onContextTags}
               onContextMove={onContextMove}
               onContextShare={onContextShare}
+              selectedCount={selectedCount}
+              selectionContextActions={selectionContextActions}
               dndEnabled={dndEnabled}
             />
           )
