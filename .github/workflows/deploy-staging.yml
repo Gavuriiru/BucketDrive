@@ -1,9 +1,6 @@
 name: Deploy to Staging
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -69,6 +66,28 @@ jobs:
           fi
 
           echo "✅ All required secrets and vars are present."
+
+      - name: Validate staging environment values
+        run: |
+          if [ "${{ vars.PAGES_BRANCH }}" != "staging" ]; then
+            echo "❌ staging must use vars.PAGES_BRANCH=staging, got '${{ vars.PAGES_BRANCH }}'"
+            echo "Configure it at: Settings > Environments > staging > Variables"
+            exit 1
+          fi
+
+          if [ "${{ vars.APP_URL }}" = "https://drive.nekomata.moe" ]; then
+            echo "❌ staging is using the production APP_URL."
+            echo "Configure vars.APP_URL in the staging GitHub Environment."
+            exit 1
+          fi
+
+          if [ "${{ vars.PLAYWRIGHT_BASE_URL }}" = "https://drive.nekomata.moe" ]; then
+            echo "❌ staging is using the production PLAYWRIGHT_BASE_URL."
+            echo "Configure vars.PLAYWRIGHT_BASE_URL in the staging GitHub Environment."
+            exit 1
+          fi
+
+          echo "✅ Staging environment values look consistent."
 
       - name: Provision staging D1 database
         id: provision

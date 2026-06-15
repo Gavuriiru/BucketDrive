@@ -9,6 +9,12 @@ verifiable result.
 
 ## Status Overview
 
+> **Production deploy simplification pass — 2026-06-15:**
+>
+> - Changed production deployment to run automatically on push to `main`.
+> - Made staging deployment manual-only via GitHub Actions `workflow_dispatch`.
+> - Added environment consistency checks so staging and production fail early on crossed Pages branch or URL variables.
+
 > **Cloudflare custom-domain provisioning pass — 2026-06-15:**
 >
 > - Made the GitHub Actions custom-domain step provision both Cloudflare Pages association and DNS CNAME records.

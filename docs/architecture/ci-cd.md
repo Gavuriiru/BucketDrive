@@ -30,18 +30,9 @@ GitHub Actions (CI)
     ├── Contract Tests (Vitest + test D1)
     └── Build Check (vite build + wrangler deploy --dry-run)
     ↓
-PR Merge to main
+PR Merge / Push to main
     ↓
-Staging Deploy (automatic)
-    ├── D1 migrations → staging DB
-    ├── Worker deploy → staging
-    └── Pages deploy → staging
-    ↓
-E2E Tests (Playwright) on staging
-    ↓
-Manual QA / Approval
-    ↓
-Production Deploy (tag push: v*)
+Production Deploy (automatic)
     ├── D1 migrations → production DB
     ├── Worker deploy → production
     └── Pages deploy → production
@@ -72,9 +63,9 @@ pnpm perf:bundle
 `pnpm build` intentionally runs before lint/typecheck because Turbo config makes those tasks depend
 on upstream package builds.
 
-## `deploy-staging.yml` — Auto Deploy to Staging
+## `deploy-staging.yml` — Manual Deploy to Staging
 
-Triggered on `push` to `main` and `workflow_dispatch`.
+Triggered only by `workflow_dispatch`.
 
 Uses the `staging` GitHub Environment and requires the following secrets/variables:
 
@@ -118,7 +109,7 @@ The workflow runs:
 
 ## `deploy-production.yml` — Production Deploy
 
-Triggered on: `push` of `v*` tag (e.g., `v1.0.0`)
+Triggered on `push` to `main` and `workflow_dispatch`.
 
 Same structure as staging but:
 
@@ -127,7 +118,7 @@ Same structure as staging but:
 - Targets `--env production` for all Wrangler commands
 - Uses production URLs
 
-Requires **manual approval** via GitHub Environment protection rules.
+If the GitHub `production` Environment has protection rules, deployment waits for that approval.
 
 ---
 
@@ -359,7 +350,7 @@ Never delete or modify committed migration files.
 # Branch Strategy
 
 ```
-main           Production-ready code. Auto-deploys to staging.
+main           Production-ready code. Auto-deploys to production.
   ├── feat/*   Feature branches. Deploy preview on Cloudflare Pages.
   ├── fix/*    Bug fix branches. Deploy preview.
   ├── docs/*   Documentation changes. No deploy needed.
@@ -367,8 +358,8 @@ main           Production-ready code. Auto-deploys to staging.
 ```
 
 - PR from `feat/*` → `main` triggers CI checks
-- Merge to `main` triggers staging deploy + E2E
-- Tag `v*` triggers production deploy (with manual approval)
+- Merge or push to `main` triggers production deploy
+- Staging deploys are available manually from the Actions tab via `workflow_dispatch`
 
 ---
 

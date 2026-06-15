@@ -2,8 +2,8 @@ name: Deploy to Production
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -70,6 +70,28 @@ jobs:
           fi
 
           echo "✅ All required secrets and vars are present."
+
+      - name: Validate production environment values
+        run: |
+          if [ "${{ vars.PAGES_BRANCH }}" != "production" ]; then
+            echo "❌ production must use vars.PAGES_BRANCH=production, got '${{ vars.PAGES_BRANCH }}'"
+            echo "Configure it at: Settings > Environments > production > Variables"
+            exit 1
+          fi
+
+          if [ "${{ vars.APP_URL }}" = "https://staging.bucketdrive.dev" ]; then
+            echo "❌ production is using the staging APP_URL."
+            echo "Configure vars.APP_URL in the production GitHub Environment."
+            exit 1
+          fi
+
+          if [ "${{ vars.PLAYWRIGHT_BASE_URL }}" = "https://staging.bucketdrive.dev" ]; then
+            echo "❌ production is using the staging PLAYWRIGHT_BASE_URL."
+            echo "Configure vars.PLAYWRIGHT_BASE_URL in the production GitHub Environment."
+            exit 1
+          fi
+
+          echo "✅ Production environment values look consistent."
 
       - name: Provision Cloudflare infrastructure
         id: infra

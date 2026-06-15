@@ -348,11 +348,11 @@ Replace `staging` with `production` in all commands above. Use `PRODUCTION_D1_DA
 
 The repository includes three workflows that run automatically:
 
-| Workflow                | Trigger                           | Purpose                                                   |
-| ----------------------- | --------------------------------- | --------------------------------------------------------- |
-| `ci.yml`                | Pull request / push to `main`     | Lint, typecheck, unit tests, contract tests, bundle check |
-| `deploy-staging.yml`    | Push to `main` / manual dispatch  | Deploy API, Workers, frontend, and run E2E on staging     |
-| `deploy-production.yml` | Push of `v*` tag (e.g., `v1.0.0`) | Deploy to production with manual approval                 |
+| Workflow                | Trigger                          | Purpose                                                   |
+| ----------------------- | -------------------------------- | --------------------------------------------------------- |
+| `ci.yml`                | Pull request / push to `main`    | Lint, typecheck, unit tests, contract tests, bundle check |
+| `deploy-staging.yml`    | Manual dispatch                  | Deploy API, Workers, frontend, and run E2E on staging     |
+| `deploy-production.yml` | Push to `main` / manual dispatch | Deploy to production                                      |
 
 #### 10.1. Configure GitHub Environments
 
