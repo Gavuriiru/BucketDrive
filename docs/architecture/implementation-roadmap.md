@@ -9,6 +9,12 @@ verifiable result.
 
 ## Status Overview
 
+> **Production deploy env simplification pass — 2026-06-15:**
+>
+> - Allowed production deploys to read `PLATFORM_OWNER_EMAIL` from a GitHub Environment variable with secret fallback.
+> - Removed `PLAYWRIGHT_BASE_URL` and full Playwright runs from production deploy requirements.
+> - Replaced production E2E/a11y steps with frontend and API smoke checks.
+
 > **Production deploy simplification pass — 2026-06-15:**
 >
 > - Changed production deployment to run automatically on push to `main`.

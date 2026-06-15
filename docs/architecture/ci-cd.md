@@ -76,10 +76,11 @@ Uses the `staging` GitHub Environment and requires the following secrets/variabl
 | Environment variable | `STAGING_D1_DATABASE_ID` | Fills `wrangler.toml` D1 binding                       |
 | Environment variable | `APP_URL`                | Frontend URL                                           |
 | Environment variable | `API_URL`                | Worker URL                                             |
-| Environment variable | `PLAYWRIGHT_BASE_URL`    | E2E target URL                                         |
+| Environment variable | `PLAYWRIGHT_BASE_URL`    | E2E target URL for staging                             |
 | Environment variable | `PAGES_PROJECT_NAME`     | Cloudflare Pages project name                          |
 | Environment variable | `PAGES_BRANCH`           | Pages branch name                                      |
 | Environment variable | `CUSTOM_DOMAIN`          | Optional Pages custom domain to auto-provision         |
+| Environment variable | `PLATFORM_OWNER_EMAIL`   | First admin email                                      |
 | Environment secret   | `BETTER_AUTH_SECRET`     | Better Auth session key                                |
 | Environment secret   | `BETTER_AUTH_URL`        | Same as `API_URL`                                      |
 | Environment secret   | `GH_CLIENT_ID`           | GitHub OAuth Client ID (GitHub prefix is reserved)     |
@@ -90,7 +91,6 @@ Uses the `staging` GitHub Environment and requires the following secrets/variabl
 | Environment secret   | `R2_SECRET_ACCESS_KEY`   | R2 S3 API token                                        |
 | Environment secret   | `R2_BUCKET_NAME`         | R2 bucket name                                         |
 | Environment secret   | `R2_ENDPOINT`            | R2 S3 endpoint                                         |
-| Environment secret   | `PLATFORM_OWNER_EMAIL`   | First admin email                                      |
 
 The workflow runs:
 
@@ -166,10 +166,11 @@ GitHub repository settings.
 | `PRODUCTION_D1_DATABASE_ID` | —                                               | `npx wrangler d1 create bucketdrive-db` |
 | `APP_URL`                   | `https://staging.bucketdrive.dev`               | `https://drive.nekomata.moe`            |
 | `API_URL`                   | `https://staging-api.bucketdrive.dev`           | `https://drive.nekomata.moe/api`        |
-| `PLAYWRIGHT_BASE_URL`       | Same as `APP_URL`                               | Same as `APP_URL`                       |
+| `PLAYWRIGHT_BASE_URL`       | Same as `APP_URL`                               | Not required                            |
 | `PAGES_PROJECT_NAME`        | `bucketdrive`                                   | `bucketdrive`                           |
 | `PAGES_BRANCH`              | `staging`                                       | `production`                            |
 | `CUSTOM_DOMAIN`             | `staging.bucketdrive.dev`                       | `drive.nekomata.moe`                    |
+| `PLATFORM_OWNER_EMAIL`      | Admin email address                             | Admin email address                     |
 
 ### Required Environment Secrets
 
@@ -195,7 +196,6 @@ they are scoped to the correct environment:
 | `R2_SECRET_ACCESS_KEY` | Cloudflare R2 Dashboard -> Token Secret                     |
 | `R2_BUCKET_NAME`       | Your bucket name                                            |
 | `R2_ENDPOINT`          | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`             |
-| `PLATFORM_OWNER_EMAIL` | Admin email address                                         |
 
 > `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are **local/CI deploy credentials**, not
 > Worker runtime vars. `pnpm env:push:*` explicitly skips these keys and never uploads them to
@@ -216,6 +216,11 @@ These values are deploy-time configuration. They are not read from Cloudflare Wo
 secrets, Cloudflare Pages environment variables, or the app/API runtime environment. Runtime secrets
 pushed by `pnpm env:push:*` are only available to Workers after deployment, so GitHub Actions cannot
 use them to create DNS records or attach Pages custom domains.
+
+Production deploys do not require `PLAYWRIGHT_BASE_URL` and do not run the full Playwright E2E/a11y
+suite. Those tests depend on test-only `/api/e2e/*` routes and should run against staging or local
+test environments. Production runs smoke checks against the frontend and API health endpoint after
+deploy.
 
 The Cloudflare API token used by the deploy workflows must include the existing Wrangler/D1/R2/
 Workers permissions plus `Pages Write`, `Zone Read`, and `DNS Write`. Custom-domain automation

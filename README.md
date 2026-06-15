@@ -388,7 +388,6 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **New repos
 | `R2_SECRET_ACCESS_KEY` | R2 API Token Secret                                                                              |
 | `R2_BUCKET_NAME`       | `bucketdrive-staging`                                                                            |
 | `R2_ENDPOINT`          | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`                                                  |
-| `PLATFORM_OWNER_EMAIL` | `admin@example.com`                                                                              |
 
 **Staging Environment Variables** (go to Environment → `staging` → **Add variable**):
 
@@ -401,8 +400,12 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **New repos
 | `PAGES_PROJECT_NAME`     | `bucketdrive`                         |
 | `PAGES_BRANCH`           | `staging`                             |
 | `CUSTOM_DOMAIN`          | `staging.bucketdrive.dev`             |
+| `PLATFORM_OWNER_EMAIL`   | `admin@example.com`                   |
 
 **Production Environment Secrets and Variables** — same pattern, but use the production URLs and `PRODUCTION_D1_DATABASE_ID`.
+For production, `PLATFORM_OWNER_EMAIL` should be an Environment Variable; the workflow also accepts
+it as an Environment Secret for compatibility. `PLAYWRIGHT_BASE_URL` is only needed for staging E2E
+runs, not for production deploys.
 
 > **Note**: GitHub Actions creates the `.env.staging` / `.env.production` files dynamically from these secrets/variables before running the deploy commands. The `pnpm env:push:*` command reads the file and runs `wrangler secret put` for each key.
 
