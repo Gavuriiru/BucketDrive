@@ -16,7 +16,7 @@
     "test:e2e": "turbo test:e2e",
     "test:a11y": "playwright test apps/web/e2e/a11y.spec.ts",
     "db:generate": "turbo db:generate",
-    "db:migrate:dev": "pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 migrations apply bucketdrive-db --local",
+    "db:migrate:dev": "CI=1 pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 migrations apply bucketdrive-db --local",
     "db:migrate:staging": "pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 migrations apply bucketdrive-db-staging --env staging",
     "db:migrate:prod": "pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml d1 migrations apply bucketdrive-db --env production",
     "db:seed": "tsx scripts/seed.ts",

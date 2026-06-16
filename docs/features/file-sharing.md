@@ -4,11 +4,12 @@
 
 This document defines the file and folder sharing system.
 
-The platform supports:
+The v1 platform supports:
 
-- internal sharing
 - external direct sharing
 - external explorer sharing
+- internal share records remain in the API for compatibility, but the current UI focuses on
+  external links
 
 Sharing must remain:
 
@@ -66,7 +67,7 @@ External access remains sandboxed.
 
 # 1. Internal Sharing
 
-Sharing between authenticated workspace users.
+Legacy/API-supported sharing between authenticated bucket users.
 
 Capabilities:
 
@@ -74,7 +75,7 @@ Capabilities:
 - editor access
 - manager access
 
-Internal sharing integrates with RBAC.
+Internal sharing integrates with RBAC, but it is not the primary v1 product flow.
 
 ---
 

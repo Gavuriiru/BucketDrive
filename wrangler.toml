@@ -24,7 +24,7 @@ migrations_dir = "packages/shared/src/db/migrations"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "bucketdrive-db"
-database_id = ""
+database_id = "4d32efe1-77cc-4963-a6e9-89187f97e2f7"
 migrations_dir = "packages/shared/src/db/migrations"
 
 # R2 Buckets

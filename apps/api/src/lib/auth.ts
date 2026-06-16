@@ -44,7 +44,11 @@ function getAllowedHosts(env: AuthEnv): string[] {
     if (workerDomain) {
       // Extract the account-level wildcard pattern: *.account-id.workers.dev
       const parts = workerDomain.split(".")
-      if (parts.length >= 3 && parts[parts.length - 1] === "dev" && parts[parts.length - 2] === "workers") {
+      if (
+        parts.length >= 3 &&
+        parts[parts.length - 1] === "dev" &&
+        parts[parts.length - 2] === "workers"
+      ) {
         const accountId = parts[parts.length - 3] ?? ""
         if (accountId) {
           hosts.add(`*.${accountId}.workers.dev`)

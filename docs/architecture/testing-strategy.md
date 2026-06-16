@@ -9,7 +9,7 @@ Testing ensures:
 - Correctness of business logic (RBAC, sharing, uploads)
 - Contract consistency between frontend and backend
 - Accessibility compliance
-- Security invariants (no privilege escalation, no workspace leakage)
+- Security invariants (no privilege escalation, no unauthorized bucket access)
 - Regression prevention as the codebase grows
 
 Testing is mandatory. Untested critical paths must not reach production.
@@ -62,12 +62,12 @@ All code must:
 | **Storage provider**       | Mocked provider: upload returns signed URL shape, delete confirms |
 | **Share validation**       | Expired share → denied, locked share → denied, valid → allowed    |
 | **Utilities**              | Slug generation, path sanitization, checksum verification         |
-| **Permission composition** | Role inheritance, workspace scoping                               |
+| **Permission composition** | Role inheritance, bucket permissions                              |
 
 ## Example
 
 ```ts
-// packages/rbac/src/__tests__/can.test.ts
+// packages/shared/src/rbac/__tests__/can.test.ts
 import { describe, it, expect } from "vitest"
 import { can } from "../can"
 import { workspaceMember } from "../test-fixtures"
@@ -83,9 +83,8 @@ describe("can", () => {
     expect(can(member, "files.delete")).toBe(false)
   })
 
-  it("blocks access to files in another workspace", () => {
-    const member = workspaceMember({ role: "editor", workspaceId: "ws_A" })
-    expect(canAccessWorkspace(member, "ws_B")).toBe(false)
+  it("denies viewer from deleting files", () => {
+    expect(can("viewer", "files.delete")).toBe(false)
   })
 })
 ```
@@ -208,7 +207,7 @@ jobs:
 
 - Unit tests: use factory functions (`workspaceMember(...)`, `fileObject(...)`) for fixtures
 - Contract tests: D1 test database seeded per test file, cleaned up after
-- E2E tests: dedicated staging workspace seeded before test run, cleaned up after
+- E2E tests: local or staging bucket seeded before test run, cleaned up after
 
 ---
 

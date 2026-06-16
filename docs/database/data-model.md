@@ -2,225 +2,35 @@
 
 # Purpose
 
-This document defines the core database architecture of the platform.
+This document describes the current BucketDrive v1 database model.
 
-The database must support:
+BucketDrive v1 is a single-bucket drive platform. The original multi-workspace schema was
+collapsed by the single-bucket migration, so user roles, files, folders, shares, tags, audit logs,
+settings, uploads, and notifications are scoped to the default bucket/platform instance rather than
+to independent workspace tenants.
 
-- multi-workspace isolation
-- RBAC
-- file management
+The database supports:
+
+- file and folder metadata
+- global user roles and permission checks
 - sharing systems
+- upload sessions and multipart upload parts
+- trash retention and cleanup
 - audit logging
-- scalable storage metadata
+- platform and bucket settings
 
-The schema must prioritize:
-
-- consistency
-- normalization
-- scalability
-- auditability
-- predictable relationships
+The database stores metadata only. Binary file contents live in Cloudflare R2.
 
 ---
 
-# Core Principles
+# Current Scope
 
-## 1. Multi-Tenant Isolation
+## Bucket
 
-All tenant data must remain workspace-scoped.
-
-Users must NEVER:
-
-- access foreign workspace data
-- infer foreign metadata
-- bypass workspace isolation
-
-Workspace isolation is mandatory.
-
----
-
-## 2. Metadata-Only Storage
-
-The database stores:
-
-- metadata
-- ownership
-- permissions
-- relationships
-
-The database does NOT store:
-
-- file binary contents
-
-Binary data belongs to storage providers.
-
----
-
-## 3. Consistent Naming
-
-Naming must remain predictable.
-
-Use:
-
-- singular table names
-- explicit relationships
-- UUID primary keys
-
-Avoid:
-
-- abbreviations
-- ambiguous names
-- inconsistent terminology
-
----
-
-# Primary Entities
-
-# Workspace
-
-Represents an isolated organizational unit.
-
-## Fields
+Represents the single logical storage container managed by the app.
 
 ```txt
 id
-name
-slug
-owner_id
-storage_quota_bytes
-created_at
-updated_at
-```
-
-Quotas are workspace-level limits on total storage usage.
-
----
-
-# WorkspaceSettings
-
-Represents configurable workspace preferences.
-
-## Fields
-
-```txt
-id
-workspace_id
-default_share_expiration_days
-enable_public_signup
-allowed_mime_types
-max_file_size_bytes
-branding_logo_url
-branding_name
-created_at
-updated_at
-```
-
-Settings control behavioral and security preferences.
-
----
-
-# User
-
-Represents authenticated users.
-
-## Fields
-
-```txt
-id
-email
-name
-avatar_url
-status
-created_at
-updated_at
-```
-
----
-
-# WorkspaceMember
-
-Represents user membership within a workspace.
-
-## Fields
-
-```txt
-id
-workspace_id
-user_id
-role_id
-joined_at
-```
-
-A user may belong to multiple workspaces.
-
----
-
-# Role
-
-Represents permission bundles.
-
-## Fields
-
-```txt
-id
-workspace_id
-name
-description
-is_system_role
-created_at
-```
-
-Roles are workspace-scoped.
-
----
-
-# Permission
-
-Represents granular capabilities.
-
-## Fields
-
-```txt
-id
-resource
-action
-description
-```
-
-Examples:
-
-```txt
-files.read
-files.write
-shares.create
-users.manage
-```
-
----
-
-# RolePermission
-
-Maps permissions to roles.
-
-## Fields
-
-```txt
-id
-role_id
-permission_id
-```
-
----
-
-# Bucket
-
-Represents logical storage containers.
-
-## Fields
-
-```txt
-id
-workspace_id
 name
 provider
 region
@@ -228,40 +38,73 @@ visibility
 created_at
 ```
 
-Buckets are workspace-scoped.
+`bucket` is the root scope for storage settings and file metadata.
 
----
+## BucketSettings
 
-# Folder
-
-Represents virtual folders.
-
-## Fields
+Stores configurable operational settings for the bucket.
 
 ```txt
 id
-workspace_id
-parent_folder_id
-name
-path
-created_by
+bucket_id
+storage_quota_bytes
+default_share_expiration_days
+enable_public_signup
+trash_retention_days
+max_file_size_bytes
+upload_chunk_size_bytes
+allowed_mime_types
+branding_logo_url
+branding_logo_key
+branding_name
+r2_public_base_url
+r2_last_sync_at
+r2_sync_status
+r2_sync_error
 created_at
 updated_at
 ```
 
-Folders are virtual metadata structures.
+## PlatformSettings
 
----
-
-# FileObject
-
-Represents stored files.
-
-## Fields
+Stores global platform branding and signup policy.
 
 ```txt
 id
-workspace_id
+platform_name
+enable_public_signup
+logo_key
+favicon_key
+created_at
+updated_at
+```
+
+## User
+
+Represents authenticated users and their global bucket role.
+
+```txt
+id
+email
+name
+email_verified
+image
+is_platform_admin
+can_create_workspaces
+role
+created_at
+updated_at
+```
+
+`role` is global in v1. The app does not currently maintain per-workspace membership rows for
+authorization.
+
+## FileObject
+
+Represents stored files.
+
+```txt
+id
 bucket_id
 folder_id
 owner_id
@@ -271,36 +114,49 @@ mime_type
 extension
 size_bytes
 checksum
+thumbnail_key
+metadata
 is_deleted
+deleted_at
 created_at
 updated_at
 ```
 
-The storage_key references object storage.
+`storage_key` points to the object in R2.
 
----
+## Folder
 
-# FileTag
-
-Represents reusable tags.
-
-## Fields
+Represents virtual folders.
 
 ```txt
 id
-workspace_id
+parent_folder_id
+name
+path
+created_by
+is_deleted
+deleted_at
+created_at
+updated_at
+```
+
+Folder paths are metadata only; R2 remains object-key based.
+
+## FileTag
+
+Represents reusable file tags.
+
+```txt
+id
 name
 color
 created_at
+updated_at
 ```
 
----
+## FileObjectTag
 
-# FileObjectTag
-
-Many-to-many relationship.
-
-## Fields
+Maps files to tags.
 
 ```txt
 id
@@ -308,32 +164,24 @@ file_object_id
 tag_id
 ```
 
----
+## Favorite
 
-# Favorite
-
-Represents user favorites.
-
-## Fields
+Represents user-specific favorite files.
 
 ```txt
 id
 user_id
 file_object_id
+is_active
 created_at
 ```
 
----
+## ShareLink
 
-# ShareLink
-
-Represents external or internal sharing.
-
-## Fields
+Represents internal legacy shares and external direct/explorer links.
 
 ```txt
 id
-workspace_id
 resource_type
 resource_id
 share_type
@@ -347,16 +195,23 @@ created_at
 updated_at
 ```
 
-`access_count` tracks the number of times the share link has been accessed.
-`last_accessed_at` records the most recent access timestamp for analytics.
+External shares use opaque IDs and can be password protected.
 
----
+## SharePermission
 
-# ShareAccessAttempt
+Represents share capabilities.
 
-Represents password attempts on password-protected share links.
+```txt
+id
+share_link_id
+permission
+```
 
-## Fields
+The v1 UI focuses on external readonly/download links.
+
+## ShareAccessAttempt
+
+Tracks public share password attempts.
 
 ```txt
 id
@@ -367,87 +222,30 @@ success
 attempted_at
 ```
 
-Used for rate limiting and brute-force protection on public share links.
+Used for brute-force protection and access analytics.
 
-Rules:
+## UploadSession
 
-- Max 5 failed attempts per IP per 15-minute window
-- After 10 consecutive failures, the share link is temporarily locked for 30 minutes
-- Successful password entry resets the failure counter
-
----
-
-# SharePermission
-
-Represents share capabilities.
-
-## Fields
+Represents single-part and multipart uploads.
 
 ```txt
 id
-share_link_id
-permission
-```
-
-Examples:
-
-```txt
-readonly
-download
-edit
-```
-
----
-
-# AuditLog
-
-Represents security and activity logs.
-
-## Fields
-
-```txt
-id
-workspace_id
-actor_id
-action
-resource_type
-resource_id
-ip_address
-user_agent
-metadata
-created_at
-```
-
-Audit logs must remain append-only whenever possible.
-
----
-
-# UploadSession
-
-Represents multipart/resumable uploads.
-
-## Fields
-
-```txt
-id
-workspace_id
 user_id
 bucket_id
 status
 upload_type
 total_size
 uploaded_size
+storage_key
+total_parts
+parts_completed
 created_at
 updated_at
 ```
 
----
+## UploadPart
 
-# UploadPart
-
-Represents multipart upload chunks.
-
-## Fields
+Represents uploaded multipart chunks.
 
 ```txt
 id
@@ -458,13 +256,28 @@ size_bytes
 uploaded_at
 ```
 
----
+## AuditLog
 
-# Notification
+Represents security and activity logs.
 
-Represents user notifications.
+```txt
+id
+bucket_id
+actor_id
+action
+resource_type
+resource_id
+ip_address
+user_agent
+metadata
+created_at
+```
 
-## Fields
+Audit logs should remain append-only when possible.
+
+## Notification
+
+Represents in-app notifications.
 
 ```txt
 id
@@ -476,335 +289,71 @@ is_read
 created_at
 ```
 
+## BucketInvitation
+
+Represents invitations to join the bucket.
+
+```txt
+id
+email
+token
+role
+invited_by
+status
+expires_at
+accepted_at
+created_at
+updated_at
+```
+
+---
+
+# Search Index
+
+Search uses the `file_search_idx` FTS5 virtual table maintained by migrations and triggers.
+After the single-bucket migration, the index stores:
+
+```txt
+file_id
+original_name
+extension
+mime_type
+```
+
+Search queries filter deleted files and hydrate tags/favorites from normal tables.
+
 ---
 
 # Relationships
 
-# Workspace Relationships
-
 ```txt
-Workspace
- ├── Users
- ├── Roles
- ├── Buckets
- ├── Folders
- ├── Files
- ├── Shares
- ├── Settings
+Bucket
+ ├── BucketSettings
+ ├── FileObjects
+ ├── UploadSessions
  └── AuditLogs
-```
 
----
-
-# File Relationships
-
-```txt
 Folder
+ ├── Folders
  └── FileObjects
 
 FileObject
- ├── Tags
+ ├── FileObjectTags
  ├── Favorites
- ├── Shares
- └── Audit Logs
-```
+ ├── ShareLinks
+ └── AuditLogs
 
----
-
-# Authorization Relationships
-
-```txt
 User
- └── WorkspaceMember
-      └── Role
-           └── Permissions
+ ├── owned FileObjects
+ ├── Favorites
+ ├── BucketInvitations
+ └── Notifications
 ```
 
 ---
 
-# Share Relationships
-
-```txt
-ShareLink
- ├── SharePermissions
- └── ShareAccessAttempts
-```
-
----
-
-# UUID Rules
-
-All primary IDs must use:
-
-- UUID
-  or
-- ULID
-
-Avoid:
-
-- sequential numeric IDs
-
-Reasons:
-
-- enumeration protection
-- distributed safety
-- scalability
-
----
-
-# Timestamp Rules
-
-All important entities should include:
-
-```txt
-created_at
-updated_at
-```
-
-Soft-delete entities should include:
-
-```txt
-deleted_at
-```
-
----
-
-# Soft Delete Rules
-
-Files and folders should support soft deletion.
-
-Soft delete enables:
-
-- trash recovery
-- audit preservation
-- rollback capability
-
-Avoid hard deletion by default.
-
----
-
-# Ownership Rules
-
-Ownership must remain explicit.
-
-Resources should track:
-
-- creator
-- owner
-- workspace scope
-
-Ownership does NOT replace RBAC.
-
----
-
-# Indexing Strategy
-
-Indexes are mandatory for:
-
-```txt
-workspace_id
-owner_id
-folder_id
-created_at
-updated_at
-storage_key
-```
-
-Additional indexes required for:
-
-- search
-- sorting
-- filtering
-- audit logs
-
----
-
-# Search Architecture
-
-Search should support:
-
-- filenames
-- tags
-- mime types
-- metadata
-
-Future support:
-
-- full-text indexing
-- OCR indexing
-- semantic search
-
----
-
-# Quota Tracking
-
-Storage analytics should support:
-
-- workspace usage
-- user usage
-- trash usage
-- future version usage
-
-Avoid expensive real-time recalculations when possible.
-
----
-
-# Audit Architecture
-
-Audit logs must remain:
-
-- append-oriented
-- immutable when possible
-- queryable
-
-Audit records should never be silently deleted.
-
----
-
-# File Versioning Future Support
-
-The schema must support future:
-
-- file versions
-- rollback
-- change history
-
-Recommended future entity:
-
-```txt
-FileVersion
-```
-
----
-
-# Activity Feed Future Support
-
-The architecture should support:
-
-- activity feeds
-- realtime updates
-- collaboration events
-
----
-
-# Notification Future Support
-
-Notifications should support:
-
-- uploads
-- shares
-- mentions
-- permission changes
-
----
-
-# Multi-Region Future Support
-
-The architecture should support future:
-
-- regional storage
-- replication
-- failover
-
-Avoid hardcoded regional assumptions.
-
----
-
-# Forbidden Database Practices
-
-Never:
-
-- use ambiguous naming
-- store binary file contents
-- duplicate authorization data unnecessarily
-- tightly couple provider metadata
-- use sequential public IDs
-- bypass workspace scoping
-
-Avoid:
-
-- giant denormalized tables
-- inconsistent foreign key naming
-- implicit relationships
-
----
-
-# Recommended Naming Conventions
-
-Primary keys:
-
-```txt
-id
-```
-
-Foreign keys:
-
-```txt
-workspace_id
-user_id
-folder_id
-bucket_id
-```
-
-Avoid:
-
-- mixed naming conventions
-- inconsistent suffixes
-
----
-
-# Recommended Constraints
-
-Use:
-
-- foreign keys
-- unique constraints
-- check constraints
-
-Examples:
-
-- unique workspace slugs
-- unique storage keys
-- valid expiration ranges
-
----
-
-# Recommended Query Rules
-
-Queries must:
-
-- remain workspace-scoped
-- avoid N+1 patterns
-- support pagination
-
-Avoid:
-
-- loading entire datasets
-- unrestricted scans
-
----
-
-# Scalability Philosophy
-
-The schema must support future:
-
-- billions of files
-- large workspaces
-- enterprise RBAC
-- audit-heavy environments
-- realtime collaboration
-
-The architecture must remain extensible.
-
----
-
-# Final Rule
-
-Whenever uncertain:
-prioritize:
-
-- consistency
-- explicit relationships
-- auditability
-- scalability
-  over convenience.
+# Future Work
+
+Full multi-workspace isolation would require a new migration and API pass that reintroduces
+workspace-scoped resources, workspace memberships, per-workspace roles, and tenant filtering across
+all queries. That is not part of the current v1 model.

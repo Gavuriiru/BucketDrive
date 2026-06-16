@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test"
 const repoRoot = __dirname
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:5173"
 const apiCommand = [
-  "pnpm db:reset",
+  "CI=1 pnpm db:reset",
   [
     "pnpm --filter @bucketdrive/api exec wrangler --config ../../wrangler.toml dev --port 8787 --inspector-port 0",
     "--var E2E_TEST_AUTH:true",

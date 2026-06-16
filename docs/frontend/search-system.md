@@ -6,7 +6,7 @@ This document defines the search architecture for the platform.
 
 Search must support:
 
-- Full-text search on file names and metadata
+- Full-text search on file names, extensions, and MIME types
 - Filtering by mime type, tags, dates, favorites
 - Fast results on large datasets (thousands of files)
 - Keyboard-first interaction
@@ -92,7 +92,6 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
 // The Drizzle schema represents the data table that FTS5 indexes
 export const fileObject = sqliteTable("file_object", {
   id: text("id").primaryKey(),
-  workspaceId: text("workspace_id").notNull(),
   originalName: text("original_name").notNull(),
   extension: text("extension"),
   mimeType: text("mime_type"),
@@ -125,7 +124,6 @@ export async function searchFiles(
     FROM file_object f
     INNER JOIN file_search_idx fs ON f.id = fs.rowid
     WHERE file_search_idx MATCH ?
-      AND f.workspace_id = ?
       AND f.is_deleted = 0
       ${filters.type ? "AND f.mime_type LIKE ?" : ""}
       ${filters.tagIds?.length ? "AND f.id IN (SELECT file_object_id FROM file_object_tag WHERE tag_id IN (?))" : ""}
@@ -135,7 +133,6 @@ export async function searchFiles(
   `,
     [
       buildFtsQuery(query),
-      workspaceId,
       /* other params */
       limit,
       offset,

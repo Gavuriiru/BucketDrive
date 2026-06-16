@@ -1,304 +1,129 @@
-# Workspace Management
+# Bucket Membership And Administration
 
 # Purpose
 
-This document defines the workspace lifecycle and management features.
+This document describes the current BucketDrive v1 administration model.
 
-Workspaces are the multi-tenant isolation unit. Every file, folder, share, and permission
-is scoped to a workspace. A user may belong to multiple workspaces with different roles in each.
-
----
-
-# Core Principles
-
-## 1. Strict Isolation
-
-Workspace data must NEVER leak between workspaces.
-
-A user authenticated to workspace A must not:
-
-- See files from workspace B
-- Access shares from workspace B
-- Enumerate members from workspace B
-- Infer metadata about workspace B's existence
-
-## 2. Role Per Workspace
-
-A user's role is workspace-specific. The same user may be:
-
-- Owner of workspace A
-- Editor of workspace B
-- Viewer of workspace C
-
-The active workspace context determines what the user can do.
-
-## 3. Ownership Transfer
-
-Ownership can be transferred but never deleted while a workspace exists.
-Every workspace must always have exactly one owner.
+BucketDrive v1 uses a single default bucket. The route names still use `/workspaces` for API
+compatibility, but the product does not currently expose multiple isolated workspaces. A user's role
+is global for the bucket.
 
 ---
 
-# Workspace Lifecycle
+# Current Model
+
+## Single Bucket Context
+
+`GET /api/workspaces` returns the default bucket as the only selectable context:
 
 ```txt
-Created (by user or invited)
-    ↓
-Active (normal state, users can join/leave)
-    ↓
-Suspended (billing issue, admin action) → file access halted, shares disabled
-    ↓
-Re-activated (issue resolved)
-    ↓
-Deleted (owner action)
-    ↓
-Soft Delete (30 days grace)
-    ↓
-Purged (all data permanently removed from R2 and D1)
+id
+name
+slug: "bucket"
+ownerId
+role
+storageQuotaBytes
+createdAt
+updatedAt
 ```
 
----
+Frontend routes and API clients use this ID as the bucket context for files, folders, members,
+shares, trash, search, notifications, batch actions, and dashboard data.
 
-# Workspace Creation
+## Roles
 
-## Automatic (First Signup)
+Roles are stored on the `user.role` column and evaluated through the shared `can()` permission
+engine.
 
-When a user signs up for the first time:
-
-1. Better Auth creates the user account
-2. A default workspace is created with the user as Owner
-3. System roles (Owner, Admin, Editor, Viewer) are seeded
-4. Default workspace settings are applied
-5. User is redirected to their workspace dashboard
-
-## Manual (Dashboard)
-
-Authenticated users can create additional workspaces:
-
-```
-POST /api/workspaces
-body: { name, slug }
-→ Creates workspace, assigns user as Owner
-← Returns workspace with default settings
+```txt
+owner
+admin
+manager
+editor
+viewer
+guest
 ```
 
-Limits: free tier = 1 workspace, pro tier = unlimited (future billing)
+The backend remains the source of truth for authorization. Frontend permission checks are only UX
+helpers.
 
----
+## Membership
 
-# Workspace Membership
+Admins and owners can invite users into the bucket. Invitations create `bucket_invitation` records
+with expiring tokens. Accepting an invitation assigns the invited user's global bucket role.
 
-## Inviting Members
+Current endpoints:
 
-```
-Owner/Admin clicks "Invite Member"
-    ↓
-POST /api/workspaces/:id/members
-body: { email, role: "editor" }
-    ↓
-Backend validates: inviter has users.invite permission
-    ↓
-Backend checks: email not already a member
-    ↓
-Backend creates invitation record (Better Auth organization plugin)
-    ↓
-Backend sends invitation email (via Cloudflare Email Routing or Resend)
-    ↓
-Email contains: invitation link with expiring token (7 days)
-```
-
-## Accepting Invitation
-
-```
-Recipient clicks invitation link
-    ↓
-GET /api/workspaces/join?token=xxx
-    ↓
-If new user: prompted to create account (Better Auth signup)
-If existing user: redirected to login
-    ↓
-POST /api/workspaces/join/accept
-    ↓
-Backend validates: token not expired, not already used
-    ↓
-User becomes workspace member with assigned role
-    ↓
-Redirected to workspace dashboard
-```
-
-## Removing Members
-
-```
-Owner/Admin clicks member → "Remove"
-    ↓
+```txt
+GET    /api/workspaces/:id/members
+POST   /api/workspaces/:id/members
+PATCH  /api/workspaces/:id/members/:memberId
 DELETE /api/workspaces/:id/members/:memberId
-    ↓
-Backend validates: actor has users.remove permission
-    ↓
-Backend validates: cannot remove the owner
-    ↓
-Backend validates: admin can only remove roles below theirs
-    ↓
-Member removed from workspace
-    ↓
-Member's files remain in workspace (ownership unchanged)
-    ↓
-Audit log: "user_removed" event
+
+GET    /api/workspaces/:id/invitations
+POST   /api/workspaces/:id/invitations
+DELETE /api/workspaces/:id/invitations/:invitationId
+
+GET    /api/invitations/:token
+POST   /api/invitations/:token/accept
 ```
 
----
+## Ownership Transfer
 
-# Role Management
+Ownership transfer is immediate in v1. The current owner can transfer ownership to an existing admin.
 
-## Changing a Member's Role
-
-```
-Owner/Admin changes member role
-    ↓
-PATCH /api/workspaces/:id/members/:memberId
-body: { role: "admin" }
-    ↓
-Backend validates: actor has users.update_roles permission
-    ↓
-Backend validates: actor cannot assign role higher than their own
-    ↓
-Backend validates: cannot demote the only owner
-    ↓
-Role updated
-    ↓
-If downgrade (admin → editor): active sessions invalidated
-    ↓
-Audit log: "role_changed" event
-```
-
-## Role Hierarchy
-
-```
-OWNER   → Can do everything. Only 1 per workspace. Can transfer ownership.
-ADMIN   → Can manage users, files, shares, settings. Cannot delete workspace.
-EDITOR  → Can upload, edit, move, rename, share files.
-VIEWER  → Can read and download files only.
-```
-
-For detailed permissions, see `docs/backend/rbac.md`.
-
----
-
-# Ownership Transfer
-
-```
-Current owner initiates transfer
-    ↓
+```txt
 POST /api/workspaces/:id/transfer-ownership
 body: { newOwnerId }
-    ↓
-Backend validates: actor is current owner
-    ↓
-Backend validates: new owner is an admin in the workspace
-    ↓
-Backend creates transfer request (pending)
-    ↓
-New owner receives notification
-    ↓
-New owner accepts
-POST /api/workspaces/:id/transfer-ownership/accept
-    ↓
-Ownership transfers: old owner → admin, new admin → owner
-    ↓
-Transfer request:
-  - old owner sessions remain valid (role downgraded to admin)
-  - audit log: "ownership_transferred" event
-  - notification sent to all workspace members
 ```
 
-Timeout: if not accepted within 7 days, transfer request expires.
+The previous owner becomes admin, the target admin becomes owner, and an audit event is written.
+
+## Settings
+
+Bucket-level settings are managed from the dashboard settings route.
+
+| Setting                      | Default | Description                               |
+| ---------------------------- | ------- | ----------------------------------------- |
+| `storageQuotaBytes`          | 10 GB   | Total bucket quota enforced on upload     |
+| `defaultShareExpirationDays` | 30      | Default expiration for new share links    |
+| `enablePublicSignup`         | false   | Bucket-level signup/join policy           |
+| `trashRetentionDays`         | 30      | Days before deleted items are purged      |
+| `maxFileSizeBytes`           | 5 GB    | Maximum accepted file size                |
+| `uploadChunkSizeBytes`       | 5 MB    | Multipart upload part size floor          |
+| `allowedMimeTypes`           | empty   | Optional upload MIME allow list           |
+| `brandingName`               | null    | Public share branding override            |
+| `brandingLogoUrl`            | null    | Public share branding logo URL            |
+| `r2PublicBaseUrl`            | null    | Optional public R2 base URL for downloads |
 
 ---
 
-# Workspace Deletion
+# Platform Administration
 
+Platform admins can manage global branding and signup behavior:
+
+```txt
+GET   /api/platform/settings
+PATCH /api/platform/settings
+POST  /api/platform/assets/:kind
+GET   /api/platform/invitations
+POST  /api/platform/invitations
+POST  /api/platform/invitations/:token/accept
 ```
-Owner clicks "Delete Workspace" (in Settings → Danger Zone)
-    ↓
-Confirmation modal: "Type the workspace name to confirm"
-    ↓
-DELETE /api/workspaces/:id
-body: { confirmation: "my-workspace-name" }
-    ↓
-Backend validates: actor is owner
-    ↓
-Backend validates: confirmation matches workspace name/slug
-    ↓
-Workspace enters soft-delete state:
-  - is_deleted = true, deleted_at = now
-  - All files marked as deleted (soft-delete cascade)
-  - All shares marked as inactive
-  - All members notified via email
-    ↓
-30-day grace period:
-  - Owner can restore workspace (undo deletion)
-  - Files and data remain intact in R2 and D1
-    ↓
-After 30 days:
-  - Cleanup worker purges all workspace files from R2
-  - Cleanup worker hard-deletes database records
-  - Audit log preserved (anonymized workspace reference)
-```
+
+`PLATFORM_OWNER_EMAIL` can promote the initial platform owner during first-run setup.
 
 ---
 
-# Workspace Settings
+# Not In v1
 
-Stored in `WorkspaceSettings` table. Configurable by owner/admin.
+The following behaviors appear in older planning docs but are not part of the current product:
 
-| Setting                      | Type     | Default          | Description                                    |
-| ---------------------------- | -------- | ---------------- | ---------------------------------------------- |
-| `defaultShareExpirationDays` | int      | 30               | Default expiration for new share links         |
-| `enablePublicSignup`         | bool     | false            | Allow email/password signup for this workspace |
-| `allowedMimeTypes`           | string[] | [] (all allowed) | Restrict uploads to specific MIME types        |
-| `maxFileSizeBytes`           | int      | 5GB              | Maximum upload size per file                   |
-| `storageQuotaBytes`          | int      | 10GB             | Total storage limit (enforced on upload)       |
-| `brandingLogoUrl`            | string   | null             | Custom logo URL for share pages                |
-| `brandingName`               | string   | null             | Custom name for share pages                    |
-| `trashRetentionDays`         | int      | 30               | Days before trash is auto-purged               |
+- creating multiple independent workspaces
+- per-workspace memberships
+- per-workspace roles for the same user
+- workspace suspension/reactivation
+- workspace soft-delete and purge lifecycle
+- billing-tier workspace limits
 
----
-
-# API Endpoints Summary
-
-| Method   | Path                                     | Permission           |
-| -------- | ---------------------------------------- | -------------------- |
-| `GET`    | `/api/workspaces`                        | Authenticated        |
-| `POST`   | `/api/workspaces`                        | Authenticated        |
-| `GET`    | `/api/workspaces/:id`                    | Workspace member     |
-| `PATCH`  | `/api/workspaces/:id`                    | `workspace.manage`   |
-| `DELETE` | `/api/workspaces/:id`                    | Owner only           |
-| `GET`    | `/api/workspaces/:id/members`            | Workspace member     |
-| `POST`   | `/api/workspaces/:id/members`            | `users.invite`       |
-| `PATCH`  | `/api/workspaces/:id/members/:uid`       | `users.update_roles` |
-| `DELETE` | `/api/workspaces/:id/members/:uid`       | `users.remove`       |
-| `POST`   | `/api/workspaces/:id/transfer-ownership` | Owner only           |
-
----
-
-# Audit Events
-
-| Event                   | Logged                                  |
-| ----------------------- | --------------------------------------- |
-| `workspace.created`     | actorId, workspaceId, workspaceName     |
-| `workspace.deleted`     | actorId, workspaceId                    |
-| `workspace.restored`    | actorId, workspaceId                    |
-| `member.invited`        | actorId, targetEmail, role              |
-| `member.joined`         | userId, workspaceId, role               |
-| `member.removed`        | actorId, targetUserId, workspaceId      |
-| `role.changed`          | actorId, targetUserId, oldRole, newRole |
-| `ownership.transferred` | oldOwnerId, newOwnerId, workspaceId     |
-
----
-
-# References
-
-- [RBAC Architecture](../backend/rbac.md)
-- [Data Model](../database/data-model.md)
-- [Authentication](../architecture/authentication.md)
-- [Better Auth Organization Plugin](https://www.better-auth.com/docs/plugins/organization)
+Adding those would be a separate multi-tenant architecture project.

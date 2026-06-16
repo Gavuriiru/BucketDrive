@@ -120,7 +120,8 @@ export const errorCodes = {
 
 ### `GET /api/workspaces/:workspaceId/files`
 
-List files in a workspace, optionally filtered by folder.
+List files in the current bucket context, optionally filtered by folder. `workspaceId` is retained
+for API compatibility with the original route shape.
 
 **Request**: `ListFilesRequest`
 **Response**: `ListFilesResponse`
@@ -135,7 +136,7 @@ Initiate file upload. Returns signed upload URL.
 
 ```ts
 export const InitiateUploadRequest = z.object({
-  workspaceId: z.string().uuid(),
+  workspaceId: z.string().uuid(), // compatibility context for the default bucket
   folderId: z.string().uuid().nullable().optional(),
   fileName: z.string().min(1).max(255),
   mimeType: z.string(),

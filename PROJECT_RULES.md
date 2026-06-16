@@ -15,7 +15,7 @@ The platform must prioritize:
 - desktop-like UX
 - performance
 - accessibility
-- scalability
+- scalability within the current single-bucket architecture
 - security
 - consistency
 - polished frontend interactions
@@ -54,13 +54,18 @@ The product experience must feel:
 ## Database
 
 - Cloudflare D1 (production)
-- SQLite via better-sqlite3 (local development)
+- Wrangler D1 local state for development
 - Drizzle Kit (migrations)
 
 ## Storage
 
 - Cloudflare R2 (primary, via StorageProvider abstraction)
 - Future: S3, MinIO, Backblaze B2, Wasabi
+
+## Product Scope
+
+BucketDrive v1 is a single-bucket drive. API paths may still use `workspaceId` for compatibility,
+but authorization is based on the user's global bucket role, not per-workspace membership.
 
 ## Infrastructure
 
@@ -450,8 +455,8 @@ Required terms:
 - FileObject
 - Folder
 - ShareLink
-- Workspace
-- WorkspaceMember
+- Bucket
+- BucketInvitation
 - StorageProvider
 - Permission
 - Role

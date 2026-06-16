@@ -9,6 +9,13 @@ verifiable result.
 
 ## Status Overview
 
+> **v1 documentation alignment pass — 2026-06-16:**
+>
+> - Reframed the documented product scope around the current single-bucket v1 implementation.
+> - Marked full multi-workspace isolation, per-workspace memberships, and workspace lifecycle as future work.
+> - Updated data model, RBAC, folder structure, auth, storage, upload, sharing, search, API, and testing docs to match the active codebase.
+> - Fixed Prettier drift in API/auth, R2 import tests, and the lockfile.
+
 > **Production worker cron deploy pass — 2026-06-15:**
 >
 > - Switched the production background Worker cron config to Wrangler's `[env.production.triggers] crons = [...]` format.

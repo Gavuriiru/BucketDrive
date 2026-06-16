@@ -5,10 +5,10 @@ Modern cloud storage platform — a beautiful frontend for Cloudflare R2, inspir
 ## Features
 
 - **File explorer** — grid and list views, drag & drop, keyboard shortcuts, context menus
-- **Multi-workspace** — isolate teams with RBAC (Owner, Admin, Editor, Viewer)
+- **Single bucket administration** — manage one R2-backed drive with RBAC (Owner, Admin, Manager, Editor, Viewer, Guest)
 - **Sharing** — internal sharing with granular permissions, external links with password protection
 - **Search** — full-text search with filters by type, tags, and favorites
-- **Upload** — direct-to-R2 with multipart, progress tracking, and resumability
+- **Upload** — direct-to-R2 with multipart, progress tracking, retries, and cancellation
 - **Themes** — light and dark mode with polished design tokens
 - **Security** — HSTS, CSP, CORS, signed URLs, audit logging
 
@@ -31,30 +31,30 @@ Modern cloud storage platform — a beautiful frontend for Cloudflare R2, inspir
 
 ## Documentation
 
-| Document                                                      | Description                             |
-| ------------------------------------------------------------- | --------------------------------------- |
-| [Project Rules](PROJECT_RULES.md)                             | Rules, conventions, and stack decisions |
-| [System Overview](docs/architecture/system-overview.md)       | High-level architecture                 |
-| [Folder Structure](docs/architecture/folder-structure.md)     | Monorepo organization                   |
-| [Data Model](docs/database/data-model.md)                     | Database schema                         |
-| [API Contracts](docs/architecture/api-contracts.md)           | Endpoint catalog with Zod schemas       |
-| [Authentication](docs/architecture/authentication.md)         | Better Auth integration                 |
-| [RBAC](docs/backend/rbac.md)                                  | Permission system                       |
-| [Storage](docs/storage/storage-provider.md)                   | R2 abstraction layer                    |
-| [Upload System](docs/features/upload-system.md)               | File upload architecture                |
-| [File Sharing](docs/features/file-sharing.md)                 | Sharing feature spec                    |
-| [Workspace Management](docs/features/workspace-management.md) | Multi-tenant workspaces                 |
-| [Trash System](docs/features/trash-system.md)                 | Soft delete and recovery                |
-| [Search System](docs/frontend/search-system.md)               | Full-text search                        |
-| [Command Palette](docs/frontend/command-palette.md)           | Ctrl+K commands                         |
-| [Design System](docs/frontend/design-system.md)               | Design philosophy                       |
-| [Design Tokens](docs/frontend/design-tokens.md)               | Concrete CSS values                     |
-| [Security Headers](docs/security/security-headers.md)         | CSP, HSTS, CORS                         |
-| [Error Codes](docs/architecture/error-codes.md)               | Error catalog                           |
-| [Testing Strategy](docs/architecture/testing-strategy.md)     | Test pyramid                            |
-| [CI/CD](docs/architecture/ci-cd.md)                           | Pipeline and deployments                |
-| [Migration Strategy](docs/backend/migration-strategy.md)      | Database migrations                     |
-| [ADRs](docs/decisions/)                                       | Architecture Decision Records           |
+| Document                                                   | Description                             |
+| ---------------------------------------------------------- | --------------------------------------- |
+| [Project Rules](PROJECT_RULES.md)                          | Rules, conventions, and stack decisions |
+| [System Overview](docs/architecture/system-overview.md)    | High-level architecture                 |
+| [Folder Structure](docs/architecture/folder-structure.md)  | Monorepo organization                   |
+| [Data Model](docs/database/data-model.md)                  | Database schema                         |
+| [API Contracts](docs/architecture/api-contracts.md)        | Endpoint catalog with Zod schemas       |
+| [Authentication](docs/architecture/authentication.md)      | Better Auth integration                 |
+| [RBAC](docs/backend/rbac.md)                               | Permission system                       |
+| [Storage](docs/storage/storage-provider.md)                | R2 abstraction layer                    |
+| [Upload System](docs/features/upload-system.md)            | File upload architecture                |
+| [File Sharing](docs/features/file-sharing.md)              | Sharing feature spec                    |
+| [Bucket Membership](docs/features/workspace-management.md) | Single-bucket membership and admin      |
+| [Trash System](docs/features/trash-system.md)              | Soft delete and recovery                |
+| [Search System](docs/frontend/search-system.md)            | Full-text search                        |
+| [Command Palette](docs/frontend/command-palette.md)        | Ctrl+K commands                         |
+| [Design System](docs/frontend/design-system.md)            | Design philosophy                       |
+| [Design Tokens](docs/frontend/design-tokens.md)            | Concrete CSS values                     |
+| [Security Headers](docs/security/security-headers.md)      | CSP, HSTS, CORS                         |
+| [Error Codes](docs/architecture/error-codes.md)            | Error catalog                           |
+| [Testing Strategy](docs/architecture/testing-strategy.md)  | Test pyramid                            |
+| [CI/CD](docs/architecture/ci-cd.md)                        | Pipeline and deployments                |
+| [Migration Strategy](docs/backend/migration-strategy.md)   | Database migrations                     |
+| [ADRs](docs/decisions/)                                    | Architecture Decision Records           |
 
 ## Quick Start
 

@@ -1,608 +1,147 @@
-rbac.md# RBAC Architecture
+# RBAC Architecture
 
 # Purpose
 
-This document defines the authorization architecture of the platform.
+This document defines the current BucketDrive v1 authorization model.
 
 The system uses:
 
-- RBAC (Role-Based Access Control)
-- permission-based authorization
-- backend-enforced security
+- role-based access control
+- permission-based backend checks
+- global bucket roles
+- resource ownership rules for selected operations
 
-Authorization must be:
+The frontend is never trusted for authorization.
 
-- granular
-- composable
-- auditable
-- scalable
-- workspace-aware
+---
 
-The frontend is NEVER trusted for authorization.
+# Current Scope
+
+BucketDrive v1 is a single-bucket app. Route and contract names still use `workspaceId` in several
+places for compatibility, but authorization is based on `user.role`, not per-workspace membership.
+
+Full workspace-scoped authorization is future work.
 
 ---
 
 # Core Principles
 
-## 1. Permissions Over Roles
+## Permissions Over Roles
 
-Roles are collections of permissions.
+Roles are permission bundles. Backend code should check permissions through `can()`.
 
-The system must NEVER:
-
-- directly check roles
-- hardcode admin logic
-- bypass permission evaluation
-
-Forbidden:
+Correct:
 
 ```ts
-if (user.role === "admin")
+can(role, "files.delete", resourceOwnerId, userId)
 ```
 
-Required:
+Avoid scattering direct role checks through business logic.
 
-```ts
-can(user, "files.delete")
-```
+## Backend Enforcement
 
----
+Every protected endpoint must validate:
 
-## 2. Backend Enforcement
+1. authentication
+2. permission
+3. resource ownership or resource state when required
 
-All authorization must be enforced server-side.
-
-Frontend checks are UX helpers only.
-
-The backend is always the source of truth.
+Frontend permission checks are UX helpers only.
 
 ---
 
-## 3. Granular Permissions
+# Roles
 
-Permissions must be:
-
-- explicit
-- narrow
-- composable
-
-Avoid broad permissions like:
-
-- "manage_everything"
-
-Prefer:
-
-- files.read
-- files.write
-- files.delete
-- shares.create
-- users.manage
-
----
-
-# Permission Model
-
-Permissions follow this format:
+Supported roles:
 
 ```txt
-resource.action
+owner
+admin
+manager
+editor
+viewer
+guest
 ```
+
+`owner` and `admin` have all permissions. `manager` can handle operational work such as files,
+folders, shares, users read, audit read/export, analytics, and bucket settings read. `editor` can
+create and modify content. `viewer` and `guest` are read-oriented.
+
+The source of truth is `packages/shared/src/rbac/permissions.ts`.
+
+---
+
+# Permissions
+
+Permissions follow `resource.action` naming.
 
 Examples:
-
-```txt
-files.read
-files.write
-files.delete
-folders.create
-folders.rename
-shares.create
-shares.revoke
-users.invite
-users.remove
-billing.read
-audit.read
-```
-
----
-
-# Role Model
-
-Roles are permission bundles.
-
-Roles should simplify management,
-NOT replace permission checks.
-
----
-
-# Default Roles
-
-## OWNER
-
-Full workspace control.
-
-Capabilities:
-
-- manage workspace
-- manage users
-- manage billing
-- manage permissions
-- manage storage
-
----
-
-## ADMIN
-
-Administrative management.
-
-Capabilities:
-
-- manage users
-- manage files
-- manage shares
-- manage permissions
-
-Restrictions:
-
-- cannot transfer ownership
-
----
-
-## MANAGER
-
-Operational management.
-
-Capabilities:
-
-- manage files
-- manage folders
-- manage shares
-- view analytics
-
-Restrictions:
-
-- cannot manage admins
-- cannot manage billing
-
----
-
-## EDITOR
-
-Content modification role.
-
-Capabilities:
-
-- upload
-- edit
-- move
-- rename
-- share
-
-Restrictions:
-
-- no administrative access
-
----
-
-## VIEWER
-
-Readonly access.
-
-Capabilities:
-
-- read files
-- download files
-- access shared content
-
-Restrictions:
-
-- no modifications
-
----
-
-## GUEST
-
-Restricted readonly access.
-
-Capabilities:
-
-- limited resource viewing
-
-Restrictions:
-
-- isolated scope
-- limited workspace visibility
-
----
-
-# Permission Evaluation
-
-Authorization must consider:
-
-- role permissions
-- resource ownership
-- workspace membership
-- resource visibility
-- share permissions
-- inheritance rules
-
----
-
-# Authorization Flow
-
-```txt
-User Request
-    ↓
-Authentication Validation
-    ↓
-Workspace Membership Validation
-    ↓
-Permission Evaluation
-    ↓
-Resource Ownership Validation
-    ↓
-Operation Allowed / Denied
-```
-
----
-
-# Workspace Isolation
-
-All permissions are workspace-scoped.
-
-Users from one workspace must NEVER:
-
-- access another workspace
-- query foreign resources
-- infer foreign metadata
-
-Workspace isolation is mandatory.
-
----
-
-# Ownership Rules
-
-Ownership affects authorization.
-
-Example:
-
-- file owners may revoke their own shares
-- workspace owners may override permissions
-
-Ownership does NOT bypass RBAC automatically.
-
----
-
-# File Permissions
-
-Files support granular operations.
-
-Possible permissions:
 
 ```txt
 files.read
 files.upload
 files.rename
-files.move
-files.copy
 files.delete
-files.restore
-files.favorite
-files.tag
-files.share
-```
-
----
-
-# Folder Permissions
-
-Folders support:
-
-```txt
-folders.read
 folders.create
-folders.rename
-folders.move
 folders.delete
-folders.share
-```
-
-Folder permissions may inherit downward.
-
----
-
-# Share Permissions
-
-Sharing operations require explicit permissions.
-
-Examples:
-
-```txt
 shares.create
-shares.update
-shares.revoke
-shares.read
-```
-
----
-
-# User Management Permissions
-
-Examples:
-
-```txt
+shares.manage_all
 users.invite
-users.remove
 users.update_roles
-users.read
-```
-
-Users must NEVER:
-
-- elevate themselves
-- assign higher permissions than their own
-
----
-
-# Billing Permissions
-
-Billing must remain isolated.
-
-Examples:
-
-```txt
-billing.read
-billing.manage
-```
-
-Only authorized roles may:
-
-- view invoices
-- change plans
-- modify quotas
-
----
-
-# Audit Permissions
-
-Audit logs are sensitive.
-
-Examples:
-
-```txt
+trash.permanent_delete
+bucket.settings.update
 audit.read
-audit.export
 ```
 
-Audit access should remain highly restricted.
-
 ---
 
-# Permission Inheritance
-
-Some resources inherit permissions.
-
-Example:
-
-```txt
-Workspace
-    ↓
-Folder
-    ↓
-Subfolder
-    ↓
-File
-```
-
-Inheritance rules must remain predictable.
-
-Avoid:
-
-- circular inheritance
-- conflicting overrides
-
----
-
-# Share Authorization
-
-External sharing must remain isolated from internal RBAC.
-
-External share links:
-
-- do not grant workspace access
-- do not expose internal metadata
-- operate in readonly isolation unless explicitly allowed
-
----
-
-# Temporary Access
-
-Temporary permissions may exist for:
-
-- expiring shares
-- temporary collaborators
-- support sessions
-
-Temporary access must:
-
-- expire automatically
-- remain auditable
-
----
-
-# Revocation Rules
-
-Revoking access must:
-
-- invalidate active sessions when necessary
-- revoke share links
-- update cache state
-- invalidate signed URLs when applicable
-
----
-
-# Signed URL Security
-
-Signed URLs:
-
-- must expire
-- must be scoped
-- must never expose unrestricted storage access
-
-Signed URLs are temporary capabilities,
-NOT permissions themselves.
-
----
-
-# API Authorization Rules
-
-Every protected endpoint must:
-
-1. validate authentication
-2. validate workspace membership
-3. validate permissions
-4. validate ownership if needed
-
-Authorization must NEVER rely on:
-
-- frontend state
-- hidden UI
-- client flags
-
----
-
-# Audit Logging
-
-Authorization-sensitive actions must generate logs.
-
-Required events:
-
-- permission changes
-- role updates
-- access revocations
-- share creation
-- share revocation
-- failed authorization attempts
-
----
-
-# Forbidden Practices
-
-Never:
-
-- hardcode roles
-- bypass permission checks
-- trust frontend authorization
-- expose unauthorized metadata
-- use wildcard admin access
-- duplicate permission logic
-- mix authentication with authorization
-
----
-
-# Recommended Architecture
-
-Authorization should use:
+# Enforcement Flow
 
 ```txt
 Request
   ↓
-Auth Middleware
+Auth middleware validates session
   ↓
-Permission Middleware
+RBAC middleware reads user.role
   ↓
-Resource Policy
+can() evaluates permission
   ↓
-Service Layer
+Route/service validates resource state and ownership
+  ↓
+Operation allowed or denied
 ```
 
----
-
-# Recommended Utilities
-
-Preferred APIs:
-
-```ts
-can(user, permission)
-
-canAccessResource(user, resource)
-
-hasWorkspaceAccess(user, workspaceId)
-```
-
-Avoid:
-
-- scattered inline permission logic
-- duplicated checks
+For file and folder delete/restore operations, the middleware also checks resource ownership where
+the policy allows owner-specific behavior.
 
 ---
 
-# Resource Policies
+# Sharing
 
-Complex resources should use policies.
+External shares are isolated from internal RBAC:
 
-Example:
-
-```ts
-FilePolicy.canDelete(user, file)
-```
-
-Policies centralize:
-
-- ownership rules
-- inheritance
-- permission logic
+- share links do not grant bucket membership
+- public users cannot infer unrelated metadata
+- password and expiration validation happen server-side
+- signed URLs remain temporary capabilities, not durable permissions
 
 ---
 
-# Multi-Layer Validation
+# Audit Expectations
 
-Authorization should validate:
+Authorization-sensitive operations should write audit logs, especially:
 
-## Identity
-
-Who is the user?
-
----
-
-## Membership
-
-Does the user belong to this workspace?
+- uploads
+- deletes and restores
+- permanent trash purges
+- share creation/revocation
+- role changes
+- ownership transfer
+- settings changes
 
 ---
 
-## Permission
+# Future Work
 
-Does the user have permission?
-
----
-
-## Resource Scope
-
-Can the user access THIS resource?
-
----
-
-## State Validation
-
-Is the resource still valid?
-
-- not deleted
-- not archived
-- not expired
-
----
-
-# Future Scalability
-
-The RBAC system must support future:
-
-- enterprise policies
-- custom roles
-- permission groups
-- organization hierarchies
-- delegated administration
-- audit exports
-- SSO role mapping
-
-The architecture must remain extensible.
+Multi-workspace RBAC would require workspace-scoped resources, membership tables, per-workspace
+roles, and tenant filtering across all handlers and queries.

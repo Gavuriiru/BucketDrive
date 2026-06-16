@@ -35,7 +35,8 @@ This eliminates bandwidth through the Worker and reduces latency.
 
 ## 3. Multipart for Large Files
 
-Files larger than 5 MB are uploaded in 5 MB chunks.
+Files larger than 250 MB are uploaded as multipart uploads. The default part size is 5 MB and can
+be configured through bucket settings.
 Each chunk gets an individual signed URL and ETag.
 The backend tracks upload progress via `UploadSession` and `UploadPart`.
 
@@ -64,7 +65,7 @@ POST /api/workspaces/:id/files/upload/complete
 File appears in explorer (optimistic or after confirmation)
 ```
 
-## Large File (> 5 MB) — Multipart
+## Large File (> 250 MB) — Multipart
 
 ```txt
 User selects large file
@@ -168,13 +169,13 @@ id, uploadSessionId, partNumber, etag, sizeBytes, uploadedAt
 
 ## Resumability
 
-If the user's connection drops:
+If the user's connection drops during an active browser session:
 
 1. The `UploadSession` persists in DB
 2. The frontend queries `GET /api/uploads/:sessionId` to get the session state
 3. Returns: which parts are already completed (with ETags), which parts remain
 4. Frontend resumes from the next incomplete part
-5. Upload sessions auto-expire after 24 hours (cleanup job removes partial R2 data)
+5. If the browser loses the original `File` handle, the user must re-add the file before retrying
 
 ---
 
@@ -238,7 +239,7 @@ async function uploadWithRetry(chunk: Blob, signedUrl: string, retries = 0): Pro
 
 ## Progress Reporting
 
-- Single-part upload: browser `fetch` with `ReadableStream` tracks bytes sent
+- Single-part upload: browser `XMLHttpRequest` upload progress tracks bytes sent
 - Multipart upload: progress = completed parts / total parts
 - Speed calculation: bytes uploaded in last 2 seconds, rolling average
 - ETA: remaining bytes / average speed

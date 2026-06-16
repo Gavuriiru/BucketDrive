@@ -40,7 +40,7 @@ packages/shared/
     db/
       schema/
         users.ts             # User, Session, Account (Better Auth schema)
-        workspaces.ts        # Workspace, WorkspaceMember, WorkspaceSettings
+        workspace.ts         # Bucket, BucketSettings, files, folders, invitations
         files.ts             # FileObject, Folder
         tags.ts              # FileTag, FileObjectTag, Favorite
         shares.ts            # ShareLink, SharePermission, ShareAccessAttempt

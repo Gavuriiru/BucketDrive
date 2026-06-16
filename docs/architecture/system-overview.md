@@ -4,12 +4,12 @@
 
 This document defines the high-level architecture of the platform.
 
-The system is a modern cloud storage platform focused on:
+The system is a modern single-bucket cloud storage platform focused on:
 
 - file management
 - secure sharing
 - RBAC
-- collaboration
+- bucket collaboration
 - desktop-like UX
 - scalable storage abstraction
 
@@ -24,6 +24,16 @@ The architecture must prioritize:
 
 ---
 
+# Current Product Scope
+
+BucketDrive v1 manages one default bucket. Some API paths still include `workspaceId` for
+compatibility with the original roadmap, but the implementation does not currently provide multiple
+isolated workspaces or per-workspace memberships.
+
+Full multi-workspace support is future work and would require a database/API migration.
+
+---
+
 # Monorepo Structure
 
 ```txt
@@ -33,11 +43,6 @@ The architecture must prioritize:
   /workers
 
 /packages
-  /ui
-  /auth
-  /storage
-  /rbac
-  /db
   /shared
 ```
 
@@ -87,7 +92,7 @@ Responsibilities:
 - RBAC enforcement
 - file metadata
 - sharing logic
-- workspace management
+- bucket membership and settings
 - audit logging
 - signed URL generation
 
@@ -116,114 +121,7 @@ Workers must be isolated from frontend concerns.
 
 ---
 
-# Shared Packages
-
-## packages/ui
-
-Shared design system.
-
-Contains:
-
-- reusable components
-- tokens
-- typography
-- animations
-- spacing rules
-- theme system
-
-All frontend applications must use this package.
-
----
-
-## packages/auth
-
-Authentication system abstraction.
-
-Responsibilities:
-
-- session handling
-- OAuth
-- Zero Trust integration
-- auth utilities
-- permission helpers
-
----
-
-## packages/storage
-
-Storage abstraction layer.
-
-This package isolates:
-
-- Cloudflare R2
-- S3-compatible providers
-- signed uploads
-- multipart uploads
-
-The application must NEVER directly depend on provider-specific APIs.
-
-Required abstraction:
-
-```ts
-interface StorageProvider {
-  upload()
-  delete()
-  move()
-  copy()
-  list()
-  getSignedUrl()
-}
-```
-
----
-
-## packages/rbac
-
-Authorization engine.
-
-Responsibilities:
-
-- permission checks
-- role composition
-- policy evaluation
-
-The application must NEVER:
-
-- hardcode permissions
-- check roles directly
-
-Correct:
-
-```ts
-can(user, "files.delete")
-```
-
-Incorrect:
-
-```ts
-if (user.role === "admin")
-```
-
----
-
-## packages/db
-
-Database layer.
-
-Responsibilities:
-
-- schema definitions
-- migrations
-- database access
-- query utilities
-
-Must expose:
-
-- typed queries
-- reusable repositories
-- transaction helpers
-
----
+# Shared Package
 
 ## packages/shared
 
@@ -236,6 +134,11 @@ Contains:
 - helpers
 - API contracts
 - validation schemas
+- Drizzle schema and migrations
+- RBAC permissions, roles, and `can()`
+
+Storage provider implementation lives in `apps/api/src/services/storage.ts`. Frontend design
+primitives currently live in `apps/web/src/components`.
 
 ---
 
@@ -250,23 +153,13 @@ Capabilities:
 - upload files
 - create shares
 - manage resources
-- access workspaces
+- access the bucket
 
 ---
 
-## Workspace
+## Bucket Membership
 
-Logical organizational unit.
-
-Contains:
-
-- users
-- buckets
-- files
-- permissions
-- quotas
-
-A user may belong to multiple workspaces.
+Logical administration scope for users, roles, files, permissions, and quotas in v1.
 
 ---
 
@@ -279,7 +172,7 @@ Maps to:
 - R2 buckets
 - future S3-compatible providers
 
-Buckets are isolated by workspace ownership.
+The v1 app manages one default bucket.
 
 ---
 
@@ -416,7 +309,7 @@ Authentication responsibilities:
 
 - Identity validation
 - Session management (creation, refresh, revocation)
-- Multi-workspace membership resolution
+- Bucket role resolution
 - Secure cookies (HTTPOnly, Secure, SameSite=Strict)
 - MFA compatibility (future)
 
@@ -427,7 +320,7 @@ Request
     ↓
 Better Auth middleware (validate session cookie)
     ↓
-Extract user + workspace context
+Extract user + bucket role
     ↓
 RBAC middleware (validate permissions)
     ↓
@@ -463,11 +356,11 @@ Permissions must remain granular.
 
 # Sharing Architecture
 
-The platform supports:
+The v1 platform supports external sharing as the primary flow.
 
-## Internal Sharing
+## Internal Sharing (Compatibility)
 
-Between authenticated users.
+Legacy/API-supported sharing between authenticated bucket users.
 
 Capabilities:
 
@@ -542,7 +435,7 @@ Managed using:
 Examples:
 
 - file lists
-- workspace data
+- bucket data
 - shares
 - user sessions
 
@@ -600,7 +493,6 @@ Workers handle:
 - thumbnails
 - metadata extraction
 - search indexing
-- antivirus scanning
 - cleanup jobs
 
 Heavy operations must NEVER block UI interactions.
