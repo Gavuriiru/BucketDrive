@@ -83,6 +83,40 @@ describe("platform contracts", () => {
     expect(parsedReadSettings.defaultLanguage).toBe("en-US")
   })
 
+  it("handles platform settings updates while the language migration is pending", async () => {
+    const ctx = createContractTestContext()
+    ctx.sqlite.exec("alter table platform_settings drop column default_language")
+
+    const nameOnly = await ctx.request("/api/platform/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ platformName: "Legacy Settings" }),
+    })
+    expect(nameOnly.status).toBe(200)
+    const nameOnlyBody = UpdatePlatformSettingsResponse.parse(await ctx.json(nameOnly))
+    expect(nameOnlyBody.settings.platformName).toBe("Legacy Settings")
+    expect(nameOnlyBody.settings.defaultLanguage).toBe("en-US")
+
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const languageUpdate = await ctx.request("/api/platform/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ defaultLanguage: "pt-BR" }),
+    })
+    expect(languageUpdate.status).toBe(503)
+    expect(await ctx.json(languageUpdate)).toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+      message: "Platform settings migration is pending",
+    })
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "platform_settings.migration_missing",
+        method: "PATCH",
+        path: "/api/platform/settings",
+        missingColumn: "platform_settings.default_language",
+      }),
+    )
+    error.mockRestore()
+  })
+
   it("lists, creates, and accepts platform invitations", async () => {
     const ctx = createContractTestContext()
 

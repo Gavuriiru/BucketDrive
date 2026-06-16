@@ -125,6 +125,11 @@ export function PlatformAdminPage() {
                 triggerClassName="bg-bg-primary"
               />
             </Field>
+            {updateSettings.isError && (
+              <p className="text-error text-sm">
+                {updateSettings.error?.message ?? t("platform.loadError")}
+              </p>
+            )}
           </div>
         </div>
 

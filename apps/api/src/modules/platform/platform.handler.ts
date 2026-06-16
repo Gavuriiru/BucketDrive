@@ -102,17 +102,43 @@ platform.patch("/settings", authMiddleware, requirePlatformAdmin, async (c) => {
   const body = UpdatePlatformSettingsRequest.parse(await c.req.json())
   const settings = await ensurePlatformSettings()
   const nextPlatformName = body.platformName ?? settings.platformName
+  const nextEnablePublicSignup = body.enablePublicSignup ?? settings.enablePublicSignup
+  const nextDefaultLanguage = body.defaultLanguage ?? settings.defaultLanguage ?? DEFAULT_LANGUAGE
   const now = new Date().toISOString()
-  await getDB()
-    .update(platformSettings)
-    .set({
-      platformName: nextPlatformName,
-      enablePublicSignup: body.enablePublicSignup ?? settings.enablePublicSignup,
-      defaultLanguage: body.defaultLanguage ?? settings.defaultLanguage ?? DEFAULT_LANGUAGE,
-      updatedAt: now,
-    })
-    .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
-    .run()
+  const hasDefaultLanguage = await hasPlatformSettingsColumn("default_language")
+  if (!hasDefaultLanguage && body.defaultLanguage !== undefined) {
+    logPlatformSettingsMigrationMissing(c, Object.keys(body))
+    return c.json(
+      {
+        code: "SERVICE_UNAVAILABLE",
+        message: "Platform settings migration is pending",
+      },
+      503,
+    )
+  }
+
+  if (hasDefaultLanguage) {
+    await getDB()
+      .update(platformSettings)
+      .set({
+        platformName: nextPlatformName,
+        enablePublicSignup: nextEnablePublicSignup,
+        defaultLanguage: nextDefaultLanguage,
+        updatedAt: now,
+      })
+      .where(eq(platformSettings.id, PLATFORM_SETTINGS_ID))
+      .run()
+  } else {
+    await getD1Binding()
+      .prepare(
+        `update platform_settings
+        set platform_name = ?, enable_public_signup = ?, updated_at = ?
+        where id = ?`,
+      )
+      .bind(nextPlatformName, nextEnablePublicSignup ? 1 : 0, now, PLATFORM_SETTINGS_ID)
+      .run()
+  }
+
   if (nextPlatformName !== settings.platformName) {
     await syncDefaultBucketName(getDB(), nextPlatformName)
   }
@@ -312,6 +338,24 @@ async function hasPlatformSettingsColumn(columnName: string): Promise<boolean> {
   return results.some((row) => {
     if (typeof row !== "object" || row === null) return false
     return (row as { name?: unknown }).name === columnName
+  })
+}
+
+function logPlatformSettingsMigrationMissing(
+  c: { req: { url: string; method: string; raw: Request } },
+  attemptedFields: string[],
+): void {
+  const url = new URL(c.req.url)
+  console.error({
+    service: "bucketdrive-api",
+    timestamp: new Date().toISOString(),
+    event: "platform_settings.migration_missing",
+    requestId: c.req.raw.headers.get("x-request-id") ?? c.req.raw.headers.get("cf-ray"),
+    method: c.req.method,
+    path: url.pathname,
+    cfRay: c.req.raw.headers.get("cf-ray"),
+    missingColumn: "platform_settings.default_language",
+    attemptedFields,
   })
 }
 
