@@ -12,7 +12,7 @@ compatibility_flags = [ "nodejs_compat" ]
 binding = "API_SERVICE"
 service = "bucketdrive-api"
 
-[[env.staging.services]]
+[[env.preview.services]]
 binding = "API_SERVICE"
 service = "bucketdrive-api-staging"
 
