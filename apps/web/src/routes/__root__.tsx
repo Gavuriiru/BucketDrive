@@ -76,7 +76,10 @@ const loginRoute = createRoute({
     const session = await checkAuth()
     if (session?.user) {
       // eslint-disable-next-line @typescript-eslint/only-throw-error
-      throw redirect({ to: "/dashboard" })
+      throw redirect({
+        to: "/dashboard/files",
+        search: { folderId: undefined, previewFileId: undefined },
+      })
     }
   },
   component: LoginPage,

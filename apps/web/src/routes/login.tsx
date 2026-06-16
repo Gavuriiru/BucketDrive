@@ -36,7 +36,7 @@ function getSignInErrorMessage(value: unknown, fallback: string): string {
 
 export function LoginPage() {
   const search: { redirect?: string } = useSearch({ strict: false })
-  const redirectPath = search.redirect?.startsWith("/") ? search.redirect : "/dashboard"
+  const redirectPath = search.redirect?.startsWith("/") ? search.redirect : "/dashboard/files"
   const branding = useBranding()
   const [error, setError] = useState<string | null>(null)
   const [pendingProvider, setPendingProvider] = useState<string | null>(null)
