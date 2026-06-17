@@ -4,6 +4,7 @@ import { Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { FileObject } from "@bucketdrive/shared"
 import { useCreateTag, useDeleteTag, useTags, useUpdateFileTags, useUpdateTag } from "@/lib/api"
+import { useI18n } from "@/lib/i18n"
 import { TAG_COLOR_OPTIONS, getTagColorClasses } from "@/lib/tag-colors"
 
 interface TagPickerDialogProps {
@@ -23,6 +24,7 @@ export function TagPickerDialog({
   files,
   canManageTags,
 }: TagPickerDialogProps) {
+  const { t } = useI18n()
   const tagsQuery = useTags(workspaceId)
   const createTag = useCreateTag(workspaceId)
   const updateTag = useUpdateTag(workspaceId)
@@ -142,13 +144,13 @@ export function TagPickerDialog({
         <Dialog.Content className="border-border-default bg-surface-default fixed top-1/2 left-1/2 z-50 w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border shadow-2xl">
           <div className="border-border-muted flex items-start justify-between border-b px-6 py-4">
             <div>
-              <Dialog.Title className="text-text-primary text-lg font-semibold">Tags</Dialog.Title>
+              <Dialog.Title className="text-text-primary text-lg font-semibold">{t("tagPicker.title")}</Dialog.Title>
               <Dialog.Description className="text-text-tertiary text-sm">
                 {targetFiles.length === 1
-                  ? `Manage tags for ${targetFiles[0]?.originalName ?? "file"}`
+                  ? t("tagPicker.manageTagsForFile", { name: targetFiles[0]?.originalName ?? t("app.unknown") })
                   : targetFiles.length > 1
-                    ? `Manage tags for ${String(targetFiles.length)} files`
-                    : "Manage bucket tags"}
+                    ? t("tagPicker.manageTagsForFiles", { count: String(targetFiles.length) })
+                    : t("tagPicker.manageBucketTags")}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -162,14 +164,14 @@ export function TagPickerDialog({
             <div className="space-y-4">
               <label className="block">
                 <span className="text-text-tertiary mb-2 block text-xs font-medium tracking-wide uppercase">
-                  Find tags
+                  {t("tagPicker.findTagsLabel")}
                 </span>
                 <input
                   value={search}
                   onChange={(event) => {
                     setSearch(event.target.value)
                   }}
-                  placeholder="Search tags"
+                  placeholder={t("tagPicker.searchTagsPlaceholder")}
                   className="border-border-default bg-surface-secondary text-text-primary focus:border-accent w-full rounded-xl border px-3 py-2 text-sm transition-colors outline-none"
                 />
               </label>
@@ -203,7 +205,7 @@ export function TagPickerDialog({
                               className="bg-accent hover:bg-accent/90 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
                             >
                               <Check className="h-4 w-4" />
-                              Save
+                              {t("app.save")}
                             </button>
                             <button
                               onClick={() => {
@@ -211,7 +213,7 @@ export function TagPickerDialog({
                               }}
                               className="border-border-default text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-lg border px-3 py-2 text-sm transition-colors"
                             >
-                              Cancel
+                              {t("app.cancel")}
                             </button>
                           </div>
                         </div>
@@ -275,9 +277,9 @@ export function TagPickerDialog({
                 })}
 
                 {filteredTags.length === 0 && (
-                  <div className="border-border-default rounded-xl border border-dashed px-4 py-10 text-center">
+                    <div className="border-border-default rounded-xl border border-dashed px-4 py-10 text-center">
                     <Tag className="text-text-tertiary mx-auto h-8 w-8" />
-                    <p className="text-text-tertiary mt-2 text-sm">No matching tags</p>
+                    <p className="text-text-tertiary mt-2 text-sm">{t("tagPicker.noMatchingTags")}</p>
                   </div>
                 )}
               </div>
@@ -285,29 +287,29 @@ export function TagPickerDialog({
 
             <div className="border-border-muted bg-surface-secondary space-y-4 rounded-2xl border p-4">
               <div>
-                <h3 className="text-text-primary text-sm font-semibold">Create a new tag</h3>
+                <h3 className="text-text-primary text-sm font-semibold">{t("tagPicker.createNewTagTitle")}</h3>
                 <p className="text-text-tertiary mt-1 text-xs">
-                  Pick a name and palette color to organize files.
+                  {t("tagPicker.createNewTagDescription")}
                 </p>
               </div>
 
               <label className="block">
                 <span className="text-text-tertiary mb-2 block text-xs font-medium tracking-wide uppercase">
-                  Tag name
+                  {t("tagPicker.tagNameLabel")}
                 </span>
                 <input
                   value={newTagName}
                   onChange={(event) => {
                     setNewTagName(event.target.value)
                   }}
-                  placeholder="Important"
+                  placeholder={t("tagPicker.tagNamePlaceholder")}
                   className="border-border-default bg-surface-default text-text-primary focus:border-accent w-full rounded-xl border px-3 py-2 text-sm transition-colors outline-none"
                 />
               </label>
 
               <div>
                 <span className="text-text-tertiary mb-2 block text-xs font-medium tracking-wide uppercase">
-                  Tag color
+                  {t("tagPicker.tagColorLabel")}
                 </span>
                 <ColorPicker value={newTagColor} onChange={setNewTagColor} />
               </div>
@@ -320,13 +322,12 @@ export function TagPickerDialog({
                 className="bg-accent hover:bg-accent/90 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
-                Create tag
+                {t("tagPicker.createTag")}
               </button>
 
               {!canManageTags && (
                 <p className="text-text-tertiary text-xs">
-                  You can apply existing tags here, but creating or editing tags requires file-tag
-                  permissions.
+                  {t("tagPicker.noManagePermissionHint")}
                 </p>
               )}
             </div>

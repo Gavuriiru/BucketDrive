@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import { Sun, LayoutGrid, List, type LucideIcon } from "lucide-react"
+import { useI18n } from "@/lib/i18n"
 import { useAppStore } from "@/stores/app-store"
 import { useExplorerStore } from "@/stores/explorer-store"
 import type { Command, CommandCategory } from "./types"
@@ -15,12 +16,12 @@ interface AppearanceCommandDef {
   action: () => void
 }
 
-function getAppearanceCommands(): AppearanceCommandDef[] {
+function getAppearanceCommands(t: ReturnType<typeof useI18n>["t"]): AppearanceCommandDef[] {
   return [
     {
       id: "toggle-theme",
-      title: "Toggle Dark Mode",
-      subtitle: "Switch between light and dark theme",
+      title: t("commands.appearance.toggleDarkMode"),
+      subtitle: t("commands.appearance.toggleThemeSubtitle"),
       icon: Sun,
       category: "appearance",
       keywords: ["theme", "dark", "light", "mode", "color"],
@@ -30,8 +31,8 @@ function getAppearanceCommands(): AppearanceCommandDef[] {
     },
     {
       id: "switch-grid",
-      title: "Switch to Grid View",
-      subtitle: "Show files as cards",
+      title: t("commands.appearance.switchToGrid"),
+      subtitle: t("commands.appearance.gridViewSubtitle"),
       icon: LayoutGrid,
       category: "appearance",
       keywords: ["grid", "view", "cards", "layout"],
@@ -45,8 +46,8 @@ function getAppearanceCommands(): AppearanceCommandDef[] {
     },
     {
       id: "switch-list",
-      title: "Switch to List View",
-      subtitle: "Show files as a table",
+      title: t("commands.appearance.switchToList"),
+      subtitle: t("commands.appearance.listViewSubtitle"),
       icon: List,
       category: "appearance",
       keywords: ["list", "view", "table", "layout"],
@@ -61,8 +62,9 @@ function getAppearanceCommands(): AppearanceCommandDef[] {
   ]
 }
 
-export function getAppearanceCommandsFiltered(): Command[] {
-  return getAppearanceCommands()
+export function useAppearanceCommandsFiltered(): Command[] {
+  const { t } = useI18n()
+  return getAppearanceCommands(t)
     .filter((def) => (def.condition ? def.condition() : true))
     .map((def) => ({
       id: def.id,

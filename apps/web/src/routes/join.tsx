@@ -3,8 +3,10 @@ import { useState, useEffect } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import { useAcceptInvitation, useInvitationByToken } from "@/lib/api"
 import { useBranding } from "@/lib/branding"
+import { useI18n } from "@/lib/i18n"
 
 export function JoinPage() {
+  const { t } = useI18n()
   const search = useSearch({ strict: false })
   const token = (search as { token?: string }).token ?? null
   const navigate = useNavigate()
@@ -46,8 +48,8 @@ export function JoinPage() {
     return (
       <div className="bg-bg-primary flex min-h-screen items-center justify-center p-6">
         <div className="border-border-default bg-surface-default w-full max-w-sm rounded-2xl border p-8 text-center shadow-sm">
-          <h1 className="text-text-primary text-xl font-semibold">Invalid Invitation</h1>
-          <p className="text-text-secondary mt-2 text-sm">No invitation token was provided.</p>
+          <h1 className="text-text-primary text-xl font-semibold">{t("join.invalid.title")}</h1>
+          <p className="text-text-secondary mt-2 text-sm">{t("join.invalid.noToken")}</p>
         </div>
       </div>
     )
@@ -65,9 +67,9 @@ export function JoinPage() {
     return (
       <div className="bg-bg-primary flex min-h-screen items-center justify-center p-6">
         <div className="border-border-default bg-surface-default w-full max-w-sm rounded-2xl border p-8 text-center shadow-sm">
-          <h1 className="text-text-primary text-xl font-semibold">Invitation Unavailable</h1>
+          <h1 className="text-text-primary text-xl font-semibold">{t("join.unavailable.title")}</h1>
           <p className="text-text-secondary mt-2 text-sm">
-            {invitationQuery.error?.message ?? "This invitation is no longer valid."}
+            {invitationQuery.error?.message ?? t("join.unavailable.defaultMessage")}
           </p>
         </div>
       </div>
@@ -79,8 +81,8 @@ export function JoinPage() {
     return (
       <div className="bg-bg-primary flex min-h-screen items-center justify-center p-6">
         <div className="border-border-default bg-surface-default w-full max-w-sm rounded-2xl border p-8 text-center shadow-sm">
-          <h1 className="text-text-primary text-xl font-semibold">Invitation Unavailable</h1>
-          <p className="text-text-secondary mt-2 text-sm">Unable to load invitation details.</p>
+          <h1 className="text-text-primary text-xl font-semibold">{t("join.unavailable.title")}</h1>
+          <p className="text-text-secondary mt-2 text-sm">{t("join.unavailable.loadDetails")}</p>
         </div>
       </div>
     )
@@ -108,26 +110,26 @@ export function JoinPage() {
         </div>
 
         <h1 className="text-text-primary mt-4 text-center text-xl font-semibold">
-          Bucket Invitation
+          {t("join.title")}
         </h1>
 
         <p className="text-text-secondary mt-2 text-center text-sm">
-          You have been invited to join{" "}
+          {t("join.invitedToJoin")}{" "}
           <span className="text-text-primary font-medium">{branding.name}</span> as a{" "}
           <span className="text-text-primary font-medium capitalize">{invite.role}</span>.
         </p>
 
         <div className="border-border-default bg-bg-tertiary mt-6 rounded-xl border p-4">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-text-tertiary">Invited by</span>
+            <span className="text-text-tertiary">{t("join.details.invitedBy")}</span>
             <span className="text-text-primary font-medium">{invite.invitedByName}</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm">
-            <span className="text-text-tertiary">Email</span>
+            <span className="text-text-tertiary">{t("join.details.email")}</span>
             <span className="text-text-primary font-medium">{invite.email}</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm">
-            <span className="text-text-tertiary">Expires</span>
+            <span className="text-text-tertiary">{t("join.details.expires")}</span>
             <span className="text-text-primary font-medium">
               {new Date(invite.expiresAt).toLocaleDateString()}
             </span>
@@ -140,10 +142,10 @@ export function JoinPage() {
               href={`/login?redirect=/join?token=${token}`}
               className="bg-accent block w-full rounded-xl px-4 py-2.5 text-center text-sm font-medium text-white transition-opacity hover:opacity-90"
             >
-              Sign in to accept
+              {t("join.signInToAccept")}
             </a>
             <p className="text-text-tertiary mt-2 text-center text-xs">
-              You must sign in with the invited email address.
+              {t("join.signInRequirement")}
             </p>
           </div>
         )}
@@ -151,7 +153,8 @@ export function JoinPage() {
         {isAuthenticated && !emailMatches && (
           <div className="border-error/30 bg-error/10 mt-6 rounded-xl border p-4 text-center">
             <p className="text-error text-sm">
-              You are signed in as <strong>{userEmail}</strong>, but this invitation is for{" "}
+              {t("join.mismatch.signedInAs")} <strong>{userEmail}</strong>{" "}
+              {t("join.mismatch.invitationFor")}{" "}
               <strong>{invite.email}</strong>.
             </p>
             <button
@@ -161,7 +164,7 @@ export function JoinPage() {
               }}
               className="text-accent mt-3 text-sm font-medium hover:underline"
             >
-              Switch account
+              {t("join.mismatch.switchAccount")}
             </button>
           </div>
         )}
@@ -182,7 +185,7 @@ export function JoinPage() {
               disabled={acceptInvitation.isPending}
               className="bg-accent w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {acceptInvitation.isPending ? "Accepting..." : "Accept invitation"}
+              {acceptInvitation.isPending ? t("join.accepting") : t("join.acceptButton")}
             </button>
             {acceptInvitation.isError && (
               <p className="text-error mt-2 text-center text-sm">

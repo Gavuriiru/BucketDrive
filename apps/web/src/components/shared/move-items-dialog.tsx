@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 import * as Dialog from "@radix-ui/react-dialog"
 import { useEffect, useMemo, useState } from "react"
 import {
@@ -12,6 +13,7 @@ import {
 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import type { Folder as FolderType } from "@bucketdrive/shared"
+import { useI18n } from "@/lib/i18n"
 
 interface MoveItemsDialogProps {
   open: boolean
@@ -56,9 +58,10 @@ export function MoveItemsDialog({
   onCreateFolder,
   onOpenChange,
 }: MoveItemsDialogProps) {
+  const { t } = useI18n()
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialFolderId)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId)
-  const [breadcrumbs, setBreadcrumbs] = useState<FolderCrumb[]>([{ id: null, name: "Root" }])
+  const [breadcrumbs, setBreadcrumbs] = useState<FolderCrumb[]>([{ id: null, name: t("moveItems.root") }])
   const [newFolderName, setNewFolderName] = useState("")
   const foldersQuery = useQuery<ListFoldersResponse>({
     queryKey: ["folders", workspaceId, currentFolderId],
@@ -71,7 +74,7 @@ export function MoveItemsDialog({
       })
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { message?: string } | null
-        throw new Error(body?.message ?? "Failed to load folders")
+        throw new Error(body?.message ?? t("moveItems.loadFoldersFailed"))
       }
       return (await response.json()) as ListFoldersResponse
     },
@@ -87,17 +90,17 @@ export function MoveItemsDialog({
     if (!open) return
     setCurrentFolderId(initialFolderId)
     setSelectedFolderId(initialFolderId)
-    setBreadcrumbs([{ id: null, name: "Root" }])
+    setBreadcrumbs([{ id: null, name: t("moveItems.root") }])
     setNewFolderName("")
   }, [initialFolderId, open])
 
-  const currentCrumb = breadcrumbs[breadcrumbs.length - 1] ?? { id: null, name: "Root" }
+  const currentCrumb = breadcrumbs[breadcrumbs.length - 1] ?? { id: null, name: t("moveItems.root") }
   const selectedLabel =
     selectedFolderId === null
-      ? "Root"
+      ? t("moveItems.root")
       : (breadcrumbs.find((crumb) => crumb.id === selectedFolderId)?.name ??
         visibleFolders.find((folder) => folder.id === selectedFolderId)?.name ??
-        "Selected folder")
+        t("moveItems.selectedFolderFallback"))
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (isBusy && !nextOpen) return
@@ -106,7 +109,7 @@ export function MoveItemsDialog({
 
   const navigateToCrumb = (index: number) => {
     const nextCrumbs = breadcrumbs.slice(0, index + 1)
-    const target = nextCrumbs[nextCrumbs.length - 1] ?? { id: null, name: "Root" }
+    const target = nextCrumbs[nextCrumbs.length - 1] ?? { id: null, name: t("moveItems.root") }
     setBreadcrumbs(nextCrumbs)
     setCurrentFolderId(target.id)
     setSelectedFolderId(target.id)
@@ -153,7 +156,7 @@ export function MoveItemsDialog({
               )}
             </div>
             <Dialog.Close
-              aria-label="Close move dialog"
+              aria-label={t("moveItems.closeDialogAria")}
               disabled={isBusy}
               className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -192,7 +195,7 @@ export function MoveItemsDialog({
                   className="border-accent/40 bg-accent/10 text-accent hover:bg-accent/15 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Check className="h-4 w-4" />
-                  Select {currentCrumb.name}
+                  {t("moveItems.selectCurrent", { name: currentCrumb.name })}
                 </button>
                 <button
                   type="button"
@@ -201,10 +204,12 @@ export function MoveItemsDialog({
                   className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChevronLeft className="mr-1 inline h-4 w-4" />
-                  Up
+                  {t("moveItems.goUp")}
                 </button>
               </div>
-              <p className="text-text-tertiary mt-2 text-xs">Destination: {selectedLabel}</p>
+              <p className="text-text-tertiary mt-2 text-xs">
+                {t("moveItems.destinationLabel", { name: selectedLabel })}
+              </p>
             </div>
 
             <div className="border-border-default overflow-hidden rounded-xl border">
@@ -217,7 +222,7 @@ export function MoveItemsDialog({
               ) : visibleFolders.length === 0 ? (
                 <div className="p-8 text-center">
                   <FolderOpen className="text-text-tertiary mx-auto h-8 w-8" />
-                  <p className="text-text-secondary mt-2 text-sm">No folders here</p>
+                  <p className="text-text-secondary mt-2 text-sm">{t("moveItems.noFolders")}</p>
                 </div>
               ) : (
                 <div className="divide-border-muted divide-y">
@@ -249,7 +254,7 @@ export function MoveItemsDialog({
                         disabled={isBusy}
                         className="border-border-muted text-text-secondary hover:bg-surface-default rounded-lg border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Open
+                        {t("moveItems.open")}
                       </button>
                     </div>
                   ))}
@@ -264,7 +269,7 @@ export function MoveItemsDialog({
                   onChange={(event) => {
                     setNewFolderName(event.target.value)
                   }}
-                  placeholder={`New folder in ${currentCrumb.name}`}
+                  placeholder={t("moveItems.newFolderPlaceholder", { name: currentCrumb.name })}
                   disabled={isBusy}
                   className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-60"
                 />
@@ -275,7 +280,7 @@ export function MoveItemsDialog({
                   className="border-border-muted bg-surface-default text-text-primary hover:bg-surface-hover inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <FolderPlus className="h-4 w-4" />
-                  {createLoading ? "Creating..." : "New folder"}
+                  {createLoading ? t("moveItems.creating") : t("moveItems.newFolder")}
                 </button>
               </div>
               {createError && <p className="text-error mt-2 text-sm">{createError}</p>}
@@ -289,7 +294,7 @@ export function MoveItemsDialog({
               disabled={isBusy}
               className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Cancel
+              {t("moveItems.cancel")}
             </Dialog.Close>
             <button
               type="button"
@@ -299,7 +304,7 @@ export function MoveItemsDialog({
               disabled={isBusy || foldersQuery.isLoading}
               className="bg-accent hover:bg-accent/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Moving..." : "Move here"}
+              {loading ? t("moveItems.moving") : t("moveItems.moveHere")}
             </button>
           </div>
         </Dialog.Content>

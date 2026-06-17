@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 import { useCallback, useState, type DragEvent } from "react"
 import { Upload } from "lucide-react"
+import { useI18n } from "@/lib/i18n"
 
 interface UploadDropZoneProps {
   onFilesDrop: (
@@ -56,6 +58,7 @@ export function UploadDropZone({
   className = "",
   disabled = false,
 }: UploadDropZoneProps) {
+  const { t } = useI18n()
   const [isDragging, setIsDragging] = useState(false)
 
   const handleDragOver = useCallback(
@@ -123,7 +126,7 @@ export function UploadDropZone({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      aria-label="Upload files"
+      aria-label={t("uploadDropZone.ariaLabel")}
       disabled={disabled}
       className={`focus-visible:ring-accent focus-visible:ring-offset-surface-default group relative block w-full rounded-lg border-2 border-dashed text-left transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-70 ${onClickUpload && !disabled ? "hover:bg-accent/5 cursor-pointer" : "cursor-default"} ${isDragging ? "border-accent bg-accent/10 scale-[1.02]" : "border-border-default hover:border-accent"} ${className}`}
     >
@@ -136,17 +139,17 @@ export function UploadDropZone({
         <div className="text-center">
           <p className="text-text-primary text-sm font-medium">
             {isDragging
-              ? "Drop files to upload"
+              ? t("uploadDropZone.dropFiles")
               : disabled
-                ? "Uploads are not available for your role"
+                ? t("uploadDropZone.uploadsNotAvailable")
                 : onClickUpload
-                  ? "Click or drag files or folders here to upload"
-                  : "Drag files or folders here to upload"}
+                  ? t("uploadDropZone.clickOrDrag")
+                  : t("uploadDropZone.dragFiles")}
           </p>
           <p className="text-text-tertiary mt-1 text-xs">
             {disabled
-              ? "You can still browse and preview files in this bucket"
-              : "Uses the current folder selected in the explorer"}
+              ? t("uploadDropZone.browsePreviewHint")
+              : t("uploadDropZone.currentFolderHint")}
           </p>
         </div>
       </div>

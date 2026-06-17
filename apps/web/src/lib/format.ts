@@ -1,40 +1,51 @@
-export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B"
+export function formatBytes(bytes: number, locale = "en-US"): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return `0 B`
 
   const units = ["B", "KB", "MB", "GB", "TB"] as const
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
   const value = bytes / 1024 ** index
+  const formatted = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: index === 0 ? 0 : 1,
+  }).format(value)
 
-  return `${value.toFixed(index === 0 ? 0 : 1)} ${String(units[index])}`
+  return `${formatted} ${String(units[index])}`
 }
 
-export function formatRelativeDate(value: string): string {
+export function formatRelativeDate(
+  value: string,
+  labels: { today: string; yesterday: string; daysAgo: (days: number) => string; unknown: string },
+): string {
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Unknown"
+  if (Number.isNaN(date.getTime())) return labels.unknown
 
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
   if (days < 0) return date.toLocaleDateString()
-  if (days === 0) return "Today"
-  if (days === 1) return "Yesterday"
-  if (days < 7) return `${String(days)} days ago`
+  if (days === 0) return labels.today
+  if (days === 1) return labels.yesterday
+  if (days < 7) return labels.daysAgo(days)
 
   return date.toLocaleDateString()
 }
 
-export function formatShortDate(value: string): string {
+export function formatShortDate(
+  value: string,
+  options: { locale: string; unknown: string },
+): string {
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Unknown"
+  if (Number.isNaN(date.getTime())) return options.unknown
 
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  return date.toLocaleDateString(options.locale, { month: "short", day: "numeric" })
 }
 
-export function formatPercent(value: number, total: number): string {
-  if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return "0%"
+export function formatPercent(value: number, total: number, locale = "en-US"): string {
+  if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
+    return new Intl.NumberFormat(locale, { style: "percent" }).format(0)
+  }
 
-  return `${String(Math.round((value / total) * 100))}%`
+  return new Intl.NumberFormat(locale, { style: "percent" }).format(value / total)
 }
 
 export function getFileIcon(mimeType: string): string {

@@ -6,7 +6,8 @@ import { useRouter } from "@tanstack/react-router"
 import { useCommandPaletteStore } from "@/stores/command-palette-store"
 import { useExplorerStore } from "@/stores/explorer-store"
 import { useWorkspaces, useSearchFiles } from "@/lib/api"
-import { getAllCommands, type Command as PaletteCommand } from "@/components/shared/commands"
+import { useI18n } from "@/lib/i18n"
+import { useAllCommands, type Command as PaletteCommand } from "@/components/shared/commands"
 
 function FileSearchFallback({
   query,
@@ -17,6 +18,7 @@ function FileSearchFallback({
   workspaceId: string | null
   onSelect: (fileId: string, folderId: string | null) => void
 }) {
+  const { t } = useI18n()
   const { data, isLoading } = useSearchFiles(workspaceId, {
     q: query,
     limit: 3,
@@ -27,7 +29,7 @@ function FileSearchFallback({
     return (
       <div className="text-text-secondary flex items-center gap-2 px-4 py-3">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Searching files...</span>
+        <span className="text-sm">{t("commandPalette.searchingFiles")}</span>
       </div>
     )
   }
@@ -37,13 +39,13 @@ function FileSearchFallback({
   if (files.length === 0) {
     return (
       <div className="text-text-secondary px-4 py-3 text-sm">
-        No files found for &ldquo;{query}&rdquo;
+        {t("commandPalette.noFilesFound", { query })}
       </div>
     )
   }
 
   return (
-    <Command.Group heading="File Search Results">
+    <Command.Group heading={t("commandPalette.fileSearchResultsHeading")}>
       {files.map((file) => (
         <Command.Item
           key={`file-result-${file.id}`}
@@ -65,18 +67,21 @@ export function CommandPalette() {
   const { isOpen, close, query, setQuery } = useCommandPaletteStore()
   const [commands, setCommands] = useState<PaletteCommand[]>([])
   const router = useRouter()
+  const { t } = useI18n()
   const { data: workspacesData } = useWorkspaces()
 
   const workspace = workspacesData?.data[0]
   const workspaceId = workspace?.id ?? null
   const userRole = workspace?.role
 
+  const allCommands = useAllCommands((opts) => void router.navigate(opts), userRole)
+
   // Refresh commands when palette opens to evaluate conditions
   useEffect(() => {
     if (isOpen) {
-      setCommands(getAllCommands((opts) => void router.navigate(opts), userRole))
+      setCommands(allCommands)
     }
-  }, [isOpen, userRole, router])
+  }, [isOpen, allCommands])
 
   // Reset query when closing
   useEffect(() => {
@@ -118,7 +123,7 @@ export function CommandPalette() {
       onOpenChange={(open) => {
         if (!open) close()
       }}
-      label="Command palette"
+      label={t("commandPalette.ariaLabel")}
       className="fixed inset-0 z-50"
     >
       <div
@@ -136,7 +141,7 @@ export function CommandPalette() {
             <Command.Input
               value={query}
               onValueChange={setQuery}
-              placeholder="Type a command or search files..."
+              placeholder={t("commandPalette.placeholder")}
               className="text-text-primary placeholder:text-text-tertiary flex-1 bg-transparent text-sm outline-none"
             />
             <kbd className="border-border-default bg-bg-tertiary text-text-tertiary rounded-md border px-1.5 py-0.5 text-xs">
@@ -146,12 +151,14 @@ export function CommandPalette() {
 
           <Command.List className="max-h-[400px] overflow-y-auto py-2">
             {!hasAnyCommands && query.length === 0 && (
-              <div className="text-text-secondary px-4 py-3 text-sm">No commands available</div>
+              <div className="text-text-secondary px-4 py-3 text-sm">
+                {t("commandPalette.noCommandsAvailable")}
+              </div>
             )}
 
             {navigationCommands.length > 0 && (
               <Command.Group
-                heading="Navigation"
+                heading={t("commandPalette.navigationHeading")}
                 className="text-text-tertiary px-2 text-xs font-medium"
               >
                 {navigationCommands.map((command) => (
@@ -177,7 +184,7 @@ export function CommandPalette() {
 
             {fileCommands.length > 0 && (
               <Command.Group
-                heading="File Operations"
+                heading={t("commandPalette.fileOperationsHeading")}
                 className="text-text-tertiary px-2 text-xs font-medium"
               >
                 {fileCommands.map((command) => (
@@ -203,7 +210,7 @@ export function CommandPalette() {
 
             {appearanceCommands.length > 0 && (
               <Command.Group
-                heading="Appearance"
+                heading={t("commandPalette.appearanceHeading")}
                 className="text-text-tertiary px-2 text-xs font-medium"
               >
                 {appearanceCommands.map((command) => (
@@ -238,7 +245,7 @@ export function CommandPalette() {
               )}
               {query.length > 0 && !workspaceId && (
                 <div className="text-text-secondary px-4 py-3 text-sm">
-                  No commands matched &ldquo;{query}&rdquo;
+                  {t("commandPalette.noCommandsMatched", { query })}
                 </div>
               )}
             </Command.Empty>
@@ -249,16 +256,16 @@ export function CommandPalette() {
               <span className="flex items-center gap-1">
                 <kbd className="border-border-default bg-bg-tertiary rounded border px-1">↑</kbd>
                 <kbd className="border-border-default bg-bg-tertiary rounded border px-1">↓</kbd>
-                <span>to navigate</span>
+                <span>{t("commandPalette.toNavigate")}</span>
               </span>
               <span className="flex items-center gap-1">
                 <kbd className="border-border-default bg-bg-tertiary rounded border px-1">↵</kbd>
-                <span>to select</span>
+                <span>{t("commandPalette.toSelect")}</span>
               </span>
             </div>
             <span className="flex items-center gap-1">
               <kbd className="border-border-default bg-bg-tertiary rounded border px-1">ESC</kbd>
-              <span>to close</span>
+              <span>{t("commandPalette.toClose")}</span>
             </span>
           </div>
         </Command>

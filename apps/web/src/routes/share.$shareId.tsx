@@ -25,10 +25,12 @@ import {
 } from "@/lib/api"
 import { ApiRequestError } from "@/lib/api"
 import { DEFAULT_BRAND_NAME } from "@/lib/branding"
+import { useI18n } from "@/lib/i18n"
 
 type SharedFile = ShareBrowseResult["files"][number]
 
 export function ShareAccessPage() {
+  const { t } = useI18n()
   const params = useParams({ from: "/share/$shareId" })
   const shareId = params.shareId
 
@@ -68,7 +70,7 @@ export function ShareAccessPage() {
         if (err instanceof ApiRequestError) {
           setAccessError(err.message)
         } else {
-          setAccessError("An unexpected error occurred")
+          setAccessError(t("share.error.unexpected"))
         }
       }
     },
@@ -108,7 +110,7 @@ export function ShareAccessPage() {
         if (err instanceof ApiRequestError) {
           setAccessError(err.message)
         } else {
-          setAccessError("Download failed")
+          setAccessError(t("share.error.downloadFailed"))
         }
       } finally {
         setDownloadingFileId(null)
@@ -140,7 +142,7 @@ export function ShareAccessPage() {
   if (!info) {
     return (
       <div className="bg-bg-primary flex min-h-screen items-center justify-center">
-        <p className="text-text-tertiary text-sm">Share not found</p>
+        <p className="text-text-tertiary text-sm">{t("share.error.notFound")}</p>
       </div>
     )
   }
@@ -149,8 +151,8 @@ export function ShareAccessPage() {
     return (
       <ShareErrorFrame
         icon={<LockKeyhole className="text-error h-8 w-8" />}
-        title="Share revoked"
-        message="This share link has been revoked and is no longer available."
+        title={t("share.error.revoked.title")}
+        message={t("share.error.revoked.description")}
       />
     )
   }
@@ -159,8 +161,8 @@ export function ShareAccessPage() {
     return (
       <ShareErrorFrame
         icon={<LockKeyhole className="text-error h-8 w-8" />}
-        title="Share expired"
-        message="This share link has expired."
+        title={t("share.error.expired.title")}
+        message={t("share.error.expired.description")}
       />
     )
   }
@@ -268,7 +270,7 @@ export function ShareAccessPage() {
 
   return (
     <div className="bg-bg-primary flex min-h-screen items-center justify-center">
-      <p className="text-text-tertiary text-sm">Loading share...</p>
+      <p className="text-text-tertiary text-sm">{t("share.access.loading")}</p>
     </div>
   )
 }
@@ -294,13 +296,14 @@ function ShareErrorFrame({
 }
 
 function ShareErrorState({ error }: { error: unknown }) {
+  const { t } = useI18n()
   if (error instanceof ApiRequestError) {
     if (error.code === "SHARE_REVOKED") {
       return (
         <ShareErrorFrame
           icon={<LockKeyhole className="text-error h-8 w-8" />}
-          title="Share revoked"
-          message="This share link has been revoked."
+          title={t("share.error.revoked.title")}
+          message={t("share.error.revoked.descriptionShort")}
         />
       )
     }
@@ -308,8 +311,8 @@ function ShareErrorState({ error }: { error: unknown }) {
       return (
         <ShareErrorFrame
           icon={<LockKeyhole className="text-error h-8 w-8" />}
-          title="Share expired"
-          message="This share link has expired."
+          title={t("share.error.expired.title")}
+          message={t("share.error.expired.description")}
         />
       )
     }
@@ -317,7 +320,7 @@ function ShareErrorState({ error }: { error: unknown }) {
       return (
         <ShareErrorFrame
           icon={<Lock className="text-warning h-8 w-8" />}
-          title="Share locked"
+          title={t("share.error.locked.title")}
           message={error.message}
         />
       )
@@ -325,7 +328,7 @@ function ShareErrorState({ error }: { error: unknown }) {
     return (
       <ShareErrorFrame
         icon={<AlertTriangle className="text-error h-8 w-8" />}
-        title="Not found"
+        title={t("share.error.notFound.title")}
         message={error.message}
       />
     )
@@ -333,8 +336,8 @@ function ShareErrorState({ error }: { error: unknown }) {
   return (
     <ShareErrorFrame
       icon={<AlertTriangle className="text-error h-8 w-8" />}
-      title="Not found"
-      message="This share link could not be found."
+      title={t("share.error.notFound.title")}
+      message={t("share.error.notFound.description")}
     />
   )
 }
@@ -360,6 +363,7 @@ function SharePasswordForm({
   noPassword?: boolean
   info?: ShareInfoData
 }) {
+  const { t } = useI18n()
   return (
     <main className="bg-bg-primary flex min-h-screen flex-col items-center justify-center gap-6 p-6">
       <div className="bg-surface-hover flex h-16 w-16 items-center justify-center rounded-2xl">
@@ -375,14 +379,14 @@ function SharePasswordForm({
       {noPassword ? (
         <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
           <p className="text-text-tertiary text-center text-sm">
-            This {resourceType} is shared via a direct link.
+            {t("share.access.directLinkDescription", { resourceType })}
           </p>
           <button
             type="submit"
             disabled={isLoading}
             className="bg-accent w-full rounded-xl px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
           >
-            {isLoading ? "Loading..." : "Access shared content"}
+            {isLoading ? t("share.access.loading") : t("share.access.button")}
           </button>
           {error && (
             <p className="bg-error/10 border-error/20 text-error rounded-lg border p-3 text-sm">
@@ -394,7 +398,7 @@ function SharePasswordForm({
         <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
           <div className="space-y-2">
             <label htmlFor="password" className="text-text-secondary text-xs font-medium">
-              Password required
+              {t("share.password.label")}
             </label>
             <div className="relative">
               <Lock className="text-text-tertiary absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
@@ -404,7 +408,7 @@ function SharePasswordForm({
                 type="password"
                 value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}
-                placeholder="Enter share password"
+                placeholder={t("share.password.placeholder")}
                 autoFocus
                 className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent w-full rounded-lg border py-2.5 pr-4 pl-10 text-sm focus:ring-1 focus:outline-none"
               />
@@ -416,7 +420,7 @@ function SharePasswordForm({
             disabled={isLoading || password.length < 4}
             className="bg-accent w-full rounded-xl px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
           >
-            {isLoading ? "Verifying..." : "Access share"}
+            {isLoading ? t("share.password.verifying") : t("share.password.button")}
           </button>
           {error && (
             <p className="bg-error/10 border-error/20 text-error rounded-lg border p-3 text-sm">
@@ -440,6 +444,7 @@ function ShareExternalDirect({
   shareId: string
   info: ShareInfoData
 }) {
+  const { t } = useI18n()
   return (
     <main className="bg-bg-primary flex min-h-screen flex-col items-center justify-center gap-6 p-6">
       <div className="bg-success/10 flex h-16 w-16 items-center justify-center rounded-2xl">
@@ -448,7 +453,7 @@ function ShareExternalDirect({
       <div className="text-center">
         <h1 className="text-text-primary text-xl font-semibold">{resourceName}</h1>
         <p className="text-text-secondary mt-2 text-sm">
-          This file has been shared with you via{" "}
+          {t("share.direct.sharedVia")}{" "}
           <span className="text-text-primary font-medium">
             {info.brandingName || DEFAULT_BRAND_NAME}
           </span>
@@ -463,11 +468,11 @@ function ShareExternalDirect({
         className="bg-accent inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-white transition-colors hover:opacity-90"
       >
         <Download className="h-4 w-4" />
-        Download file
+        {t("share.direct.downloadButton")}
       </a>
       {info.expiresAt && (
         <p className="text-text-tertiary text-xs">
-          Link expires: {new Date(info.expiresAt).toLocaleString()}
+          {t("share.direct.expiresLabel")} {new Date(info.expiresAt).toLocaleString()}
         </p>
       )}
       <div className="bg-surface-hover flex h-8 items-center gap-1 rounded-full px-3">
@@ -501,6 +506,7 @@ function ShareExternalExplorer({
   isDownloading: boolean
   error: string | null
 }) {
+  const { t } = useI18n()
   const isAtRoot = browseData.breadcrumbs.length <= 1
 
   return (
@@ -513,7 +519,7 @@ function ShareExternalExplorer({
             </div>
             <div>
               <h1 className="text-text-primary text-sm font-semibold">{info.resourceName}</h1>
-              <p className="text-text-tertiary text-xs">Shared folder</p>
+              <p className="text-text-tertiary text-xs">{t("share.explorer.sharedFolder")}</p>
             </div>
           </div>
           {info.brandingName && (
@@ -562,7 +568,7 @@ function ShareExternalExplorer({
         {isFetching && (
           <div className="mb-3 flex items-center gap-2">
             <div className="border-accent h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
-            <span className="text-text-tertiary text-xs">Loading folder...</span>
+            <span className="text-text-tertiary text-xs">{t("share.explorer.loadingFolder")}</span>
           </div>
         )}
 
@@ -571,10 +577,10 @@ function ShareExternalExplorer({
             <thead>
               <tr className="border-border-muted bg-surface-default border-b">
                 <th className="text-text-tertiary px-4 py-2.5 text-left text-xs font-medium">
-                  Name
+                  {t("share.explorer.column.name")}
                 </th>
                 <th className="text-text-tertiary hidden px-4 py-2.5 text-left text-xs font-medium sm:table-cell">
-                  Type
+                  {t("share.explorer.column.type")}
                 </th>
               </tr>
             </thead>
@@ -582,7 +588,7 @@ function ShareExternalExplorer({
               {!isFetching && browseData.folders.length === 0 && browseData.files.length === 0 && (
                 <tr>
                   <td colSpan={2} className="text-text-tertiary px-4 py-8 text-center text-sm">
-                    This folder is empty
+                    {t("share.explorer.emptyFolder")}
                   </td>
                 </tr>
               )}
@@ -600,7 +606,7 @@ function ShareExternalExplorer({
                   </td>
                   <td className="hidden px-4 py-2.5 sm:table-cell">
                     <span className="bg-surface-hover text-text-secondary rounded-full px-2 py-0.5 text-xs capitalize">
-                      Folder
+                      {t("share.explorer.type.folder")}
                     </span>
                   </td>
                 </tr>
@@ -632,7 +638,7 @@ function ShareExternalExplorer({
                         }}
                         disabled={isDownloading && downloadingFileId === file.id}
                         className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary inline-flex rounded-md p-1.5 transition-colors disabled:opacity-50 sm:hidden"
-                        aria-label={`Download ${String(file.name)}`}
+                        aria-label={t("share.explorer.downloadAriaLabel", { name: file.name })}
                       >
                         <Download className="h-4 w-4" />
                       </button>
@@ -641,7 +647,7 @@ function ShareExternalExplorer({
                   <td className="hidden px-4 py-2.5 sm:table-cell">
                     <div className="flex items-center justify-between gap-3">
                       <span className="bg-surface-hover text-text-secondary rounded-full px-2 py-0.5 text-xs">
-                        {file.mimeType.split("/")[0] ?? "File"}
+                        {file.mimeType.split("/")[0] ?? t("share.explorer.type.file")}
                       </span>
                       <button
                         type="button"
@@ -651,7 +657,7 @@ function ShareExternalExplorer({
                         }}
                         disabled={isDownloading && downloadingFileId === file.id}
                         className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary inline-flex rounded-md p-1.5 transition-colors disabled:opacity-50"
-                        aria-label={`Download ${String(file.name)}`}
+                        aria-label={t("share.explorer.downloadAriaLabel", { name: file.name })}
                       >
                         <Download className="h-4 w-4" />
                       </button>
@@ -687,6 +693,7 @@ function getPreviewType(
 }
 
 function ShareTextPreview({ url, mimeType }: { url: string; mimeType: string }) {
+  const { t } = useI18n()
   const [content, setContent] = useState<string | null>(null)
   const [error, setError] = useState(false)
 
@@ -710,7 +717,7 @@ function ShareTextPreview({ url, mimeType }: { url: string; mimeType: string }) 
   if (error) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-error text-sm">Failed to load text content</p>
+        <p className="text-error text-sm">{t("preview.error.textLoadFailed")}</p>
       </div>
     )
   }
@@ -782,6 +789,7 @@ function SharePublicFilePreview({
   onClose: () => void
   onDownload: (fileId: string) => void
 }) {
+  const { t } = useI18n()
   const [previewData, setPreviewData] = useState<ShareFilePreviewResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const previewType = getPreviewType(file.mimeType)
@@ -796,7 +804,7 @@ function SharePublicFilePreview({
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load preview")
+          setError(err instanceof Error ? err.message : t("preview.error.loadFailed"))
         }
       })
     return () => {
@@ -861,7 +869,7 @@ function SharePublicFilePreview({
       )
     }
     if (previewType === "pdf") {
-      return <iframe src={url} title="PDF Preview" className="h-full w-full border-0" />
+      return <iframe src={url} title={t("preview.pdf.title")} className="h-full w-full border-0" />
     }
     if (previewType === "text" || previewType === "markdown") {
       return <ShareTextPreview url={url} mimeType={file.mimeType} />
@@ -890,7 +898,7 @@ function SharePublicFilePreview({
             type="button"
             onClick={onClose}
             className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors"
-            aria-label="Close preview"
+            aria-label={t("preview.closeAriaLabel")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -904,7 +912,7 @@ function SharePublicFilePreview({
             type="button"
             onClick={() => onDownload(file.id)}
             className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors"
-            aria-label="Download file"
+            aria-label={t("preview.downloadAriaLabel")}
           >
             <Download className="h-4 w-4" />
           </button>

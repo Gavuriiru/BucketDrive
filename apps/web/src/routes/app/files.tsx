@@ -70,7 +70,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router"
 import { downloadZip } from "client-zip"
 import { DEFAULT_BRAND_NAME } from "@/lib/branding"
 import { getWorkspaceCapabilities, normalizeWorkspaceRole } from "@/lib/workspace-permissions"
-import { useI18n } from "@/lib/i18n"
+import { useI18n, type TranslationKey } from "@/lib/i18n"
 
 interface WindowWithFilePicker extends Window {
   showSaveFilePicker?: (options?: {
@@ -81,21 +81,25 @@ interface WindowWithFilePicker extends Window {
   }>
 }
 
-const typeFilterOptions = [
-  { value: "all", label: "All files" },
-  { value: "documents", label: "Documents" },
-  { value: "images", label: "Images" },
-  { value: "videos", label: "Videos" },
-  { value: "audio", label: "Audio" },
-  { value: "archives", label: "Archives" },
-] as const
+function useTypeFilterOptions(t: (key: TranslationKey, values?: Record<string, string | number>) => string) {
+  return [
+    { value: "all" as const, label: t("files.filter.all") },
+    { value: "documents" as const, label: t("files.filter.documents") },
+    { value: "images" as const, label: t("files.filter.images") },
+    { value: "videos" as const, label: t("files.filter.videos") },
+    { value: "audio" as const, label: t("files.filter.audio") },
+    { value: "archives" as const, label: t("files.filter.archives") },
+  ]
+}
 
-const defaultDashboardSortOptions: Array<{ value: SearchSort; label: string }> = [
-  { value: "name", label: "Name" },
-  { value: "created_at", label: "Date" },
-  { value: "size", label: "Size" },
-  { value: "type", label: "Type" },
-]
+function useDefaultDashboardSortOptions(t: (key: TranslationKey, values?: Record<string, string | number>) => string): Array<{ value: SearchSort; label: string }> {
+  return [
+    { value: "name", label: t("files.sort.name") },
+    { value: "created_at", label: t("files.sort.date") },
+    { value: "size", label: t("files.sort.size") },
+    { value: "type", label: t("files.sort.type") },
+  ]
+}
 
 interface DeleteSelectionConfirm {
   count: number
@@ -127,6 +131,8 @@ type BatchDownloadUrlFile = {
 
 export function FilesPage() {
   const { t } = useI18n()
+  const typeFilterOptions = useTypeFilterOptions(t)
+  const defaultDashboardSortOptions = useDefaultDashboardSortOptions(t)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -361,7 +367,7 @@ export function FilesPage() {
         })
         if (!res.ok) {
           const data = (await res.json().catch(() => null)) as { message?: string } | null
-          throw new Error(data?.message ?? "Download failed")
+          throw new Error(data?.message ?? t("files.error.downloadFailed"))
         }
         const data = (await res.json()) as { signedUrl?: string; fileName?: string }
         if (data.signedUrl) {
@@ -373,11 +379,11 @@ export function FilesPage() {
           link.click()
           link.remove()
         } else {
-          throw new Error("Download URL was not returned")
+          throw new Error(t("files.error.downloadUrlMissing"))
         }
       }
       fetchUrl().catch((error: unknown) => {
-        setDownloadError(error instanceof Error ? error.message : "Download failed")
+        setDownloadError(error instanceof Error ? error.message : t("files.error.downloadFailed"))
       })
     },
     [workspaceId],
@@ -522,13 +528,13 @@ export function FilesPage() {
         throw new Error(
           firstFailure
             ? `${firstFailure.message} (${firstFailure.code})`
-            : (data?.message ?? "Batch download failed"),
+            : (data?.message ?? t("files.error.batchFailed")),
         )
       }
 
       const data = (await res.json()) as { files?: BatchDownloadUrlFile[] }
       const files = data.files ?? []
-      if (files.length === 0) throw new Error("No downloadable files found")
+      if (files.length === 0) throw new Error(t("files.error.emptyZip"))
 
       setBatchDownloadStatus("zipping")
       const filename = `bucketdrive-selection-${new Date().toISOString().slice(0, 10)}.zip`
@@ -561,7 +567,7 @@ export function FilesPage() {
         setBatchDownloadStatus("downloading")
         const blob = await zipResponse.blob()
         if (blob.size === 0) {
-          throw new Error("Batch download returned an empty ZIP")
+          throw new Error(t("files.error.emptyZip"))
         }
 
         const url = URL.createObjectURL(blob)
@@ -577,10 +583,10 @@ export function FilesPage() {
       setBatchDownloadStatus("failed")
       setDownloadError(
         error instanceof DOMException && error.name === "AbortError"
-          ? "Batch download timed out"
+          ? t("files.error.batchTimeout")
           : error instanceof Error
             ? error.message
-            : "Batch download failed",
+            : t("files.error.batchFailed"),
       )
     } finally {
       window.clearTimeout(timeoutId)
@@ -908,7 +914,7 @@ export function FilesPage() {
           })
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to prepare folder upload"
+        const message = error instanceof Error ? error.message : t("files.error.folderUploadFailed")
         for (const item of uploadItems) {
           store.updateItem(item.id, {
             status: "failed",
@@ -977,7 +983,7 @@ export function FilesPage() {
   const totalFiles = isSearchActive ? (searchData?.meta.total ?? 0) : (filesData?.meta?.total ?? 0)
   const selectedTagNames = allTags.filter((tag) => dashboardSearch.selectedTagIds.includes(tag.id))
   const dashboardSortOptions: Array<{ value: SearchSort; label: string }> = debouncedQuery
-    ? [{ value: "relevance", label: "Relevance" }, ...defaultDashboardSortOptions]
+    ? [{ value: "relevance", label: t("files.sort.relevance") }, ...defaultDashboardSortOptions]
     : defaultDashboardSortOptions
   const fileForTagDialog = files.find((file) => file.id === tagDialogFileId) ?? null
   const selectedFilesForBatch = files.filter((file) => selectedFileIds.includes(file.id))
@@ -998,14 +1004,16 @@ export function FilesPage() {
     totalSelected > 0 &&
     (selectedFileIds.length === 0 || canShareFile) &&
     (selectedFolderIds.length === 0 || canShareFolder)
-  const emptyTitle = isSearchActive ? "No matching files" : "This folder is empty"
+  const emptyTitle = isSearchActive
+    ? t("files.empty.noMatchingFiles")
+    : t("files.empty.noMatchingFiles")
   const emptyDescription = isSearchActive
-    ? "Adjust the search, filters, favorites, or selected tags to broaden the results."
+    ? t("files.empty.adjustSearch")
     : canUpload
-      ? "Drop files here or use Upload to add content to this folder."
-      : "You can browse other folders, but your role cannot upload content here."
+      ? t("files.empty.dropFiles")
+      : t("files.empty.readOnlyUpload")
   const selectionContextActions = {
-    downloadLabel: isSingleFileSelection ? "Download" : "Download ZIP",
+    downloadLabel: isSingleFileSelection ? t("files.actions.download") : t("files.actions.downloadZip"),
     onCopy: handleCopySelected,
     onDownload: () => {
       void handleDownloadSelected()
@@ -1243,8 +1251,7 @@ export function FilesPage() {
 
         {isReadOnly && (
           <div className="border-border-default bg-surface-secondary text-text-secondary mb-4 rounded-lg border px-4 py-3 text-sm">
-            Your role is read-only in this bucket. You can browse, search, preview, copy, and
-            download files, but upload and management actions are unavailable.
+            {t("files.readOnlyNotice")}
           </div>
         )}
 
@@ -1254,17 +1261,17 @@ export function FilesPage() {
               <SegmentedControl
                 value={viewMode}
                 onChange={setViewMode}
-                ariaLabel="File view mode"
+                ariaLabel={t("files.viewMode.ariaLabel")}
                 options={[
                   {
                     value: "grid",
                     label: <LayoutGrid className="h-4 w-4" />,
-                    ariaLabel: "Grid view",
+                    ariaLabel: t("files.viewMode.grid"),
                   },
                   {
                     value: "list",
                     label: <List className="h-4 w-4" />,
-                    ariaLabel: "List view",
+                    ariaLabel: t("files.viewMode.list"),
                   },
                 ]}
               />
@@ -1296,7 +1303,7 @@ export function FilesPage() {
                   <Star
                     className={`h-3.5 w-3.5 ${dashboardSearch.favoriteOnly ? "fill-warning" : ""}`}
                   />
-                  Favorites
+                  {t("files.filter.favorites")}
                 </button>
 
                 {isSearchActive && (
@@ -1315,7 +1322,7 @@ export function FilesPage() {
                       }
                       className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
                     >
-                      {dashboardSearch.order === "asc" ? "Ascending" : "Descending"}
+                      {dashboardSearch.order === "asc" ? t("files.sort.ascending") : t("files.sort.descending")}
                     </button>
                     <button
                       type="button"
@@ -1323,7 +1330,7 @@ export function FilesPage() {
                       className="bg-surface-secondary text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
                     >
                       <X className="h-3.5 w-3.5" />
-                      Clear search
+                      {t("files.actions.clearSearch")}
                     </button>
                   </>
                 )}
@@ -1332,7 +1339,7 @@ export function FilesPage() {
               {allTags.length > 0 && (
                 <div className="col-span-full hidden min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto xl:flex [&::-webkit-scrollbar]:hidden">
                   <span className="text-text-tertiary shrink-0 text-xs font-medium tracking-wide uppercase">
-                    Tags
+                    {t("files.filter.tagsLabel")}
                   </span>
                   {allTags.map((tag) => {
                     const selected = dashboardSearch.selectedTagIds.includes(tag.id)
@@ -1366,12 +1373,12 @@ export function FilesPage() {
                 <div className="col-span-full hidden min-w-0 [scrollbar-width:none] gap-2 overflow-x-auto 2xl:flex [&::-webkit-scrollbar]:hidden">
                   {debouncedQuery && (
                     <span className="bg-accent/10 text-accent shrink-0 rounded-full px-3 py-1 text-xs font-medium">
-                      Query: {debouncedQuery}
+                      {t("files.search.queryLabel")} {debouncedQuery}
                     </span>
                   )}
                   {dashboardSearch.favoriteOnly && (
                     <span className="bg-warning/10 text-warning shrink-0 rounded-full px-3 py-1 text-xs font-medium">
-                      Favorites only
+                      {t("files.search.favoritesOnly")}
                     </span>
                   )}
 
@@ -1383,7 +1390,7 @@ export function FilesPage() {
                         getTagColorClasses(tag.color).chipClassName,
                       ].join(" ")}
                     >
-                      Tag: {tag.name}
+                      {t("files.search.tagLabel")} {tag.name}
                     </span>
                   ))}
                 </div>
@@ -1392,7 +1399,7 @@ export function FilesPage() {
           ) : (
             <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
               <span className="text-text-primary shrink-0 text-sm font-medium">
-                {totalSelected} item{totalSelected === 1 ? "" : "s"} selected
+                {t("files.selection.count", { count: totalSelected })}
               </span>
               <div className="hidden flex-1 sm:block" />
               <div className="flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto sm:flex-wrap sm:justify-end [&::-webkit-scrollbar]:hidden">
@@ -1403,7 +1410,7 @@ export function FilesPage() {
                     className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <FolderOpen className="h-3.5 w-3.5" />
-                    Open
+                    {t("files.actions.open")}
                   </button>
                 )}
                 {singleSelectedFileId && (
@@ -1413,7 +1420,7 @@ export function FilesPage() {
                     className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Eye className="h-3.5 w-3.5" />
-                    Preview
+                    {t("files.actions.preview")}
                   </button>
                 )}
                 {canRenameSelected && singleSelectedFileId && (
@@ -1423,7 +1430,7 @@ export function FilesPage() {
                     className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Pencil className="h-3.5 w-3.5" />
-                    Rename
+                    {t("files.actions.rename")}
                   </button>
                 )}
                 {canRenameSelected && singleSelectedFolderId && (
@@ -1433,7 +1440,7 @@ export function FilesPage() {
                     className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Pencil className="h-3.5 w-3.5" />
-                    Rename
+                    {t("files.actions.rename")}
                   </button>
                 )}
                 <button
@@ -1442,7 +1449,7 @@ export function FilesPage() {
                   className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  Copy selected
+                  {t("files.actions.copySelected")}
                 </button>
                 <button
                   type="button"
@@ -1454,16 +1461,16 @@ export function FilesPage() {
                 >
                   <Download className="h-3.5 w-3.5" />
                   {batchDownloadStatus === "preparing"
-                    ? "Preparing..."
+                    ? t("files.download.preparing")
                     : batchDownloadStatus === "downloading"
-                      ? "Downloading..."
+                      ? t("files.download.downloading")
                       : batchDownloadStatus === "zipping"
-                        ? "Zipping..."
+                        ? t("files.download.zipping")
                         : batchDownloadStatus === "failed"
-                          ? "Failed"
+                          ? t("files.download.failed")
                           : isSingleFileSelection
-                            ? "Download"
-                            : "Download ZIP"}
+                            ? t("files.actions.download")
+                            : t("files.actions.downloadZip")}
                 </button>
                 {canShareSelected && (
                   <button
@@ -1472,7 +1479,7 @@ export function FilesPage() {
                     className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Share2 className="h-3.5 w-3.5" />
-                    Share selected
+                    {t("files.actions.shareSelected")}
                   </button>
                 )}
                 {canFavorite && selectedFileIds.length > 0 && (
@@ -1482,7 +1489,7 @@ export function FilesPage() {
                     className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Star className="h-3.5 w-3.5" />
-                    Favorite files
+                    {t("files.actions.favoriteFiles")}
                   </button>
                 )}
                 {canTag && selectedFileIds.length > 0 && (
@@ -1492,7 +1499,7 @@ export function FilesPage() {
                     className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Tags className="h-3.5 w-3.5" />
-                    Tags
+                    {t("files.actions.tags")}
                   </button>
                 )}
                 {canMoveSelected && (
@@ -1502,7 +1509,7 @@ export function FilesPage() {
                     className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <ArrowRightLeft className="h-3.5 w-3.5" />
-                    Move selected
+                    {t("files.actions.moveSelected")}
                   </button>
                 )}
                 {canDeleteSelected && (
@@ -1512,7 +1519,7 @@ export function FilesPage() {
                     className="text-error hover:bg-error/10 inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete selected
+                    {t("files.actions.deleteSelected")}
                   </button>
                 )}
                 <button
@@ -1521,7 +1528,7 @@ export function FilesPage() {
                   className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
                 >
                   <X className="h-3.5 w-3.5" />
-                  Cancel
+                  {t("files.actions.cancel")}
                 </button>
               </div>
             </div>
@@ -1732,16 +1739,16 @@ export function FilesPage() {
 
       <ConfirmDialog
         open={deleteSelectionConfirm !== null}
-        title={deleteSelectionConfirm?.count === 1 ? "Delete this item?" : "Delete selected items?"}
+        title={deleteSelectionConfirm?.count === 1 ? t("files.dialog.delete.titleSingle") : t("files.dialog.delete.titleMultiple")}
         description={
           deleteSelectionConfirm
             ? deleteSelectionConfirm.count === 1
-              ? "This item will be moved to trash."
-              : `${String(deleteSelectionConfirm.count)} items will be moved to trash.`
+              ? t("files.dialog.delete.descriptionSingle")
+              : t("files.dialog.delete.descriptionMultiple", { count: deleteSelectionConfirm.count })
             : undefined
         }
-        confirmLabel="Move to trash"
-        loadingLabel="Moving..."
+        confirmLabel={t("files.dialog.delete.confirmLabel")}
+        loadingLabel={t("files.dialog.delete.loadingLabel")}
         loading={batchTrash.isPending}
         onConfirm={handleConfirmDeleteSelected}
         onOpenChange={(open) => {
@@ -1751,17 +1758,17 @@ export function FilesPage() {
 
       <TextInputDialog
         open={textAction !== null}
-        title={textAction?.type === "create-folder" ? "New folder" : "Rename item"}
+        title={textAction?.type === "create-folder" ? t("files.dialog.folder.title") : t("files.dialog.rename.title")}
         description={
           textAction?.type === "create-folder"
-            ? "Create a folder in the current location."
-            : "Enter a new name for this item."
+            ? t("files.dialog.folder.description")
+            : t("files.dialog.rename.description")
         }
-        label={textAction?.type === "create-folder" ? "Folder name" : "Name"}
+        label={textAction?.type === "create-folder" ? t("files.dialog.folder.label") : t("files.dialog.rename.label")}
         initialValue={textAction?.type === "rename" ? textAction.currentName : ""}
-        placeholder={textAction?.type === "create-folder" ? "Folder name" : undefined}
-        confirmLabel={textAction?.type === "create-folder" ? "Create folder" : "Rename"}
-        loadingLabel={textAction?.type === "create-folder" ? "Creating..." : "Renaming..."}
+        placeholder={textAction?.type === "create-folder" ? t("files.dialog.folder.placeholder") : undefined}
+        confirmLabel={textAction?.type === "create-folder" ? t("files.dialog.folder.confirmLabel") : t("files.dialog.rename.confirmLabel")}
+        loadingLabel={textAction?.type === "create-folder" ? t("files.dialog.folder.loadingLabel") : t("files.dialog.rename.loadingLabel")}
         loading={textAction?.type === "create-folder" && createFolderMutation.isPending}
         error={
           textAction?.type === "create-folder" && createFolderMutation.isError
@@ -1777,11 +1784,11 @@ export function FilesPage() {
       <MoveItemsDialog
         open={moveAction !== null}
         workspaceId={workspaceId}
-        title="Move items"
+        title={t("files.dialog.move.title")}
         description={
           moveAction?.type === "selected"
-            ? `Choose a destination for ${String(moveAction.count)} selected item${moveAction.count === 1 ? "" : "s"}.`
-            : "Choose a destination folder."
+            ? t("files.dialog.move.descriptionMultiple", { count: moveAction.count })
+            : t("files.dialog.move.descriptionSingle")
         }
         initialFolderId={currentFolderId}
         excludedFolderIds={

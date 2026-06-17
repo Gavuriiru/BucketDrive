@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog"
 import { Check, Copy, Globe, Lock, Share2, X } from "lucide-react"
 import { useState } from "react"
 import { useCreateShare } from "@/lib/api"
+import { useI18n } from "@/lib/i18n"
 import { StyledSelect } from "@/components/shared/styled-select"
 
 interface BatchShareItem {
@@ -18,20 +19,13 @@ interface BatchShareDialogProps {
   items: BatchShareItem[]
 }
 
-const expirationOptions = [
-  { value: "", label: "Never" },
-  { value: "1", label: "1 day" },
-  { value: "7", label: "7 days" },
-  { value: "30", label: "30 days" },
-  { value: "90", label: "90 days" },
-]
-
 export function BatchShareDialog({
   open,
   onOpenChange,
   workspaceId,
   items,
 }: BatchShareDialogProps) {
+  const { t } = useI18n()
   const createShare = useCreateShare(workspaceId)
   const [password, setPassword] = useState("")
   const [expiresIn, setExpiresIn] = useState("")
@@ -39,6 +33,14 @@ export function BatchShareDialog({
   const [failed, setFailed] = useState<Array<{ name: string; message: string }>>([])
   const [copied, setCopied] = useState(false)
   const [hasCreated, setHasCreated] = useState(false)
+
+  const expirationOptions = [
+    { value: "", label: t("batchShare.expirationNever") },
+    { value: "1", label: t("batchShare.expiration1Day") },
+    { value: "7", label: t("batchShare.expiration7Days") },
+    { value: "30", label: t("batchShare.expiration30Days") },
+    { value: "90", label: t("batchShare.expiration90Days") },
+  ]
 
   const reset = () => {
     setPassword("")
@@ -108,7 +110,7 @@ export function BatchShareDialog({
         <Dialog.Content className="border-border-default bg-surface-default fixed top-1/2 left-1/2 z-50 w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border p-6 shadow-xl">
           <div className="mb-5 flex items-center justify-between">
             <Dialog.Title className="text-text-primary text-lg font-semibold">
-              Share selected items
+              {t("batchShare.title")}
             </Dialog.Title>
             <Dialog.Close className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1 transition-colors">
               <X className="h-5 w-5" />
@@ -118,15 +120,14 @@ export function BatchShareDialog({
           {!hasCreated ? (
             <div className="space-y-5">
               <p className="text-text-secondary text-sm">
-                Create individual shares for {String(items.length)} selected item
-                {items.length === 1 ? "" : "s"}.
+                {t("batchShare.description", { count: String(items.length) })}
               </p>
 
               <div>
-                <p className="text-text-secondary mb-2 text-sm">Share type</p>
+                <p className="text-text-secondary mb-2 text-sm">{t("batchShare.shareTypeLabel")}</p>
                 <div className="border-accent bg-accent/10 text-accent flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium">
                   <Globe className="h-4 w-4" />
-                  External links
+                  {t("batchShare.externalLinks")}
                 </div>
               </div>
 
@@ -134,18 +135,18 @@ export function BatchShareDialog({
                 <label className="block">
                   <span className="text-text-secondary flex items-center gap-1.5 text-xs font-medium">
                     <Lock className="h-3 w-3" />
-                    Password protection
+                    {t("batchShare.passwordProtectionLabel")}
                   </span>
                   <input
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Optional: password (min 4 chars)"
+                    placeholder={t("batchShare.passwordPlaceholder")}
                     className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm outline-none"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-text-secondary text-xs font-medium">Expiration</span>
+                  <span className="text-text-secondary text-xs font-medium">{t("batchShare.expirationLabel")}</span>
                   <StyledSelect
                     value={expiresIn}
                     onValueChange={setExpiresIn}
@@ -157,7 +158,7 @@ export function BatchShareDialog({
 
               <div className="flex justify-end gap-3">
                 <Dialog.Close className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-4 py-2 text-sm font-medium transition-colors">
-                  Cancel
+                  {t("app.cancel")}
                 </Dialog.Close>
                 <button
                   type="button"
@@ -172,7 +173,7 @@ export function BatchShareDialog({
                   className="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
                 >
                   <Share2 className="h-4 w-4" />
-                  {createShare.isPending ? "Creating..." : "Create shares"}
+                  {createShare.isPending ? t("batchShare.creating") : t("batchShare.createShares")}
                 </button>
               </div>
             </div>
@@ -198,12 +199,12 @@ export function BatchShareDialog({
                     {copied ? (
                       <>
                         <Check className="text-success h-4 w-4" />
-                        Copied
+                        {t("app.copied")}
                       </>
                     ) : (
                       <>
                         <Copy className="text-text-tertiary h-4 w-4" />
-                        Copy all links
+                        {t("batchShare.copyAllLinks")}
                       </>
                     )}
                   </button>
@@ -212,13 +213,13 @@ export function BatchShareDialog({
 
               {failed.length > 0 && (
                 <div className="border-error/40 bg-error/10 text-error rounded-lg border p-3 text-sm">
-                  {String(failed.length)} item{failed.length === 1 ? "" : "s"} could not be shared.
+                  {t("batchShare.failedItems", { count: String(failed.length) })}
                 </div>
               )}
 
               <div className="flex justify-end">
                 <Dialog.Close className="bg-accent hover:bg-accent/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors">
-                  Done
+                  {t("batchShare.done")}
                 </Dialog.Close>
               </div>
             </div>

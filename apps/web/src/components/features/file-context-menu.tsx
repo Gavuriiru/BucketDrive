@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 import * as ContextMenu from "@radix-ui/react-context-menu"
 import {
   FolderOpen,
@@ -11,6 +12,7 @@ import {
   Tags,
   Eye,
 } from "lucide-react"
+import { useI18n } from "@/lib/i18n"
 
 interface FileContextMenuProps {
   itemId: string
@@ -45,12 +47,12 @@ export function FileContextMenu({
   itemType,
   scope = "item",
   children,
-  downloadLabel = "Download",
-  copyLabel = "Copy",
-  moveLabel = "Move",
-  shareLabel = "Share",
-  deleteLabel = "Delete",
-  tagsLabel = "Tags",
+  downloadLabel,
+  copyLabel,
+  moveLabel,
+  shareLabel,
+  deleteLabel,
+  tagsLabel,
   onOpen,
   onPreview,
   onDownload,
@@ -58,11 +60,19 @@ export function FileContextMenu({
   onDelete,
   onShare,
   onFavorite,
-  favoriteLabel = "Favorite",
+  favoriteLabel,
   onTags,
   onCopy,
   onMove,
 }: FileContextMenuProps) {
+  const { t } = useI18n()
+  const finalDownloadLabel = downloadLabel ?? t("contextMenu.download")
+  const finalCopyLabel = copyLabel ?? t("contextMenu.copy")
+  const finalMoveLabel = moveLabel ?? t("contextMenu.move")
+  const finalShareLabel = shareLabel ?? t("contextMenu.share")
+  const finalDeleteLabel = deleteLabel ?? t("contextMenu.delete")
+  const finalTagsLabel = tagsLabel ?? t("contextMenu.tags")
+  const finalFavoriteLabel = favoriteLabel ?? t("contextMenu.favorite")
   const supportsFileActions = itemType === "file" || scope === "selection"
 
   return (
@@ -81,7 +91,7 @@ export function FileContextMenu({
               }}
             >
               <FolderOpen className="text-text-tertiary h-4 w-4" />
-              Open
+              {t("contextMenu.open")}
               <span className="text-text-tertiary ml-auto text-xs">Enter</span>
             </ContextMenu.Item>
           )}
@@ -94,7 +104,7 @@ export function FileContextMenu({
               }}
             >
               <Eye className="text-text-tertiary h-4 w-4" />
-              Preview
+              {t("contextMenu.preview")}
               <span className="text-text-tertiary ml-auto text-xs">Space</span>
             </ContextMenu.Item>
           )}
@@ -107,7 +117,7 @@ export function FileContextMenu({
               }}
             >
               <Download className="text-text-tertiary h-4 w-4" />
-              {downloadLabel}
+              {finalDownloadLabel}
             </ContextMenu.Item>
           )}
 
@@ -124,7 +134,7 @@ export function FileContextMenu({
                 }}
               >
                 <Star className="text-text-tertiary h-4 w-4" />
-                {favoriteLabel}
+                {finalFavoriteLabel}
               </ContextMenu.Item>
               {onTags && (
                 <ContextMenu.Item
@@ -134,7 +144,7 @@ export function FileContextMenu({
                   }}
                 >
                   <Tags className="text-text-tertiary h-4 w-4" />
-                  {tagsLabel}
+                  {finalTagsLabel}
                 </ContextMenu.Item>
               )}
               <ContextMenu.Separator className={separatorClass} />
@@ -149,7 +159,7 @@ export function FileContextMenu({
               }}
             >
               <Pencil className="text-text-tertiary h-4 w-4" />
-              Rename
+              {t("contextMenu.rename")}
               <span className="text-text-tertiary ml-auto text-xs">F2</span>
             </ContextMenu.Item>
           )}
@@ -162,7 +172,7 @@ export function FileContextMenu({
               }}
             >
               <Copy className="text-text-tertiary h-4 w-4" />
-              {copyLabel}
+              {finalCopyLabel}
               <span className="text-text-tertiary ml-auto text-xs">Ctrl+C</span>
             </ContextMenu.Item>
           )}
@@ -175,7 +185,7 @@ export function FileContextMenu({
               }}
             >
               <ArrowRightLeft className="text-text-tertiary h-4 w-4" />
-              {moveLabel}
+              {finalMoveLabel}
             </ContextMenu.Item>
           )}
 
@@ -189,7 +199,7 @@ export function FileContextMenu({
               }}
             >
               <Share2 className="text-text-tertiary h-4 w-4" />
-              {shareLabel}
+              {finalShareLabel}
             </ContextMenu.Item>
           )}
 
@@ -203,7 +213,7 @@ export function FileContextMenu({
               }}
             >
               <Trash2 className="text-text-tertiary h-4 w-4" />
-              {deleteLabel}
+              {finalDeleteLabel}
               <span className="text-text-tertiary ml-auto text-xs">Del</span>
             </ContextMenu.Item>
           )}

@@ -8,6 +8,7 @@ import { FileThumbnail } from "./file-thumbnail"
 import { getTagColorClasses } from "@/lib/tag-colors"
 import { formatBytes, formatRelativeDate, getFileIcon } from "@/lib/format"
 import { useExplorerStore } from "@/stores/explorer-store"
+import { useI18n } from "@/lib/i18n"
 
 function renderTagPreview(file: FileObject) {
   const tags = file.tags ?? []
@@ -106,6 +107,7 @@ function FolderGridCard({
   selectionContextActions,
   dndEnabled,
 }: FolderGridCardProps) {
+  const { t } = useI18n()
   const dragId = `folder-${folder.id}`
   const droppable = useDroppable({
     id: dragId,
@@ -138,11 +140,11 @@ function FolderGridCard({
       itemType="folder"
       scope={useSelectionActions ? "selection" : "item"}
       downloadLabel={useSelectionActions ? selectionContextActions?.downloadLabel : undefined}
-      copyLabel={useSelectionActions ? "Copy selected" : undefined}
-      moveLabel={useSelectionActions ? "Move selected" : undefined}
-      shareLabel={useSelectionActions ? "Share selected" : undefined}
-      deleteLabel={useSelectionActions ? "Delete selected" : undefined}
-      favoriteLabel={useSelectionActions ? "Favorite files" : undefined}
+      copyLabel={useSelectionActions ? t("fileGrid.copySelected") : undefined}
+      moveLabel={useSelectionActions ? t("fileGrid.moveSelected") : undefined}
+      shareLabel={useSelectionActions ? t("fileGrid.shareSelected") : undefined}
+      deleteLabel={useSelectionActions ? t("fileGrid.deleteSelected") : undefined}
+      favoriteLabel={useSelectionActions ? t("fileGrid.favoriteFiles") : undefined}
       onOpen={useSelectionActions ? undefined : () => onFolderClick(folder.id)}
       onRename={
         !useSelectionActions && onContextRename
@@ -209,7 +211,7 @@ function FolderGridCard({
         {dndEnabled && (
           <button
             type="button"
-            aria-label="Drag folder"
+            aria-label={t("fileGrid.dragFolderAria")}
             className="text-text-tertiary hover:bg-surface-default hover:text-text-primary absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
             onClick={(e) => e.stopPropagation()}
             {...draggable.attributes}
@@ -224,7 +226,7 @@ function FolderGridCard({
         <span className="text-text-primary mb-0.5 line-clamp-2 w-full text-xs font-medium break-words">
           {folder.name}
         </span>
-        <span className="text-text-tertiary text-[10px]">Folder</span>
+        <span className="text-text-tertiary text-[10px]">{t("fileGrid.folderLabel")}</span>
       </div>
     </FileContextMenu>
   )
@@ -274,6 +276,13 @@ function FileGridCard({
   selectionContextActions,
   dndEnabled,
 }: FileGridCardProps) {
+  const { t, language } = useI18n()
+  const relativeLabels = {
+    today: t("format.relative.today"),
+    yesterday: t("format.relative.yesterday"),
+    daysAgo: (days: number) => t("format.relative.daysAgo", { days }),
+    unknown: t("format.unknownDate"),
+  }
   const dragId = `file-${file.id}`
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: dragId,
@@ -290,16 +299,16 @@ function FileGridCard({
       itemType="file"
       scope={useSelectionActions ? "selection" : "item"}
       downloadLabel={useSelectionActions ? selectionContextActions?.downloadLabel : undefined}
-      copyLabel={useSelectionActions ? "Copy selected" : undefined}
-      moveLabel={useSelectionActions ? "Move selected" : undefined}
-      shareLabel={useSelectionActions ? "Share selected" : undefined}
-      deleteLabel={useSelectionActions ? "Delete selected" : undefined}
+      copyLabel={useSelectionActions ? t("fileGrid.copySelected") : undefined}
+      moveLabel={useSelectionActions ? t("fileGrid.moveSelected") : undefined}
+      shareLabel={useSelectionActions ? t("fileGrid.shareSelected") : undefined}
+      deleteLabel={useSelectionActions ? t("fileGrid.deleteSelected") : undefined}
       favoriteLabel={
         useSelectionActions
-          ? "Favorite files"
+          ? t("fileGrid.favoriteFiles")
           : file.isFavorited
-            ? "Remove favorite"
-            : "Add favorite"
+            ? t("fileGrid.removeFavorite")
+            : t("fileGrid.addFavorite")
       }
       onPreview={
         !useSelectionActions && onContextPreview ? () => onContextPreview(file.id) : undefined
@@ -385,7 +394,7 @@ function FileGridCard({
         {dndEnabled && (
           <button
             type="button"
-            aria-label="Drag file"
+            aria-label={t("fileGrid.dragFileAria")}
             className="text-text-tertiary hover:bg-surface-default hover:text-text-primary absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
             onClick={(e) => e.stopPropagation()}
             {...attributes}
@@ -411,7 +420,7 @@ function FileGridCard({
           {file.isFavorited && <Star className="fill-warning text-warning h-3.5 w-3.5" />}
         </div>
         <span className="text-text-tertiary text-[10px]">
-          {formatBytes(file.sizeBytes)} &middot; {formatRelativeDate(file.updatedAt)}
+          {formatBytes(file.sizeBytes, language)} &middot; {formatRelativeDate(file.updatedAt, relativeLabels)}
         </span>
         {renderTagPreview(file)}
       </div>
@@ -465,14 +474,15 @@ export function FileGrid({
   onContextMove,
   onContextShare,
   selectionContextActions,
-  emptyTitle = "No files yet",
-  emptyDescription = "Drag files here to upload",
+  emptyTitle,
+  emptyDescription,
   onItemDrop,
   onSelectionPointerDown,
   onSelectionPointerMove,
   onSelectionPointerUp,
   onSelectionPointerCancel,
 }: FileGridProps) {
+  const { t } = useI18n()
   const selectedFileIds = useExplorerStore((s) => s.selectedFileIds)
   const selectedFolderIds = useExplorerStore((s) => s.selectedFolderIds)
   const focusedItemId = useExplorerStore((s) => s.focusedItemId)
@@ -508,8 +518,8 @@ export function FileGrid({
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-16">
         <Folder className="text-text-tertiary h-12 w-12" />
-        <p className="text-text-primary text-sm font-medium">{emptyTitle}</p>
-        <p className="text-text-tertiary text-sm">{emptyDescription}</p>
+        <p className="text-text-primary text-sm font-medium">{emptyTitle ?? t("fileGrid.emptyTitle")}</p>
+        <p className="text-text-tertiary text-sm">{emptyDescription ?? t("fileGrid.emptyDescription")}</p>
       </div>
     )
   }

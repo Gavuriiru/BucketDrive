@@ -18,7 +18,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const { workspace, workspaceId, role } = useCurrentWorkspace()
   const { data: me } = usePlatformMe()
   const { data: overview } = useDashboardOverview(workspaceId)
-  const { t } = useI18n()
+  const { t, language } = useI18n()
 
   const navItems = [
     { to: "/dashboard/files", icon: Files, label: t("nav.files"), visible: true },
@@ -91,8 +91,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             <>
               <div className="mt-1">
                 {t("plan.storageUsed", {
-                  used: formatBytes(overview.summary.usedStorageBytes),
-                  quota: formatBytes(overview.summary.quotaBytes),
+                  used: formatBytes(overview.summary.usedStorageBytes, language),
+                  quota: formatBytes(overview.summary.quotaBytes, language),
                 })}
               </div>
               <ProgressBar

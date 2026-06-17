@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog"
 import { X, Copy, Check, Share2, Globe, Lock, Download } from "lucide-react"
 import { useState, useCallback } from "react"
 import { useCreateShare, useDashboardSettings } from "@/lib/api"
+import { useI18n } from "@/lib/i18n"
 import { StyledSelect } from "@/components/shared/styled-select"
 
 type ExternalShareType = "external_direct" | "external_explorer"
@@ -17,25 +18,6 @@ interface ShareModalProps {
   resourceStorageKey?: string
 }
 
-const shareTypeLabels: Record<ExternalShareType, { label: string; description: string }> = {
-  external_direct: {
-    label: "External link",
-    description: "Anyone with the link can access",
-  },
-  external_explorer: {
-    label: "External folder",
-    description: "Browse folder contents via public link",
-  },
-}
-
-const expirationOptions = [
-  { value: "", label: "Never" },
-  { value: "1", label: "1 day" },
-  { value: "7", label: "7 days" },
-  { value: "30", label: "30 days" },
-  { value: "90", label: "90 days" },
-]
-
 export function ShareModal({
   open,
   onOpenChange,
@@ -45,6 +27,7 @@ export function ShareModal({
   resourceName,
   resourceStorageKey,
 }: ShareModalProps) {
+  const { t } = useI18n()
   const createShare = useCreateShare(workspaceId)
   const settingsQuery = useDashboardSettings(workspaceId || null)
   const [password, setPassword] = useState("")
@@ -54,6 +37,25 @@ export function ShareModal({
   const [createdShareType, setCreatedShareType] = useState<ExternalShareType | null>(null)
   const shareType: ExternalShareType =
     resourceType === "file" ? "external_direct" : "external_explorer"
+
+  const shareTypeLabels: Record<ExternalShareType, { label: string; description: string }> = {
+    external_direct: {
+      label: t("shareModal.externalLinkLabel"),
+      description: t("shareModal.externalLinkDescription"),
+    },
+    external_explorer: {
+      label: t("shareModal.externalFolderLabel"),
+      description: t("shareModal.externalFolderDescription"),
+    },
+  }
+
+  const expirationOptions = [
+    { value: "", label: t("shareModal.expirationNever") },
+    { value: "1", label: t("shareModal.expiration1Day") },
+    { value: "7", label: t("shareModal.expiration7Days") },
+    { value: "30", label: t("shareModal.expiration30Days") },
+    { value: "90", label: t("shareModal.expiration90Days") },
+  ]
 
   const getExpiresAt = (): string | undefined => {
     if (!expiresIn) return undefined
@@ -129,7 +131,7 @@ export function ShareModal({
         <Dialog.Content className="border-border-default bg-surface-default data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border p-6 shadow-xl">
           <div className="mb-5 flex items-center justify-between">
             <Dialog.Title className="text-text-primary text-lg font-semibold">
-              Share &ldquo;{resourceName}&rdquo;
+              {t("shareModal.title", { resourceName })}
             </Dialog.Title>
             <Dialog.Close className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1 transition-colors">
               <X className="h-5 w-5" />
@@ -139,7 +141,7 @@ export function ShareModal({
           {!createdShareId ? (
             <div className="space-y-5">
               <div>
-                <p className="text-text-secondary mb-2 text-sm">Share type</p>
+                <p className="text-text-secondary mb-2 text-sm">{t("shareModal.shareTypeLabel")}</p>
                 <div className="border-accent bg-accent/10 text-accent flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium">
                   <Globe className="h-4 w-4" />
                   {shareTypeLabels[shareType].label}
@@ -156,19 +158,19 @@ export function ShareModal({
                     className="text-text-secondary flex items-center gap-1.5 text-xs font-medium"
                   >
                     <Lock className="h-3 w-3" />
-                    Password protection
+                    {t("shareModal.passwordProtectionLabel")}
                   </label>
                   <input
                     id="share-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Optional: password (min 4 chars)"
+                    placeholder={t("shareModal.passwordPlaceholder")}
                     className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                   />
                   {password.length > 0 && password.length < 4 && (
                     <p className="text-error mt-1 text-xs">
-                      Password must be at least 4 characters
+                      {t("shareModal.passwordMinLengthError")}
                     </p>
                   )}
                 </div>
@@ -178,7 +180,7 @@ export function ShareModal({
                     htmlFor="share-expiration"
                     className="text-text-secondary text-xs font-medium"
                   >
-                    Expiration
+                    {t("shareModal.expirationLabel")}
                   </label>
                   <StyledSelect
                     id="share-expiration"
@@ -192,7 +194,7 @@ export function ShareModal({
 
               <div className="flex justify-end gap-3">
                 <Dialog.Close className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-4 py-2 text-sm font-medium transition-colors">
-                  Cancel
+                  {t("app.cancel")}
                 </Dialog.Close>
                 <button
                   onClick={handleCreate}
@@ -200,7 +202,7 @@ export function ShareModal({
                   className="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
                 >
                   <Share2 className="h-4 w-4" />
-                  {createShare.isPending ? "Creating..." : "Create share"}
+                  {createShare.isPending ? t("shareModal.creating") : t("shareModal.createShare")}
                 </button>
               </div>
 
@@ -208,16 +210,16 @@ export function ShareModal({
                 <p className="text-error text-sm">
                   {createShare.error instanceof Error
                     ? createShare.error.message
-                    : "Failed to create share"}
+                    : t("shareModal.failedToCreateShare")}
                 </p>
               )}
             </div>
           ) : (
             <div className="space-y-5">
               <div className="border-border-muted bg-surface-secondary rounded-lg border p-4">
-                <p className="text-text-secondary mb-1 text-xs font-medium">Share link created</p>
+                <p className="text-text-secondary mb-1 text-xs font-medium">{t("shareModal.shareLinkCreated")}</p>
                 <p className="text-text-primary text-sm">
-                  Anyone with the link can access this content.
+                  {t("shareModal.anyoneWithLink")}
                 </p>
               </div>
 
@@ -229,12 +231,12 @@ export function ShareModal({
                 {copiedLinkType === "share" ? (
                   <>
                     <Check className="text-success h-4 w-4" />
-                    Copied
+                    {t("app.copied")}
                   </>
                 ) : (
                   <>
                     <Copy className="text-text-tertiary h-4 w-4" />
-                    Copy share link
+                    {t("shareModal.copyShareLink")}
                   </>
                 )}
               </button>
@@ -252,12 +254,12 @@ export function ShareModal({
                       {copiedLinkType === "download" ? (
                         <>
                           <Check className="text-success h-4 w-4" />
-                          Copied
+                          {t("app.copied")}
                         </>
                       ) : (
                         <>
                           <Download className="text-text-tertiary h-4 w-4" />
-                          Copy direct download link
+                          {t("shareModal.copyDirectDownloadLink")}
                         </>
                       )}
                     </button>
@@ -274,12 +276,12 @@ export function ShareModal({
                       {copiedLinkType === "public" ? (
                         <>
                           <Check className="text-success h-4 w-4" />
-                          Copied
+                          {t("app.copied")}
                         </>
                       ) : (
                         <>
                           <Globe className="text-text-tertiary h-4 w-4" />
-                          Copy public R2 URL
+                          {t("shareModal.copyPublicR2Url")}
                         </>
                       )}
                     </button>
@@ -289,7 +291,7 @@ export function ShareModal({
 
               <div className="flex justify-end">
                 <Dialog.Close className="bg-accent hover:bg-accent/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors">
-                  Done
+                  {t("shareModal.done")}
                 </Dialog.Close>
               </div>
             </div>

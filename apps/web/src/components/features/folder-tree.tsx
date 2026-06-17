@@ -11,6 +11,7 @@ import {
 import { useExplorerStore } from "@/stores/explorer-store"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TextInputDialog } from "@/components/shared/text-input-dialog"
+import { useI18n } from "@/lib/i18n"
 import { useNavigate } from "@tanstack/react-router"
 import * as ContextMenu from "@radix-ui/react-context-menu"
 import { can, type Folder as FolderType, type WorkspaceRole } from "@bucketdrive/shared"
@@ -59,6 +60,7 @@ function TreeNode({
   canDeleteFolder,
 }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(false)
+  const { t } = useI18n()
   const { data: childrenData } = useFolders(workspaceId, expanded ? folder.id : undefined)
   const children = childrenData?.data ?? []
   const isActive = currentFolderId === folder.id
@@ -86,7 +88,7 @@ function TreeNode({
               className={`flex h-4 w-4 shrink-0 items-center justify-center rounded transition-transform ${
                 expanded ? "rotate-90" : ""
               }`}
-              aria-label={expanded ? "Collapse" : "Expand"}
+              aria-label={expanded ? t("folderTree.collapse") : t("folderTree.expand")}
             >
               <ChevronRight className="text-text-tertiary h-3 w-3" />
             </button>
@@ -115,7 +117,7 @@ function TreeNode({
                   }}
                 >
                   <FolderPlus className="text-text-tertiary h-3.5 w-3.5" />
-                  New Subfolder
+                  {t("folderTree.newSubfolder")}
                 </ContextMenu.Item>
               )}
               {canRenameFolder && (
@@ -126,7 +128,7 @@ function TreeNode({
                   }}
                 >
                   <Pencil className="text-text-tertiary h-3.5 w-3.5" />
-                  Rename
+                  {t("folderTree.rename")}
                 </ContextMenu.Item>
               )}
               {canDeleteFolder && (
@@ -137,7 +139,7 @@ function TreeNode({
                   }}
                 >
                   <Trash2 className="text-text-tertiary h-3.5 w-3.5" />
-                  Delete
+                  {t("folderTree.delete")}
                 </ContextMenu.Item>
               )}
             </ContextMenu.Content>
@@ -167,6 +169,7 @@ function TreeNode({
 
 export function FolderTree() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const { data: workspacesData } = useWorkspaces()
   const workspace = workspacesData?.data?.[0]
   const workspaceId = workspace?.id ?? null
@@ -256,7 +259,7 @@ export function FolderTree() {
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between px-3 py-1.5">
         <span className="text-text-tertiary text-[11px] font-semibold tracking-wider uppercase">
-          Folders
+          {t("folderTree.foldersHeading")}
         </span>
       </div>
       <button
@@ -269,7 +272,7 @@ export function FolderTree() {
         }`}
       >
         <FolderOpen className="text-text-tertiary h-4 w-4 shrink-0" />
-        <span className="truncate">All Files</span>
+        <span className="truncate">{t("folderTree.allFiles")}</span>
       </button>
       {rootFolders.map((folder) => (
         <TreeNode
@@ -289,10 +292,12 @@ export function FolderTree() {
       ))}
       <ConfirmDialog
         open={deleteConfirm !== null}
-        title="Delete folder?"
-        description={deleteConfirm ? `"${deleteConfirm.name}" will be moved to trash.` : undefined}
-        confirmLabel="Move to trash"
-        loadingLabel="Moving..."
+        title={t("folderTree.deleteFolderTitle")}
+        description={
+          deleteConfirm ? t("folderTree.deleteFolderDescription", { name: deleteConfirm.name }) : undefined
+        }
+        confirmLabel={t("folderTree.moveToTrash")}
+        loadingLabel={t("folderTree.moving")}
         loading={deleteFolderMutation.isPending}
         onConfirm={handleConfirmDelete}
         onOpenChange={(open) => {
@@ -301,17 +306,27 @@ export function FolderTree() {
       />
       <TextInputDialog
         open={textAction !== null}
-        title={textAction?.type === "rename" ? "Rename folder" : "New subfolder"}
+        title={
+          textAction?.type === "rename"
+            ? t("folderTree.renameFolderTitle")
+            : t("folderTree.newSubfolderTitle")
+        }
         description={
           textAction?.type === "rename"
-            ? "Enter a new name for this folder."
-            : "Create a folder inside the selected folder."
+            ? t("folderTree.renameFolderDesc")
+            : t("folderTree.newSubfolderDesc")
         }
-        label="Folder name"
+        label={t("folderTree.folderNameLabel")}
         initialValue={textAction?.type === "rename" ? textAction.currentName : ""}
-        placeholder="Folder name"
-        confirmLabel={textAction?.type === "rename" ? "Rename" : "Create folder"}
-        loadingLabel={textAction?.type === "rename" ? "Renaming..." : "Creating..."}
+        placeholder={t("folderTree.folderNamePlaceholder")}
+        confirmLabel={
+          textAction?.type === "rename"
+            ? t("folderTree.renameConfirm")
+            : t("folderTree.createFolderConfirm")
+        }
+        loadingLabel={
+          textAction?.type === "rename" ? t("folderTree.renaming") : t("folderTree.creating")
+        }
         loading={updateFolderMutation.isPending || createFolderMutation.isPending}
         error={
           updateFolderMutation.isError

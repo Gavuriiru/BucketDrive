@@ -16,11 +16,13 @@ import { useUploadProcessor } from "@/hooks/use-upload"
 import { ProgressBar } from "@/components/shared/progress-bar"
 import type { UploadItem } from "@/stores/upload-store"
 import { formatBytes } from "@/lib/format"
+import { useI18n } from "@/lib/i18n"
 
 export function UploadQueue({ workspaceId }: { workspaceId: string }) {
   const { items, isOpen, setOpen, removeItem, clearCompleted } = useUploadStore()
   const { processQueue, cancelItem, pauseItem, resumeItem } = useUploadProcessor(workspaceId)
   const processingRef = useRef(false)
+  const { t } = useI18n()
 
   const queuedCount = items.filter(
     (i) => i.status === "preparing" || i.status === "queued" || i.status === "uploading",
@@ -45,7 +47,7 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
     <div className="border-border-default bg-bg-primary fixed right-4 bottom-4 left-4 z-50 rounded-xl border shadow-lg sm:left-auto sm:w-80">
       <div className="border-border-muted flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-text-primary text-sm font-medium">Uploads</span>
+          <span className="text-text-primary text-sm font-medium">{t("uploadQueue.title")}</span>
           {queuedCount > 0 && (
             <span className="bg-accent/10 text-accent rounded-full px-1.5 py-0.5 text-xs font-medium">
               {queuedCount}
@@ -53,12 +55,12 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
           )}
           {failedCount > 0 && (
             <span className="bg-error/10 text-error rounded-full px-1.5 py-0.5 text-xs font-medium">
-              {failedCount} failed
+              {t("uploadQueue.failedCount", { count: failedCount })}
             </span>
           )}
           {pausedCount > 0 && (
             <span className="bg-warning/10 text-warning rounded-full px-1.5 py-0.5 text-xs font-medium">
-              {pausedCount} paused
+              {t("uploadQueue.pausedCount", { count: pausedCount })}
             </span>
           )}
         </div>
@@ -66,7 +68,7 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
           <button
             onClick={clearCompleted}
             className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded p-1 transition-colors"
-            aria-label="Clear completed"
+            aria-label={t("uploadQueue.clearCompletedAria")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -93,12 +95,12 @@ export function UploadQueue({ workspaceId }: { workspaceId: string }) {
           className="border-border-muted text-text-tertiary hover:bg-surface-hover hover:text-text-primary flex w-full items-center justify-center gap-2 border-t px-4 py-2 text-xs transition-colors"
         >
           {queuedCount > 0
-            ? `${String(queuedCount)} uploading`
+            ? t("uploadQueue.uploadingCount", { count: queuedCount })
             : failedCount > 0
-              ? `${String(failedCount)} failed`
+              ? t("uploadQueue.failedCount", { count: failedCount })
               : pausedCount > 0
-                ? `${String(pausedCount)} paused`
-                : "All complete"}
+                ? t("uploadQueue.pausedCount", { count: pausedCount })
+                : t("uploadQueue.allComplete")}
           <ChevronUp className="h-3 w-3" />
         </button>
       )}
@@ -121,6 +123,7 @@ function UploadQueueItem({
   onRetry: () => void
   onRemove: () => void
 }) {
+  const { t } = useI18n()
   const doneChunks = item.chunks.filter((c) => c.status === "done").length
   const totalChunks = item.totalChunks ?? 0
   const showChunkProgress = totalChunks > 1 && item.status === "uploading"
@@ -145,7 +148,7 @@ function UploadQueueItem({
           <div className="flex items-start justify-between gap-2">
             <p className="text-text-primary truncate text-sm">{item.fileName}</p>
             <span className="text-text-tertiary shrink-0 text-xs">
-              {formatBytes(item.fileSize)}
+              {formatBytes(item.fileSize, language)}
             </span>
           </div>
 
@@ -156,7 +159,7 @@ function UploadQueueItem({
 
           {showChunkProgress && (
             <p className="text-text-tertiary mt-0.5 text-xs">
-              Part {doneChunks}/{totalChunks} · {Math.round(item.progress)}%
+              {t("uploadQueue.partProgress", { doneChunks, totalChunks })} \u00B7 {Math.round(item.progress)}%
             </p>
           )}
 
@@ -164,60 +167,62 @@ function UploadQueueItem({
             <p className="text-text-tertiary mt-0.5 text-xs">{Math.round(item.progress)}%</p>
           )}
 
-          {item.status === "completed" && <p className="text-success mt-0.5 text-xs">Uploaded</p>}
+          {item.status === "completed" && (
+            <p className="text-success mt-0.5 text-xs">{t("uploadQueue.uploadedStatus")}</p>
+          )}
 
           {item.status === "failed" && (
             <div className="mt-0.5 flex items-center gap-2">
-              <p className="text-error text-xs">{item.error ?? "Failed"}</p>
+              <p className="text-error text-xs">{item.error ?? t("uploadQueue.failedStatus")}</p>
               <button
                 onClick={onRetry}
                 className="text-accent hover:text-text-primary flex items-center gap-1 text-xs underline transition-colors"
               >
                 <RotateCcw className="h-3 w-3" />
-                Retry
+                {t("uploadQueue.retry")}
               </button>
               <button
                 onClick={onRemove}
                 className="text-text-tertiary hover:text-text-primary text-xs underline transition-colors"
               >
-                Dismiss
+                {t("uploadQueue.dismiss")}
               </button>
             </div>
           )}
 
           {item.status === "paused" && (
             <div className="mt-0.5 flex items-center gap-2">
-              <p className="text-warning text-xs">Paused</p>
+              <p className="text-warning text-xs">{t("uploadQueue.pausedStatus")}</p>
               <button
                 onClick={onResume}
                 className="text-accent hover:text-text-primary flex items-center gap-1 text-xs underline transition-colors"
               >
                 <Play className="h-3 w-3" />
-                Resume
+                {t("uploadQueue.resume")}
               </button>
               <button
                 onClick={onCancel}
                 className="text-text-tertiary hover:text-text-primary text-xs underline transition-colors"
               >
-                Cancel
+                {t("uploadQueue.cancel")}
               </button>
             </div>
           )}
 
           {item.status === "queued" && (
             <div className="mt-0.5 flex items-center gap-2">
-              <p className="text-text-tertiary text-xs">Waiting</p>
+              <p className="text-text-tertiary text-xs">{t("uploadQueue.waitingStatus")}</p>
               <button
                 onClick={onCancel}
                 className="text-text-tertiary hover:text-text-primary text-xs underline transition-colors"
               >
-                Cancel
+                {t("uploadQueue.cancel")}
               </button>
             </div>
           )}
 
           {item.status === "preparing" && (
-            <p className="text-text-tertiary mt-0.5 text-xs">Preparing folder structure</p>
+            <p className="text-text-tertiary mt-0.5 text-xs">{t("uploadQueue.preparingStatus")}</p>
           )}
 
           {item.status === "uploading" && (
@@ -227,13 +232,13 @@ function UploadQueueItem({
                 className="text-text-tertiary hover:text-text-primary flex items-center gap-1 text-xs underline transition-colors"
               >
                 <Pause className="h-3 w-3" />
-                Pause
+                {t("uploadQueue.pause")}
               </button>
               <button
                 onClick={onCancel}
                 className="text-text-tertiary hover:text-text-primary text-xs underline transition-colors"
               >
-                Cancel
+                {t("uploadQueue.cancel")}
               </button>
             </div>
           )}

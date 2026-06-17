@@ -1,17 +1,17 @@
 import type { Command } from "./types"
-import { getNavigationCommands } from "./navigation"
-import { getAppearanceCommandsFiltered } from "./appearance"
-import { getFileOperationCommandsFiltered } from "./file-operations"
+import { useNavigationCommands } from "./navigation"
+import { useAppearanceCommandsFiltered } from "./appearance"
+import { useFileOperationCommandsFiltered } from "./file-operations"
 
 export type { Command, CommandCategory } from "./types"
 
-export function getAllCommands(
+export function useAllCommands(
   navigate: (opts: { to: string; search?: Record<string, unknown> }) => void,
   userRole?: string,
 ): Command[] {
   return [
-    ...getNavigationCommands(navigate, userRole),
-    ...getAppearanceCommandsFiltered(),
-    ...getFileOperationCommandsFiltered(),
+    ...useNavigationCommands(navigate, userRole),
+    ...useAppearanceCommandsFiltered(),
+    ...useFileOperationCommandsFiltered(),
   ]
 }

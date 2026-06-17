@@ -1,22 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-floating-promises */
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-floating-promises, @typescript-eslint/no-unsafe-return */
 import { useState, useRef, useEffect } from "react"
 import { Bell, Check, CheckCheck } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
 import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from "@/lib/api"
-
-function timeAgo(dateString: string): string {
-  const date = new Date(dateString)
-  const now = new Date()
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  if (seconds < 60) return "Just now"
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${String(minutes)}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${String(hours)}h ago`
-  const days = Math.floor(hours / 24)
-  return `${String(days)}d ago`
-}
+import { useI18n } from "@/lib/i18n"
 
 function getNotificationLink(type: string, dataRaw?: string | null): string | null {
   if (!dataRaw) return null
@@ -57,6 +44,21 @@ export function NotificationBell() {
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const navigate = useNavigate()
+  const { t } = useI18n()
+
+  const timeAgo = (dateString: string): string => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (seconds < 60) return t("notifications.justNow")
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return t("notifications.minutesAgo", { minutes: String(minutes) })
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return t("notifications.hoursAgo", { hours: String(hours) })
+    const days = Math.floor(hours / 24)
+    return t("notifications.daysAgo", { days: String(days) })
+  }
 
   const { data: unreadData } = useUnreadCount()
   const { data: notificationsData } = useNotifications(1, 20)
@@ -105,12 +107,12 @@ export function NotificationBell() {
         type="button"
         onClick={() => setOpen(!open)}
         className="text-text-secondary hover:bg-surface-hover hover:text-text-primary relative rounded-lg p-2 transition-colors"
-        aria-label="Notifications"
+        aria-label={t("notifications.ariaLabel")}
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
           <span className="bg-error absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
-            {unreadCount > 99 ? "99+" : unreadCount}
+            {unreadCount > 99 ? t("notifications.unreadMax") : unreadCount}
           </span>
         )}
       </button>
@@ -121,7 +123,7 @@ export function NotificationBell() {
           className="border-border-default bg-surface-default absolute top-full right-0 z-50 mt-2 w-80 rounded-xl border shadow-lg"
         >
           <div className="border-border-muted flex items-center justify-between border-b px-4 py-3">
-            <span className="text-text-primary text-sm font-semibold">Notifications</span>
+            <span className="text-text-primary text-sm font-semibold">{t("notifications.title")}</span>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -131,7 +133,7 @@ export function NotificationBell() {
                 className="text-accent hover:text-accent-hover flex items-center gap-1 text-xs"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Mark all read
+                {t("notifications.markAllRead")}
               </button>
             )}
           </div>
@@ -139,7 +141,7 @@ export function NotificationBell() {
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="text-text-tertiary px-4 py-8 text-center text-sm">
-                No notifications yet
+                {t("notifications.noNotifications")}
               </div>
             ) : (
               notifications.map((n) => (
@@ -176,7 +178,7 @@ export function NotificationBell() {
                         void markRead.mutate({ id: n.id })
                       }}
                       className="text-text-tertiary hover:bg-surface-hover hover:text-text-secondary mt-0.5 shrink-0 rounded p-1"
-                      aria-label="Mark as read"
+                      aria-label={t("notifications.markAsReadAria")}
                     >
                       <Check className="h-3.5 w-3.5" />
                     </button>

@@ -1,9 +1,10 @@
-/* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { useCallback, useEffect, useState } from "react"
 import { X, ChevronLeft, ChevronRight, FileText, Download } from "lucide-react"
 import type { FileObject } from "@bucketdrive/shared"
 import { usePreviewUrl } from "@/lib/api"
 import { formatBytes, formatRelativeDate } from "@/lib/format"
+import { useI18n } from "@/lib/i18n"
 
 function getPreviewType(
   mimeType: string,
@@ -43,17 +44,19 @@ function ImagePreview({ url, alt }: { url: string; alt: string }) {
 }
 
 function VideoPreview({ url }: { url: string }) {
+  const { t } = useI18n()
   return (
     <div className="flex h-full items-center justify-center bg-black p-4">
       <video controls className="max-h-full max-w-full">
         <source src={url} />
-        Your browser does not support the video tag.
+        {t("filePreview.videoNotSupported")}
       </video>
     </div>
   )
 }
 
 function AudioPreview({ url, fileName }: { url: string; fileName: string }) {
+  const { t } = useI18n()
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
       <div className="bg-accent/10 flex h-16 w-16 items-center justify-center rounded-full">
@@ -62,16 +65,17 @@ function AudioPreview({ url, fileName }: { url: string; fileName: string }) {
       <p className="text-text-primary text-sm font-medium">{fileName}</p>
       <audio controls className="w-full max-w-md">
         <source src={url} />
-        Your browser does not support the audio tag.
+        {t("filePreview.audioNotSupported")}
       </audio>
     </div>
   )
 }
 
 function PdfPreview({ url }: { url: string }) {
+  const { t } = useI18n()
   return (
     <div className="bg-surface-secondary h-full w-full">
-      <iframe src={url} title="PDF Preview" className="h-full w-full border-0" />
+      <iframe src={url} title={t("filePreview.pdfPreviewTitle")} className="h-full w-full border-0" />
     </div>
   )
 }
@@ -79,6 +83,7 @@ function PdfPreview({ url }: { url: string }) {
 function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
   const [content, setContent] = useState<string | null>(null)
   const [error, setError] = useState(false)
+  const { t } = useI18n()
 
   useEffect(() => {
     let cancelled = false
@@ -98,7 +103,7 @@ function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
   if (error) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <p className="text-error text-sm">Failed to load text content</p>
+        <p className="text-error text-sm">{t("filePreview.failedToLoadText")}</p>
       </div>
     )
   }
@@ -163,6 +168,14 @@ function TextPreview({ url, mimeType }: { url: string; mimeType: string }) {
 }
 
 function UnknownPreview({ file }: { file: FileObject }) {
+  const { t, language } = useI18n()
+  const relativeLabels = {
+    today: t("format.relative.today"),
+    yesterday: t("format.relative.yesterday"),
+    daysAgo: (days: number) => t("format.relative.daysAgo", { days }),
+    unknown: t("format.unknownDate"),
+  }
+
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
       <div className="bg-surface-hover flex h-20 w-20 items-center justify-center rounded-2xl">
@@ -174,20 +187,20 @@ function UnknownPreview({ file }: { file: FileObject }) {
       </div>
       <div className="border-border-default bg-surface-default w-full max-w-xs space-y-2 rounded-lg border p-4">
         <div className="flex justify-between text-xs">
-          <span className="text-text-tertiary">Size</span>
-          <span className="text-text-primary">{formatBytes(file.sizeBytes)}</span>
+          <span className="text-text-tertiary">{t("filePreview.sizeLabel")}</span>
+          <span className="text-text-primary">{formatBytes(file.sizeBytes, language)}</span>
         </div>
         <div className="flex justify-between text-xs">
-          <span className="text-text-tertiary">Created</span>
-          <span className="text-text-primary">{formatRelativeDate(file.createdAt)}</span>
+          <span className="text-text-tertiary">{t("filePreview.createdLabel")}</span>
+          <span className="text-text-primary">{formatRelativeDate(file.createdAt, relativeLabels)}</span>
         </div>
         <div className="flex justify-between text-xs">
-          <span className="text-text-tertiary">Modified</span>
-          <span className="text-text-primary">{formatRelativeDate(file.updatedAt)}</span>
+          <span className="text-text-tertiary">{t("filePreview.modifiedLabel")}</span>
+          <span className="text-text-primary">{formatRelativeDate(file.updatedAt, relativeLabels)}</span>
         </div>
         {file.checksum && (
           <div className="flex justify-between text-xs">
-            <span className="text-text-tertiary">Checksum</span>
+            <span className="text-text-tertiary">{t("filePreview.checksumLabel")}</span>
             <span className="text-text-primary max-w-[120px] truncate font-mono">
               {file.checksum}
             </span>
@@ -221,6 +234,7 @@ export function FilePreview({
 }: FilePreviewProps) {
   const { data: previewData, isLoading } = usePreviewUrl(workspaceId, file.id)
   const previewType = getPreviewType(file.mimeType)
+  const { t, language } = useI18n()
 
   // Keyboard navigation inside preview
   useEffect(() => {
@@ -286,14 +300,14 @@ export function FilePreview({
           <button
             onClick={onClose}
             className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors"
-            aria-label="Close preview"
+            aria-label={t("filePreview.closePreviewAria")}
           >
             <X className="h-4 w-4" />
           </button>
           <div className="min-w-0 flex-1">
             <p className="text-text-primary truncate text-sm font-medium">{file.originalName}</p>
             <p className="text-text-tertiary text-[11px]">
-              {file.mimeType} &middot; {formatBytes(file.sizeBytes)}
+              {file.mimeType} &middot; {formatBytes(file.sizeBytes, language)}
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -301,7 +315,7 @@ export function FilePreview({
               onClick={onPrev}
               disabled={!hasPrev}
               className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-              aria-label="Previous file"
+              aria-label={t("filePreview.previousFileAria")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -309,14 +323,14 @@ export function FilePreview({
               onClick={onNext}
               disabled={!hasNext}
               className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-              aria-label="Next file"
+              aria-label={t("filePreview.nextFileAria")}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
             <button
               onClick={() => onDownload(file.id)}
               className="text-text-tertiary hover:bg-surface-hover hover:text-text-primary rounded-md p-1.5 transition-colors"
-              aria-label="Download file"
+              aria-label={t("filePreview.downloadFileAria")}
             >
               <Download className="h-4 w-4" />
             </button>
@@ -328,8 +342,8 @@ export function FilePreview({
 
         {/* Footer hints */}
         <div className="border-border-default text-text-tertiary hidden items-center justify-between border-t px-4 py-2 text-[11px] sm:flex">
-          <span>Use arrow keys to navigate</span>
-          <span>ESC to close</span>
+          <span>{t("filePreview.arrowKeysHint")}</span>
+          <span>{t("filePreview.escToClose")}</span>
         </div>
       </div>
     </>

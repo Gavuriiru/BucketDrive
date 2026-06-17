@@ -9,6 +9,7 @@ import { getTagColorClasses } from "@/lib/tag-colors"
 import { formatBytes, formatRelativeDate, getFileIcon } from "@/lib/format"
 import { useExplorerStore } from "@/stores/explorer-store"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
+import { useI18n } from "@/lib/i18n"
 
 function renderTagPreview(file: FileObject) {
   const tags = file.tags ?? []
@@ -68,6 +69,7 @@ function useMenuAction() {
 }
 
 function renderSelectionDropdownItems(
+  t: ReturnType<typeof useI18n>["t"],
   selectionContextActions: SelectionContextActions | undefined,
   runMenuAction: (event: { stopPropagation: () => void }, action: () => void) => void,
 ) {
@@ -87,7 +89,7 @@ function renderSelectionDropdownItems(
           onClick={(event) => runMenuAction(event, onCopy)}
           onSelect={(event) => runMenuAction(event, onCopy)}
         >
-          Copy selected
+          {t("fileList.copySelected")}
         </DropdownMenu.Item>
       )}
       {onDownload && (
@@ -108,7 +110,7 @@ function renderSelectionDropdownItems(
           onClick={(event) => runMenuAction(event, onFavorite)}
           onSelect={(event) => runMenuAction(event, onFavorite)}
         >
-          Favorite files
+          {t("fileList.favoriteFiles")}
         </DropdownMenu.Item>
       )}
       {onTags && (
@@ -117,7 +119,7 @@ function renderSelectionDropdownItems(
           onClick={(event) => runMenuAction(event, onTags)}
           onSelect={(event) => runMenuAction(event, onTags)}
         >
-          Tags
+          {t("fileList.tags")}
         </DropdownMenu.Item>
       )}
       {(onMove || onShare) && <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />}
@@ -127,7 +129,7 @@ function renderSelectionDropdownItems(
           onClick={(event) => runMenuAction(event, onMove)}
           onSelect={(event) => runMenuAction(event, onMove)}
         >
-          Move selected
+          {t("fileList.moveSelected")}
         </DropdownMenu.Item>
       )}
       {onShare && (
@@ -136,7 +138,7 @@ function renderSelectionDropdownItems(
           onClick={(event) => runMenuAction(event, onShare)}
           onSelect={(event) => runMenuAction(event, onShare)}
         >
-          Share selected
+          {t("fileList.shareSelected")}
         </DropdownMenu.Item>
       )}
       {onDelete && <DropdownMenu.Separator className="bg-border-muted mx-2 my-1 h-px" />}
@@ -146,7 +148,7 @@ function renderSelectionDropdownItems(
           onClick={(event) => runMenuAction(event, onDelete)}
           onSelect={(event) => runMenuAction(event, onDelete)}
         >
-          Delete selected
+          {t("fileList.deleteSelected")}
         </DropdownMenu.Item>
       )}
     </>
@@ -189,6 +191,7 @@ function FolderListRow({
   selectionContextActions,
   dndEnabled,
 }: FolderListRowProps) {
+  const { t } = useI18n()
   const dragId = `folder-${folder.id}`
   const droppable = useDroppable({
     id: dragId,
@@ -219,11 +222,11 @@ function FolderListRow({
       itemType="folder"
       scope={useSelectionActions ? "selection" : "item"}
       downloadLabel={useSelectionActions ? selectionContextActions?.downloadLabel : undefined}
-      copyLabel={useSelectionActions ? "Copy selected" : undefined}
-      moveLabel={useSelectionActions ? "Move selected" : undefined}
-      shareLabel={useSelectionActions ? "Share selected" : undefined}
-      deleteLabel={useSelectionActions ? "Delete selected" : undefined}
-      favoriteLabel={useSelectionActions ? "Favorite files" : undefined}
+      copyLabel={useSelectionActions ? t("fileList.copySelected") : undefined}
+      moveLabel={useSelectionActions ? t("fileList.moveSelected") : undefined}
+      shareLabel={useSelectionActions ? t("fileList.shareSelected") : undefined}
+      deleteLabel={useSelectionActions ? t("fileList.deleteSelected") : undefined}
+      favoriteLabel={useSelectionActions ? t("fileList.favoriteFilesSelection") : undefined}
       onOpen={useSelectionActions ? undefined : () => onFolderClick(folder.id)}
       onRename={
         !useSelectionActions && onContextRename
@@ -296,7 +299,7 @@ function FolderListRow({
           {dndEnabled && (
             <button
               type="button"
-              aria-label="Drag folder"
+              aria-label={t("fileList.dragFolderAria")}
               className="text-text-tertiary hover:bg-surface-default hover:text-text-primary rounded p-1 transition-colors"
               onClick={(e) => e.stopPropagation()}
               {...draggable.attributes}
@@ -308,17 +311,15 @@ function FolderListRow({
           <FolderOpen className="text-text-tertiary h-5 w-5" />
           <span className="text-text-primary truncate text-sm font-medium">{folder.name}</span>
         </div>
-        <div className="text-text-tertiary hidden w-24 px-4 py-2.5 text-sm md:block">—</div>
-        <div className="text-text-tertiary hidden w-40 px-4 py-2.5 text-sm lg:block">—</div>
-        <div className="text-text-tertiary hidden w-32 px-4 py-2.5 text-sm sm:block">
-          {formatRelativeDate(folder.updatedAt)}
-        </div>
+        <div className="text-text-tertiary hidden w-24 px-4 py-2.5 text-sm md:block">\u2014</div>
+        <div className="text-text-tertiary hidden w-40 px-4 py-2.5 text-sm lg:block">\u2014</div>
+        <div className="text-text-tertiary hidden w-32 px-4 py-2.5 text-sm sm:block">\u2014</div>
         <div className="w-10 px-4 py-2.5">
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button
                 className="text-text-tertiary hover:bg-surface-default hover:text-text-primary rounded p-1 transition-colors"
-                aria-label="More options"
+                aria-label={t("fileList.moreOptionsAria")}
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
@@ -331,7 +332,7 @@ function FolderListRow({
                 align="end"
               >
                 {useSelectionActions ? (
-                  renderSelectionDropdownItems(selectionContextActions, runMenuAction)
+                  renderSelectionDropdownItems(t, selectionContextActions, runMenuAction)
                 ) : (
                   <>
                     <DropdownMenu.Item
@@ -339,7 +340,7 @@ function FolderListRow({
                       onClick={(event) => runMenuAction(event, () => onFolderClick(folder.id))}
                       onSelect={(event) => runMenuAction(event, () => onFolderClick(folder.id))}
                     >
-                      Open
+                      {t("fileList.open")}
                     </DropdownMenu.Item>
                     {onContextRename && (
                       <DropdownMenu.Item
@@ -351,7 +352,7 @@ function FolderListRow({
                           runMenuAction(event, () => onContextRename(folder.id, "folder"))
                         }
                       >
-                        Rename
+                        {t("fileList.rename")}
                       </DropdownMenu.Item>
                     )}
                     {onContextMove && (
@@ -364,7 +365,7 @@ function FolderListRow({
                           runMenuAction(event, () => onContextMove(folder.id, "folder"))
                         }
                       >
-                        Move
+                        {t("fileList.move")}
                       </DropdownMenu.Item>
                     )}
                     {onContextShare && (
@@ -380,7 +381,7 @@ function FolderListRow({
                           runMenuAction(event, () => onContextShare(folder.id, "folder"))
                         }
                       >
-                        Share
+                        {t("fileList.share")}
                       </DropdownMenu.Item>
                     )}
                     {onContextDelete && (
@@ -396,7 +397,7 @@ function FolderListRow({
                           runMenuAction(event, () => onContextDelete(folder.id, "folder"))
                         }
                       >
-                        Delete
+                        {t("fileList.delete")}
                       </DropdownMenu.Item>
                     )}
                   </>
@@ -454,6 +455,13 @@ function FileListRow({
   selectionContextActions,
   dndEnabled,
 }: FileListRowProps) {
+  const { t, language } = useI18n()
+  const relativeLabels = {
+    today: t("format.relative.today"),
+    yesterday: t("format.relative.yesterday"),
+    daysAgo: (days: number) => t("format.relative.daysAgo", { days }),
+    unknown: t("format.unknownDate"),
+  }
   const dragId = `file-${file.id}`
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: dragId,
@@ -471,16 +479,16 @@ function FileListRow({
       itemType="file"
       scope={useSelectionActions ? "selection" : "item"}
       downloadLabel={useSelectionActions ? selectionContextActions?.downloadLabel : undefined}
-      copyLabel={useSelectionActions ? "Copy selected" : undefined}
-      moveLabel={useSelectionActions ? "Move selected" : undefined}
-      shareLabel={useSelectionActions ? "Share selected" : undefined}
-      deleteLabel={useSelectionActions ? "Delete selected" : undefined}
+      copyLabel={useSelectionActions ? t("fileList.copySelected") : undefined}
+      moveLabel={useSelectionActions ? t("fileList.moveSelected") : undefined}
+      shareLabel={useSelectionActions ? t("fileList.shareSelected") : undefined}
+      deleteLabel={useSelectionActions ? t("fileList.deleteSelected") : undefined}
       favoriteLabel={
         useSelectionActions
-          ? "Favorite files"
+          ? t("fileList.favoriteFilesSelection")
           : file.isFavorited
-            ? "Remove favorite"
-            : "Add favorite"
+            ? t("fileList.removeFavorite")
+            : t("fileList.addFavorite")
       }
       onPreview={
         !useSelectionActions && onContextPreview ? () => onContextPreview(file.id) : undefined
@@ -570,7 +578,7 @@ function FileListRow({
           {dndEnabled && (
             <button
               type="button"
-              aria-label="Drag file"
+              aria-label={t("fileList.dragFileAria")}
               className="text-text-tertiary hover:bg-surface-default hover:text-text-primary rounded p-1 transition-colors"
               onClick={(e) => e.stopPropagation()}
               {...attributes}
@@ -598,7 +606,7 @@ function FileListRow({
           </div>
         </div>
         <div className="text-text-tertiary hidden w-24 px-4 py-2.5 text-sm md:block">
-          {formatBytes(file.sizeBytes)}
+          {formatBytes(file.sizeBytes, language)}
         </div>
         <div className="hidden w-40 px-4 py-2.5 lg:block">
           {file.tags && file.tags.length > 0 ? (
@@ -621,18 +629,18 @@ function FileListRow({
               )}
             </div>
           ) : (
-            <span className="text-text-tertiary text-xs">No tags</span>
+            <span className="text-text-tertiary text-xs">{t("fileList.noTags")}</span>
           )}
         </div>
         <div className="text-text-tertiary hidden w-32 px-4 py-2.5 text-sm sm:block">
-          {formatRelativeDate(file.updatedAt)}
+          {formatRelativeDate(file.updatedAt, relativeLabels)}
         </div>
         <div className="w-10 px-4 py-2.5">
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button
                 className="text-text-tertiary hover:bg-surface-default hover:text-text-primary rounded p-1 transition-colors"
-                aria-label="More options"
+                aria-label={t("fileList.moreOptionsAria")}
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
@@ -645,7 +653,7 @@ function FileListRow({
                 align="end"
               >
                 {useSelectionActions ? (
-                  renderSelectionDropdownItems(selectionContextActions, runMenuAction)
+                  renderSelectionDropdownItems(t, selectionContextActions, runMenuAction)
                 ) : (
                   <>
                     {onContextPreview && (
@@ -654,7 +662,7 @@ function FileListRow({
                         onClick={(event) => runMenuAction(event, () => onContextPreview(file.id))}
                         onSelect={(event) => runMenuAction(event, () => onContextPreview(file.id))}
                       >
-                        Preview
+                        {t("fileList.preview")}
                       </DropdownMenu.Item>
                     )}
                     <DropdownMenu.Item
@@ -662,7 +670,7 @@ function FileListRow({
                       onClick={(event) => runMenuAction(event, () => onContextDownload?.(file.id))}
                       onSelect={(event) => runMenuAction(event, () => onContextDownload?.(file.id))}
                     >
-                      Download
+                      {t("fileList.download")}
                     </DropdownMenu.Item>
                     {onContextRename && (
                       <DropdownMenu.Item
@@ -674,7 +682,7 @@ function FileListRow({
                           runMenuAction(event, () => onContextRename(file.id, "file"))
                         }
                       >
-                        Rename
+                        {t("fileList.rename")}
                       </DropdownMenu.Item>
                     )}
                     {onContextFavorite && (
@@ -683,7 +691,7 @@ function FileListRow({
                         onClick={(event) => runMenuAction(event, () => onContextFavorite(file.id))}
                         onSelect={(event) => runMenuAction(event, () => onContextFavorite(file.id))}
                       >
-                        {file.isFavorited ? "Remove favorite" : "Add favorite"}
+                        {file.isFavorited ? t("fileList.removeFavorite") : t("fileList.addFavorite")}
                       </DropdownMenu.Item>
                     )}
                     {onContextTags && (
@@ -692,7 +700,7 @@ function FileListRow({
                         onClick={(event) => runMenuAction(event, () => onContextTags(file.id))}
                         onSelect={(event) => runMenuAction(event, () => onContextTags(file.id))}
                       >
-                        Tags
+                        {t("fileList.tagsMenu")}
                       </DropdownMenu.Item>
                     )}
                     {onContextMove && (
@@ -705,7 +713,7 @@ function FileListRow({
                           runMenuAction(event, () => onContextMove(file.id, "file"))
                         }
                       >
-                        Move
+                        {t("fileList.move")}
                       </DropdownMenu.Item>
                     )}
                     {onContextShare && (
@@ -721,7 +729,7 @@ function FileListRow({
                           runMenuAction(event, () => onContextShare(file.id, "file"))
                         }
                       >
-                        Share
+                        {t("fileList.share")}
                       </DropdownMenu.Item>
                     )}
                     {onContextDelete && (
@@ -737,7 +745,7 @@ function FileListRow({
                           runMenuAction(event, () => onContextDelete(file.id, "file"))
                         }
                       >
-                        Delete
+                        {t("fileList.delete")}
                       </DropdownMenu.Item>
                     )}
                   </>
@@ -797,14 +805,15 @@ export function FileList({
   onContextMove,
   onContextShare,
   selectionContextActions,
-  emptyTitle = "No files yet",
-  emptyDescription = "Drag files here to upload",
+  emptyTitle,
+  emptyDescription,
   onItemDrop,
   onSelectionPointerDown,
   onSelectionPointerMove,
   onSelectionPointerUp,
   onSelectionPointerCancel,
 }: FileListProps) {
+  const { t } = useI18n()
   const selectedFileIds = useExplorerStore((s) => s.selectedFileIds)
   const selectedFolderIds = useExplorerStore((s) => s.selectedFolderIds)
   const focusedItemId = useExplorerStore((s) => s.focusedItemId)
@@ -838,8 +847,8 @@ export function FileList({
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-16">
         <Folder className="text-text-tertiary h-12 w-12" />
-        <p className="text-text-primary text-sm font-medium">{emptyTitle}</p>
-        <p className="text-text-tertiary text-sm">{emptyDescription}</p>
+        <p className="text-text-primary text-sm font-medium">{emptyTitle ?? t("fileList.emptyTitle")}</p>
+        <p className="text-text-tertiary text-sm">{emptyDescription ?? t("fileList.emptyDescription")}</p>
       </div>
     )
   }
@@ -858,16 +867,16 @@ export function FileList({
         data-selection-ignore
       >
         <div className="text-text-tertiary flex-1 px-4 py-2.5 text-left text-xs font-medium">
-          Name
+          {t("fileList.headerName")}
         </div>
         <div className="text-text-tertiary hidden w-24 px-4 py-2.5 text-left text-xs font-medium md:block">
-          Size
+          {t("fileList.headerSize")}
         </div>
         <div className="text-text-tertiary hidden w-40 px-4 py-2.5 text-left text-xs font-medium lg:block">
-          Tags
+          {t("fileList.headerTags")}
         </div>
         <div className="text-text-tertiary hidden w-32 px-4 py-2.5 text-left text-xs font-medium sm:block">
-          Modified
+          {t("fileList.headerModified")}
         </div>
         <div className="w-10 px-4 py-2.5" />
       </div>

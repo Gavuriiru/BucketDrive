@@ -145,25 +145,25 @@ export function MembersPage() {
     if (!confirmAction) return null
     if (confirmAction.type === "member") {
       return {
-        title: "Remove member?",
-        description: `${confirmAction.name} will lose access to this bucket.`,
-        confirmLabel: "Remove",
-        loadingLabel: "Removing...",
+        title: t("members.confirm.remove.title"),
+        description: t("members.confirm.remove.description", { name: confirmAction.name }),
+        confirmLabel: t("members.confirm.remove.confirmLabel"),
+        loadingLabel: t("members.confirm.remove.loadingLabel"),
       }
     }
     if (confirmAction.type === "transfer") {
       return {
-        title: "Transfer ownership?",
-        description: `${confirmAction.name} will become the bucket owner and you will become an admin.`,
-        confirmLabel: "Transfer",
-        loadingLabel: "Transferring...",
+        title: t("members.confirm.transfer.title"),
+        description: t("members.confirm.transfer.description", { name: confirmAction.name }),
+        confirmLabel: t("members.confirm.transfer.confirmLabel"),
+        loadingLabel: t("members.confirm.transfer.loadingLabel"),
       }
     }
     return {
-      title: "Revoke invitation?",
-      description: `The invitation for ${confirmAction.email} will stop working immediately.`,
-      confirmLabel: "Revoke",
-      loadingLabel: "Revoking...",
+      title: t("members.confirm.revoke.title"),
+      description: t("members.confirm.revoke.description", { email: confirmAction.email }),
+      confirmLabel: t("members.confirm.revoke.confirmLabel"),
+      loadingLabel: t("members.confirm.revoke.loadingLabel"),
     }
   })()
 
@@ -197,7 +197,7 @@ export function MembersPage() {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="user@company.com"
+              placeholder={t("members.invite.emailPlaceholder")}
               className="border-border-default bg-bg-tertiary text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-1"
             />
             <StyledSelect
@@ -211,16 +211,16 @@ export function MembersPage() {
               variant="primary"
               disabled={addMember.isPending}
               loading={addMember.isPending}
-              loadingLabel="Sending..."
+              loadingLabel={t("members.invite.sending")}
             >
-              Send invite
+              {t("members.invite.sendButton")}
             </ActionButton>
           </form>
 
           {createdInvite && (
             <div className="border-accent/30 bg-accent/10 mt-4 rounded-xl border p-4">
               <p className="text-text-primary text-sm font-medium">
-                Invitation sent to {createdInvite.email}
+                {t("members.invite.sentMessage", { email: createdInvite.email })}
               </p>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <input
@@ -238,7 +238,7 @@ export function MembersPage() {
                     window.setTimeout(() => setCopiedInviteId(null), 2000)
                   }}
                 >
-                  {copiedInviteId === "created" ? "Copied" : "Copy link"}
+                  {copiedInviteId === "created" ? t("members.invite.copied") : t("members.invite.copyLink")}
                 </ActionButton>
               </div>
             </div>
@@ -254,12 +254,12 @@ export function MembersPage() {
         <SegmentedControl
           value={activeTab}
           onChange={setActiveTab}
-          ariaLabel="Member list"
+          ariaLabel={t("members.ariaLabel.memberList")}
           options={[
-            { value: "members", label: `Members (${String(members.length)})` },
+            { value: "members", label: t("members.tabs.members", { count: members.length }) },
             {
               value: "invitations",
-              label: `Pending Invitations (${String(invitations.length)})`,
+              label: t("members.tabs.pendingInvitations", { count: invitations.length }),
             },
           ]}
         />
@@ -282,7 +282,7 @@ export function MembersPage() {
                     <p className="text-text-primary truncate text-sm font-medium">{entry.name}</p>
                     <p className="text-text-secondary truncate text-xs">{entry.email}</p>
                     <p className="text-text-tertiary mt-1 text-xs">
-                      Joined {new Date(entry.createdAt).toLocaleDateString()}
+                      {t("members.list.joined")} {new Date(entry.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -313,7 +313,7 @@ export function MembersPage() {
                         }}
                         className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                       >
-                        Remove
+                        {t("members.actions.remove")}
                       </button>
                     )}
                   {currentUserRole === "owner" && entry.role === "admin" && (
@@ -323,7 +323,7 @@ export function MembersPage() {
                       }}
                       className="border-accent/40 text-accent hover:bg-accent/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                     >
-                      Transfer ownership
+                      {t("members.actions.transferOwnership")}
                     </button>
                   )}
                 </div>
@@ -334,16 +334,16 @@ export function MembersPage() {
           <table className="hidden w-full md:table">
             <thead>
               <tr className="border-border-muted bg-bg-tertiary border-b">
-                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">User</th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">{t("members.table.user")}</th>
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                  Email
+                  {t("members.table.email")}
                 </th>
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                  Joined
+                  {t("members.table.joined")}
                 </th>
-                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Role</th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">{t("members.table.role")}</th>
                 <th className="text-text-tertiary px-4 py-3 text-right text-xs font-medium">
-                  Actions
+                  {t("members.table.actions")}
                 </th>
               </tr>
             </thead>
@@ -397,7 +397,7 @@ export function MembersPage() {
                           }}
                           className="border-accent/40 text-accent hover:bg-accent/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                         >
-                          Transfer
+                          {t("members.actions.transfer")}
                         </button>
                       )}
                       {can(currentUserRole, "users.remove") &&
@@ -409,7 +409,7 @@ export function MembersPage() {
                             }}
                             className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                           >
-                            Remove
+                            {t("members.actions.remove")}
                           </button>
                         )}
                     </div>
@@ -421,7 +421,7 @@ export function MembersPage() {
 
           {members.length === 0 && (
             <div className="text-text-tertiary px-4 py-8 text-center text-sm">
-              No members found.
+              {t("members.empty.noMembers")}
             </div>
           )}
         </div>
@@ -434,12 +434,12 @@ export function MembersPage() {
               <div key={entry.id} className="space-y-3 p-4">
                 <div className="min-w-0">
                   <p className="text-text-primary truncate text-sm font-medium">{entry.email}</p>
-                  <p className="text-text-secondary mt-1 text-xs capitalize">Role: {entry.role}</p>
+                  <p className="text-text-secondary mt-1 text-xs capitalize">{t("members.invitations.role", { role: entry.role })}</p>
                   <p className="text-text-tertiary mt-1 text-xs">
-                    Invited by {entry.invitedByName}
+                    {t("members.invitations.invitedBy", { name: entry.invitedByName })}
                   </p>
                   <p className="text-text-tertiary mt-1 text-xs">
-                    Expires {new Date(entry.expiresAt).toLocaleDateString()}
+                    {t("members.invitations.expires")} {new Date(entry.expiresAt).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
@@ -457,7 +457,7 @@ export function MembersPage() {
                     }}
                     className="border-border-default text-text-secondary hover:bg-surface-hover rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                   >
-                    {copiedInviteId === entry.id ? "Copied" : "Copy link"}
+                    {copiedInviteId === entry.id ? t("members.invitations.copied") : t("members.invitations.copyLink")}
                   </button>
                   <button
                     onClick={() => {
@@ -469,7 +469,7 @@ export function MembersPage() {
                     }}
                     className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                   >
-                    Revoke
+                    {t("members.invitations.revoke")}
                   </button>
                 </div>
               </div>
@@ -480,17 +480,17 @@ export function MembersPage() {
             <thead>
               <tr className="border-border-muted bg-bg-tertiary border-b">
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                  Email
+                  {t("members.table.invitations.email")}
                 </th>
-                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">Role</th>
+                <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">{t("members.table.invitations.role")}</th>
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                  Invited by
+                  {t("members.table.invitations.invitedBy")}
                 </th>
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                  Expires
+                  {t("members.table.invitations.expires")}
                 </th>
                 <th className="text-text-tertiary px-4 py-3 text-right text-xs font-medium">
-                  Actions
+                  {t("members.table.invitations.actions")}
                 </th>
               </tr>
             </thead>
@@ -524,7 +524,7 @@ export function MembersPage() {
                         }}
                         className="border-border-default text-text-secondary hover:bg-surface-hover rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                       >
-                        {copiedInviteId === entry.id ? "Copied" : "Copy link"}
+                        {copiedInviteId === entry.id ? t("members.invitations.copied") : t("members.invitations.copyLink")}
                       </button>
                       <button
                         onClick={() => {
@@ -536,7 +536,7 @@ export function MembersPage() {
                         }}
                         className="border-error/40 text-error hover:bg-error/10 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
                       >
-                        Revoke
+                        {t("members.invitations.revoke")}
                       </button>
                     </div>
                   </td>
@@ -547,7 +547,7 @@ export function MembersPage() {
 
           {invitations.length === 0 && (
             <div className="text-text-tertiary px-4 py-8 text-center text-sm">
-              No pending invitations.
+              {t("members.empty.noPendingInvitations")}
             </div>
           )}
         </div>

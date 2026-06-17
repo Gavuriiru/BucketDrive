@@ -205,11 +205,11 @@ export function ShareManagementPage() {
           tone={shares.some((share) => share.isLocked) ? "warning" : "default"}
         />
         <StatsCard
-          label="Password Protected"
+          label={t("shares.stats.passwordProtected")}
           value={String(shares.filter((share) => share.hasPassword).length)}
         />
         <StatsCard
-          label="Total Downloads"
+          label={t("shares.stats.totalDownloads")}
           value={String(
             shares.reduce((sum: number, share: ShareDashboardItem) => sum + share.downloadCount, 0),
           )}
@@ -218,15 +218,14 @@ export function ShareManagementPage() {
 
       <div className="border-border-default bg-surface-secondary mb-4 rounded-xl border px-4 py-3">
         <p className="text-text-secondary text-sm">
-          Links can be copied and sent outside the bucket. Bucket members already access files from
-          the shared file explorer.
+          {t("shares.info.externalLinks")}
         </p>
       </div>
 
       {selection.selectedCount > 0 && (
         <div className="border-accent bg-accent/10 mb-3 flex flex-col gap-2 rounded-lg border px-4 py-2 sm:flex-row sm:items-center">
           <span className="text-text-primary text-sm font-medium">
-            {selection.selectedCount} share{selection.selectedCount === 1 ? "" : "s"} selected
+            {t("shares.selection.count", { count: selection.selectedCount })}
           </span>
           <div className="hidden flex-1 sm:block" />
           <button
@@ -236,7 +235,7 @@ export function ShareManagementPage() {
             className="text-text-secondary hover:bg-surface-hover hover:text-text-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Copy className="h-3.5 w-3.5" />
-            Copy links
+            {t("shares.actions.copyLinks")}
           </button>
           <button
             type="button"
@@ -244,14 +243,14 @@ export function ShareManagementPage() {
             className="text-error hover:bg-error/10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors"
           >
             <Shield className="h-3.5 w-3.5" />
-            Revoke selected
+            {t("shares.actions.revokeSelected")}
           </button>
           <button
             type="button"
             onClick={selection.clearSelection}
             className="text-text-tertiary hover:text-text-primary rounded-md px-3 py-1.5 text-sm transition-colors"
           >
-            Cancel
+            {t("shares.actions.cancel")}
           </button>
         </div>
       )}
@@ -260,10 +259,9 @@ export function ShareManagementPage() {
         <section className="border-border-default bg-surface-default mb-4 rounded-xl border p-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
-              <h2 className="text-text-primary text-base font-semibold">Share page branding</h2>
+              <h2 className="text-text-primary text-base font-semibold">{t("shares.branding.title")}</h2>
               <p className="text-text-tertiary mt-1 text-xs">
-                Customize public share pages for this bucket. Empty fields use the platform
-                branding.
+                {t("shares.branding.description")}
               </p>
             </div>
             <ActionButton
@@ -271,25 +269,25 @@ export function ShareManagementPage() {
               onClick={handleSaveShareBranding}
               disabled={settingsQuery.isLoading || !settingsQuery.data}
               loading={updateSettings.isPending}
-              loadingLabel="Saving..."
+              loadingLabel={t("shares.branding.saving")}
             >
-              Save share branding
+              {t("shares.branding.saveButton")}
             </ActionButton>
           </div>
 
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr]">
             <label className="grid gap-2">
-              <span className="text-text-primary text-sm font-medium">Share page name</span>
+              <span className="text-text-primary text-sm font-medium">{t("shares.branding.nameLabel")}</span>
               <input
                 value={shareBrandingName}
                 onChange={(event) => setShareBrandingName(event.target.value)}
-                placeholder="Use platform name"
+                placeholder={t("shares.branding.namePlaceholder")}
                 className={settingsInputClasses}
               />
             </label>
 
             <label className="grid gap-2">
-              <span className="text-text-primary text-sm font-medium">Uploaded share logo</span>
+              <span className="text-text-primary text-sm font-medium">{t("shares.branding.logoLabel")}</span>
               <span className="border-border-muted bg-bg-tertiary hover:bg-surface-hover flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors">
                 <span className="flex min-w-0 items-center gap-3">
                   <span className="bg-surface-default flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
@@ -304,7 +302,7 @@ export function ShareManagementPage() {
                     )}
                   </span>
                   <span className="text-text-secondary truncate text-sm">
-                    {uploadBrandingLogo.isPending ? "Uploading..." : "Upload image"}
+                    {uploadBrandingLogo.isPending ? t("shares.branding.uploading") : t("shares.branding.uploadImage")}
                   </span>
                 </span>
                 <Upload className="text-accent h-4 w-4 shrink-0" />
@@ -323,11 +321,11 @@ export function ShareManagementPage() {
             </label>
 
             <label className="grid gap-2 md:col-span-2 xl:col-span-1">
-              <span className="text-text-primary text-sm font-medium">External share logo URL</span>
+              <span className="text-text-primary text-sm font-medium">{t("shares.branding.externalUrlLabel")}</span>
               <input
                 value={shareBrandingLogoUrl}
                 onChange={(event) => setShareBrandingLogoUrl(event.target.value)}
-                placeholder="Use platform logo"
+                placeholder={t("shares.branding.externalUrlPlaceholder")}
                 className={settingsInputClasses}
               />
             </label>
@@ -376,28 +374,28 @@ export function ShareManagementPage() {
             <thead data-selection-ignore>
               <tr className="border-border-muted bg-surface-default border-b">
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                  Resource
+                  {t("shares.table.resource")}
                 </th>
                 <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium lg:table-cell">
-                  Access
+                  {t("shares.table.access")}
                 </th>
                 <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium xl:table-cell">
-                  Created
+                  {t("shares.table.created")}
                 </th>
                 <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium lg:table-cell">
-                  Accesses
+                  {t("shares.table.accesses")}
                 </th>
                 <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium lg:table-cell">
-                  Downloads
+                  {t("shares.table.downloads")}
                 </th>
                 <th className="text-text-tertiary hidden px-4 py-3 text-left text-xs font-medium xl:table-cell">
-                  Last access
+                  {t("shares.table.lastAccess")}
                 </th>
                 <th className="text-text-tertiary px-4 py-3 text-left text-xs font-medium">
-                  Status
+                  {t("shares.table.status")}
                 </th>
                 <th className="text-text-tertiary w-48 px-4 py-3 text-right text-xs font-medium">
-                  Actions
+                  {t("shares.table.actions")}
                 </th>
               </tr>
             </thead>
@@ -435,14 +433,14 @@ export function ShareManagementPage() {
 
       <ConfirmDialog
         open={revokeSelectionConfirm !== null}
-        title="Revoke selected shares?"
+        title={t("shares.confirm.revokeSelectedTitle")}
         description={
           revokeSelectionConfirm
-            ? `${String(revokeSelectionConfirm.count)} selected share${revokeSelectionConfirm.count === 1 ? "" : "s"} will stop granting access immediately.`
+            ? t("shares.confirm.revokeSelectedDescription", { count: revokeSelectionConfirm.count })
             : undefined
         }
-        confirmLabel="Revoke"
-        loadingLabel="Revoking..."
+        confirmLabel={t("shares.confirm.revokeSelectedConfirm")}
+        loadingLabel={t("shares.confirm.revokingSelected")}
         loading={batchRevokeShares.isPending}
         onConfirm={handleConfirmRevokeSelected}
         onOpenChange={(open) => {
@@ -477,16 +475,17 @@ function StatsCard({
 }
 
 function EmptyState({ tab, workspace }: { tab: ShareTab; workspace: WorkspaceData }) {
+  const { t } = useI18n()
   return (
     <div className="border-border-default bg-surface-default flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-10 text-center">
       <Link2 className="text-text-tertiary h-10 w-10" />
       <p className="text-text-primary text-sm font-medium">
-        {tab === "bucket" ? "No bucket shares yet" : "You have not created any shares yet"}
+        {tab === "bucket" ? t("shares.empty.bucket") : t("shares.empty.mine")}
       </p>
       <p className="text-text-tertiary max-w-xl text-xs">
         {tab === "bucket"
-          ? `${workspace.name} does not have any active or historical links in this scope yet.`
-          : "Create a share from the explorer context menu to manage it here."}
+          ? t("shares.empty.bucketDescription", { name: workspace.name })
+          : t("shares.empty.mineDescription")}
       </p>
     </div>
   )
@@ -511,6 +510,7 @@ function ShareCard({
   onCopyLink: (share: ShareDashboardItem) => Promise<void>
   onEdit: () => void
 }) {
+  const { t } = useI18n()
   const isExpired = share.expiresAt ? new Date(share.expiresAt) < new Date() : false
   const canCopy = share.shareType !== "internal"
 
@@ -538,25 +538,25 @@ function ShareCard({
 
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div>
-          <p className="text-text-tertiary">Created</p>
+          <p className="text-text-tertiary">{t("shares.card.created")}</p>
           <p className="text-text-secondary mt-1">
             {new Date(share.createdAt).toLocaleDateString()}
           </p>
         </div>
         <div>
-          <p className="text-text-tertiary">Activity</p>
+          <p className="text-text-tertiary">{t("shares.card.activity")}</p>
           <p className="text-text-secondary mt-1">
-            {share.accessCount} accesses · {share.downloadCount} downloads
+            {t("shares.card.activityDetail", { accessCount: share.accessCount, downloadCount: share.downloadCount })}
           </p>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {!share.isActive && <StatusBadge tone="muted" label="Revoked" />}
-        {share.isActive && !isExpired && <StatusBadge tone="success" label="Active" />}
-        {isExpired && <StatusBadge tone="warning" label="Expired" />}
-        {share.hasPassword && <StatusBadge tone="default" label="Password" />}
-        {share.isLocked && <StatusBadge tone="warning" label="Locked" />}
+        {!share.isActive && <StatusBadge tone="muted" label={t("shares.status.revoked")} />}
+        {share.isActive && !isExpired && <StatusBadge tone="success" label={t("shares.status.active")} />}
+        {isExpired && <StatusBadge tone="warning" label={t("shares.status.expired")} />}
+        {share.hasPassword && <StatusBadge tone="default" label={t("shares.status.password")} />}
+        {share.isLocked && <StatusBadge tone="warning" label={t("shares.status.locked")} />}
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row" data-selection-ignore>
@@ -573,7 +573,7 @@ function ShareCard({
             ) : (
               <Copy className="h-3.5 w-3.5" />
             )}
-            {copied ? "Copied" : "Copy"}
+            {copied ? t("shares.actions.copied") : t("shares.actions.copy")}
           </button>
         )}
         <button
@@ -584,7 +584,7 @@ function ShareCard({
           className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-medium transition-colors"
         >
           <Pencil className="h-3.5 w-3.5" />
-          Edit
+          {t("shares.actions.edit")}
         </button>
       </div>
     </div>
@@ -610,6 +610,7 @@ function ShareRow({
   onCopyLink: (share: ShareDashboardItem) => Promise<void>
   onEdit: () => void
 }) {
+  const { t } = useI18n()
   const isExpired = share.expiresAt ? new Date(share.expiresAt) < new Date() : false
   const canCopy = share.shareType !== "internal"
 
@@ -641,7 +642,7 @@ function ShareRow({
       <td className="hidden px-4 py-3 lg:table-cell">
         <div className="flex flex-wrap gap-1.5">
           {share.permissions.length === 0 ? (
-            <span className="text-text-tertiary text-sm">Link access</span>
+            <span className="text-text-tertiary text-sm">{t("shares.access.linkAccess")}</span>
           ) : (
             share.permissions.map((permission) => (
               <span
@@ -667,15 +668,15 @@ function ShareRow({
         {share.downloadCount}
       </td>
       <td className="text-text-secondary hidden px-4 py-3 text-sm xl:table-cell">
-        {share.lastAccessedAt ? new Date(share.lastAccessedAt).toLocaleString() : "Never"}
+        {share.lastAccessedAt ? new Date(share.lastAccessedAt).toLocaleString() : t("shares.lastAccess.never")}
       </td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap gap-1.5">
-          {!share.isActive && <StatusBadge tone="muted" label="Revoked" />}
-          {share.isActive && !isExpired && <StatusBadge tone="success" label="Active" />}
-          {isExpired && <StatusBadge tone="warning" label="Expired" />}
-          {share.hasPassword && <StatusBadge tone="default" label="Password" />}
-          {share.isLocked && <StatusBadge tone="warning" label="Locked" />}
+          {!share.isActive && <StatusBadge tone="muted" label={t("shares.status.revoked")} />}
+          {share.isActive && !isExpired && <StatusBadge tone="success" label={t("shares.status.active")} />}
+          {isExpired && <StatusBadge tone="warning" label={t("shares.status.expired")} />}
+          {share.hasPassword && <StatusBadge tone="default" label={t("shares.status.password")} />}
+          {share.isLocked && <StatusBadge tone="warning" label={t("shares.status.locked")} />}
         </div>
       </td>
       <td className="px-4 py-3">
@@ -693,7 +694,7 @@ function ShareRow({
               ) : (
                 <Copy className="h-3.5 w-3.5" />
               )}
-              {copied ? "Copied" : "Copy"}
+              {copied ? t("shares.actions.copied") : t("shares.actions.copy")}
             </button>
           )}
           <button
@@ -704,7 +705,7 @@ function ShareRow({
             className="border-border-muted text-text-secondary hover:bg-surface-default hover:text-text-primary inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors"
           >
             <Pencil className="h-3.5 w-3.5" />
-            Edit
+            {t("shares.actions.edit")}
           </button>
         </div>
       </td>
@@ -713,11 +714,12 @@ function ShareRow({
 }
 
 function ShareTypeBadge({ shareType }: { shareType: ShareDashboardItem["shareType"] }) {
+  const { t } = useI18n()
   if (shareType === "internal") {
     return (
       <span className="bg-surface-hover text-text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
         <Users className="h-3 w-3" />
-        Internal
+        {t("shares.type.internal")}
       </span>
     )
   }
@@ -725,7 +727,7 @@ function ShareTypeBadge({ shareType }: { shareType: ShareDashboardItem["shareTyp
   return (
     <span className="bg-accent/10 text-accent inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
       <Globe className="h-3 w-3" />
-      {shareType === "external_direct" ? "Public file" : "Public folder"}
+      {shareType === "external_direct" ? t("shares.type.publicFile") : t("shares.type.publicFolder")}
     </span>
   )
 }
@@ -760,6 +762,7 @@ function ShareSettingsDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useI18n()
   const updateShare = useUpdateShare(workspaceId)
   const revokeShare = useDeleteShare(workspaceId)
   const [expiresAtInput, setExpiresAtInput] = useState("")
@@ -829,7 +832,7 @@ function ShareSettingsDialog({
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <Dialog.Title className="text-text-primary text-lg font-semibold">
-                Manage share
+                {t("shares.dialog.manageTitle")}
               </Dialog.Title>
               <Dialog.Description className="text-text-tertiary mt-1 text-sm">
                 {share?.resourceName}
@@ -848,31 +851,31 @@ function ShareSettingsDialog({
                   {share.hasPassword && (
                     <span className="bg-surface-hover text-text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
                       <Lock className="h-3 w-3" />
-                      Password protected
+                      {t("shares.dialog.passwordProtected")}
                     </span>
                   )}
                   {share.isLocked && (
                     <span className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
                       <AlertTriangle className="h-3 w-3" />
-                      Locked after failed attempts
+                      {t("shares.dialog.locked")}
                     </span>
                   )}
                 </div>
                 <div className="text-text-secondary mt-3 grid gap-3 text-sm sm:grid-cols-2">
-                  <InfoRow label="Created" value={new Date(share.createdAt).toLocaleString()} />
-                  <InfoRow label="Access count" value={String(share.accessCount)} />
-                  <InfoRow label="Download count" value={String(share.downloadCount)} />
+                  <InfoRow label={t("shares.dialog.info.created")} value={new Date(share.createdAt).toLocaleString()} />
+                  <InfoRow label={t("shares.dialog.info.accessCount")} value={String(share.accessCount)} />
+                  <InfoRow label={t("shares.dialog.info.downloadCount")} value={String(share.downloadCount)} />
                   <InfoRow
-                    label="Last access"
+                    label={t("shares.dialog.info.lastAccess")}
                     value={
                       share.lastAccessedAt
                         ? new Date(share.lastAccessedAt).toLocaleString()
-                        : "Never"
+                        : t("shares.expiration.never")
                     }
                   />
                   <InfoRow
-                    label="Expiration"
-                    value={share.expiresAt ? new Date(share.expiresAt).toLocaleString() : "Never"}
+                    label={t("shares.dialog.info.expiration")}
+                    value={share.expiresAt ? new Date(share.expiresAt).toLocaleString() : t("shares.expiration.never")}
                   />
                 </div>
               </div>
@@ -882,7 +885,7 @@ function ShareSettingsDialog({
                   htmlFor="share-expiration"
                   className="text-text-tertiary text-xs font-medium tracking-wide uppercase"
                 >
-                  Expiration
+                  {t("shares.dialog.expirationLabel")}
                 </label>
                 <input
                   id="share-expiration"
@@ -892,7 +895,7 @@ function ShareSettingsDialog({
                   className="border-border-default bg-surface-default text-text-primary focus:border-accent focus:ring-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                 />
                 <p className="text-text-tertiary mt-1 text-xs">
-                  Clear this field to keep the share active until you revoke it.
+                  {t("shares.dialog.expirationHint")}
                 </p>
               </div>
 
@@ -903,14 +906,14 @@ function ShareSettingsDialog({
                       htmlFor="share-password"
                       className="text-text-tertiary text-xs font-medium tracking-wide uppercase"
                     >
-                      Rotate password
+                      {t("shares.dialog.passwordLabel")}
                     </label>
                     <input
                       id="share-password"
                       type="password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Leave blank to keep the current password"
+                      placeholder={t("shares.dialog.passwordPlaceholder")}
                       className="border-border-default bg-surface-default text-text-primary placeholder:text-text-tertiary focus:border-accent focus:ring-accent mt-1.5 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                     />
                   </div>
@@ -923,7 +926,7 @@ function ShareSettingsDialog({
                       disabled={!share.hasPassword}
                       className="border-border-default bg-surface-default text-accent focus:ring-accent h-4 w-4 rounded"
                     />
-                    Remove password protection
+                    {t("shares.dialog.removePassword")}
                   </label>
                 </div>
               )}
@@ -934,7 +937,7 @@ function ShareSettingsDialog({
                     ? updateShare.error.message
                     : revokeShare.error instanceof Error
                       ? revokeShare.error.message
-                      : "Failed to update this share"}
+                      : t("shares.dialog.updateError")}
                 </p>
               )}
 
@@ -945,11 +948,11 @@ function ShareSettingsDialog({
                   className="border-error/40 text-error hover:bg-error/10 inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Shield className="h-4 w-4" />
-                  Revoke share
+                  {t("shares.dialog.revokeButton")}
                 </button>
                 <div className="flex gap-3">
                   <Dialog.Close className="border-border-muted text-text-secondary hover:bg-surface-hover rounded-lg border px-4 py-2 text-sm font-medium transition-colors">
-                    Cancel
+                    {t("shares.dialog.cancel")}
                   </Dialog.Close>
                   <button
                     onClick={handleSave}
@@ -958,7 +961,7 @@ function ShareSettingsDialog({
                     }
                     className="bg-accent hover:bg-accent/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {updateShare.isPending ? "Saving..." : "Save changes"}
+                    {updateShare.isPending ? t("shares.dialog.saving") : t("shares.dialog.saveButton")}
                   </button>
                 </div>
               </div>
@@ -968,10 +971,10 @@ function ShareSettingsDialog({
       </Dialog.Portal>
       <ConfirmDialog
         open={revokeConfirmOpen}
-        title="Revoke share?"
-        description="This share will immediately stop granting access."
-        confirmLabel="Revoke"
-        loadingLabel="Revoking..."
+        title={t("shares.confirm.revokeTitle")}
+        description={t("shares.confirm.revokeDescription")}
+        confirmLabel={t("shares.confirm.revokeConfirm")}
+        loadingLabel={t("shares.confirm.revoking")}
         loading={revokeShare.isPending}
         onConfirm={handleConfirmRevoke}
         onOpenChange={setRevokeConfirmOpen}

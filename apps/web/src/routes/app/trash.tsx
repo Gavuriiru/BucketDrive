@@ -40,7 +40,7 @@ export function TrashPage() {
     error: workspacesErrorDetail,
   } = useCurrentWorkspace()
   const tableRef = useRef<HTMLDivElement>(null)
-  const { t } = useI18n()
+  const { t, language } = useI18n()
 
   const trashSortOptions: Array<{ value: TrashSort; label: string }> = [
     { value: "deleted_at", label: t("trash.sort.deletedDate") },
@@ -382,7 +382,7 @@ export function TrashPage() {
                       </p>
                       {item.resourceType === "file" && (
                         <p className="text-text-secondary mt-1 text-xs">
-                          {t("trash.size")}: {formatBytes(item.sizeBytes)}
+                          {t("trash.size")}: {formatBytes(item.sizeBytes, language)}
                         </p>
                       )}
                     </div>
@@ -484,7 +484,7 @@ export function TrashPage() {
                     {t("trash.days", { days: item.daysRemaining })}
                   </td>
                   <td className="text-text-secondary px-4 py-3 text-sm">
-                    {item.resourceType === "file" ? formatBytes(item.sizeBytes) : "--"}
+                    {item.resourceType === "file" ? formatBytes(item.sizeBytes, language) : "--"}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2" data-selection-ignore>
@@ -498,7 +498,7 @@ export function TrashPage() {
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         {busyItemKey === `${item.resourceType}-${item.id}`
-                          ? "Restoring..."
+                          ? t("trash.restoring")
                           : t("trash.restore")}
                       </button>
                       <button

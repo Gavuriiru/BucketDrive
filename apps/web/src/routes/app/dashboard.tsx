@@ -20,7 +20,7 @@ export function DashboardPage() {
   } = useCurrentWorkspace()
   const isAdmin = can(role ?? "viewer", "analytics.read")
   const navigate = useNavigate()
-  const { t, formatNumber, formatDate } = useI18n()
+  const { t, formatNumber, formatDate, language } = useI18n()
 
   const overviewQuery = useDashboardOverview(workspaceId)
 
@@ -118,13 +118,13 @@ export function DashboardPage() {
         <StatCard
           icon={HardDrive}
           label={t("dashboard.usedStorage")}
-          value={formatBytes(overview.summary.usedStorageBytes)}
+          value={formatBytes(overview.summary.usedStorageBytes, language)}
           accent="bg-indigo-500/10 text-indigo-300"
         />
         <StatCard
           icon={BarChart3}
           label={t("dashboard.quota")}
-          value={formatBytes(overview.summary.quotaBytes)}
+          value={formatBytes(overview.summary.quotaBytes, language)}
           accent="bg-fuchsia-500/10 text-fuchsia-300"
         />
       </section>
@@ -143,6 +143,7 @@ export function DashboardPage() {
                 percent: formatPercent(
                   overview.summary.usedStorageBytes,
                   overview.summary.quotaBytes,
+                  language,
                 ),
               })}
             </span>
@@ -164,9 +165,9 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-text-primary text-[11px] font-medium">
-                      {formatShortDate(point.date)}
+                      {formatShortDate(point.date, { locale: language, unknown: t("format.unknownDate") })}
                     </p>
-                    <p className="text-text-tertiary text-[11px]">{formatBytes(point.usedBytes)}</p>
+                    <p className="text-text-tertiary text-[11px]">{formatBytes(point.usedBytes, language)}</p>
                   </div>
                 </div>
               )
@@ -202,7 +203,7 @@ export function DashboardPage() {
                       <p className="text-text-tertiary mt-1 text-xs">{file.mimeType}</p>
                     </div>
                     <span className="text-text-secondary shrink-0 text-xs font-medium">
-                      {formatBytes(file.sizeBytes)}
+                      {formatBytes(file.sizeBytes, language)}
                     </span>
                   </div>
                 </button>

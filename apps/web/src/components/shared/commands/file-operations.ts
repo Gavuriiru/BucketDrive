@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-plus-operands */
 import { Pencil, Trash2, FolderInput, Star, X, type LucideIcon } from "lucide-react"
+import { useI18n } from "@/lib/i18n"
 import { useExplorerStore } from "@/stores/explorer-store"
 import type { Command, CommandCategory } from "./types"
 
@@ -21,12 +22,12 @@ interface FileOperationCommandDef {
   action: () => void
 }
 
-function getFileOperationCommands(): FileOperationCommandDef[] {
+function getFileOperationCommands(t: ReturnType<typeof useI18n>["t"]): FileOperationCommandDef[] {
   return [
     {
       id: "file-rename",
-      title: "Rename Selected",
-      subtitle: "Rename the focused item",
+      title: t("commands.fileOperations.renameSelected"),
+      subtitle: t("commands.fileOperations.renameSubtitle"),
       icon: Pencil,
       category: "file",
       keywords: ["rename", "name", "edit"],
@@ -41,8 +42,8 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
     },
     {
       id: "file-delete",
-      title: "Delete Selected",
-      subtitle: "Move selected items to trash",
+      title: t("commands.fileOperations.deleteSelected"),
+      subtitle: t("commands.fileOperations.deleteSubtitle"),
       icon: Trash2,
       category: "file",
       keywords: ["delete", "trash", "remove"],
@@ -56,8 +57,8 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
     },
     {
       id: "file-move",
-      title: "Move Selected",
-      subtitle: "Move selected items to another folder",
+      title: t("commands.fileOperations.moveSelected"),
+      subtitle: t("commands.fileOperations.moveSubtitle"),
       icon: FolderInput,
       category: "file",
       keywords: ["move", "transfer", "folder"],
@@ -71,8 +72,8 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
     },
     {
       id: "file-favorite",
-      title: "Toggle Favorite",
-      subtitle: "Add or remove from favorites",
+      title: t("commands.fileOperations.toggleFavorite"),
+      subtitle: t("commands.fileOperations.favoriteSubtitle"),
       icon: Star,
       category: "file",
       keywords: ["favorite", "star", "bookmark"],
@@ -86,8 +87,8 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
     },
     {
       id: "file-clear-selection",
-      title: "Clear Selection",
-      subtitle: "Deselect all items",
+      title: t("commands.fileOperations.clearSelection"),
+      subtitle: t("commands.fileOperations.clearSelectionSubtitle"),
       icon: X,
       category: "file",
       keywords: ["clear", "deselect", "selection"],
@@ -102,8 +103,9 @@ function getFileOperationCommands(): FileOperationCommandDef[] {
   ]
 }
 
-export function getFileOperationCommandsFiltered(): Command[] {
-  return getFileOperationCommands()
+export function useFileOperationCommandsFiltered(): Command[] {
+  const { t } = useI18n()
+  return getFileOperationCommands(t)
     .filter((def) => (def.condition ? def.condition() : true))
     .map((def) => ({
       id: def.id,
